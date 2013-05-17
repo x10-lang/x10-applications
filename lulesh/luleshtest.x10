@@ -1,6 +1,7 @@
 import x10.compiler.Inline;
 import x10.util.Pair;
 import x10.util.Timer;
+import x10.io.File;
 
 public static type real4 = float;
 public static type real8 = double ;
@@ -1072,9 +1073,9 @@ public class luleshtest {
         }
 
         if ( hgcoef > (0.0 as Real_t) ) {
-                                  val start:Long = Timer.milliTime();
+          val start:Long = Timer.milliTime();
           CalcFBHourglassForceForElems(determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hgcoef) ;
-                                  // Console.OUT.println("          HourglassFBForceCalc time = " + (Timer.milliTime() - start));
+          Console.OUT.println("          HourglassFBForceCalc time = " + (Timer.milliTime() - start));
                                   
         }
         return ;
@@ -1091,15 +1092,14 @@ public class luleshtest {
           var determ:Rail[Real_t] = new Rail[Real_t](numElem) ;
 
           /* Sum contributions to total stress tensor */
-
-                                  var start:Long = Timer.milliTime();
+          var start:Long = Timer.milliTime();
           val result = InitStressTermsForElems(numElem);
-                                  Console.OUT.println("        InitStressTerm time = " + (Timer.milliTime() - start));
+          Console.OUT.println("        InitStressTerm time = " + (Timer.milliTime() - start));
           // call elemlib stress integration loop to produce nodal forces from
           // material stresses.
-                                  start = Timer.milliTime();
+          start = Timer.milliTime();
           determ = IntegrateStressForElems( numElem, result);
-                                  Console.OUT.println("        IntegrateStress time = " + (Timer.milliTime() - start));
+          Console.OUT.println("        IntegrateStress time = " + (Timer.milliTime() - start));
 
           // check for negative element volume
           for ( var k:Index_t=0 ; k<numElem ; ++k ) {
@@ -1109,9 +1109,9 @@ public class luleshtest {
             }
           }
 
-                                  start = Timer.milliTime();
+          start = Timer.milliTime();
           CalcHourglassControlForElems(determ, hgcoef) ;
-                                  Console.OUT.println("        HourglassControlCalc time = " + (Timer.milliTime() - start));
+          Console.OUT.println("        HourglassControlCalc time = " + (Timer.milliTime() - start));
         }
       }
 
@@ -1125,9 +1125,9 @@ public class luleshtest {
         }
 
         /* Calcforce calls partial, force, hourq */
-                          var start:Long = Timer.milliTime();
+        var start:Long = Timer.milliTime();
         CalcVolumeForceForElems() ;
-                          Console.OUT.println("      VolumeForceCalc time = " + (Timer.milliTime() - start));
+        Console.OUT.println("      VolumeForceCalc time = " + (Timer.milliTime() - start));
 
         /* Calculate Nodal Forces at domain boundaries */
         /* problem->commSBN->Transfer(CommSBN::forces); */
@@ -1196,9 +1196,9 @@ public class luleshtest {
         /* time of boundary condition evaluation is beginning of step for force and
          * acceleration boundary conditions. */
 
-                          var start:Long = Timer.milliTime();
+        var start:Long = Timer.milliTime();
         CalcForceForNodes();
-                          Console.OUT.println("    ForceCalc time = " + (Timer.milliTime() - start));
+        Console.OUT.println("    ForceCalc time = " + (Timer.milliTime() - start));
 
         CalcAccelerationForNodes();
 
@@ -1206,7 +1206,7 @@ public class luleshtest {
 
         CalcVelocityForNodes( delt, u_cut ) ;
                                   
-                          CalcPositionForNodes( delt );
+        CalcPositionForNodes( delt );
                           
         return;
       }
@@ -2318,17 +2318,17 @@ public class luleshtest {
          * applied boundary conditions and slide surface considerations */
           var start:Long = Timer.milliTime();
         LagrangeNodal();
-          Console.OUT.println("  LagrangeNodal time = " + (Timer.milliTime() - start));
+        Console.OUT.println("  LagrangeNodal time = " + (Timer.milliTime() - start));
 
         /* calculate element quantities (i.e. velocity gradient & q), and update
          * material states */
           start = Timer.milliTime();
         LagrangeElements();
-          Console.OUT.println("  LagrangeElements time = " + (Timer.milliTime() - start));
+        Console.OUT.println("  LagrangeElements time = " + (Timer.milliTime() - start));
 
           start = Timer.milliTime();
         CalcTimeConstraintsForElems();
-          Console.OUT.println("  TimeConstraints time = " + (Timer.milliTime() - start));
+        Console.OUT.println("  TimeConstraints time = " + (Timer.milliTime() - start));
         // LagrangeRelease() ;  Creation/destruction of temps may be important to capture 
       }
 
@@ -2424,7 +2424,7 @@ public class luleshtest {
         
         /* initialize material parameters */
 
-          domain.m_dtfixed = (-1.0e-7 as Real_t) ;
+        domain.m_dtfixed = (-1.0e-7 as Real_t) ;
         domain.m_deltatime = (1.0e-7 as Real_t) ;
         domain.m_deltatimemultlb = (1.1 as Real_t) ;
         domain.m_deltatimemultub = (1.2 as Real_t) ;
@@ -2548,18 +2548,30 @@ public class luleshtest {
         }
 
         /* timestep to solution */
+        var iter:int = 0;
         while(domain.m_time < domain.stoptime() ) {
-                  var start:Long = Timer.milliTime();
+          var start:Long = Timer.milliTime();
           TimeIncrement() ;
-                  Console.OUT.println("TI time = " + (Timer.milliTime() - start));
-                  start = Timer.milliTime();
+          Console.OUT.println("TI time = " + (Timer.milliTime() - start));
+          start = Timer.milliTime();
           LagrangeLeapFrog() ;
-                  Console.OUT.println("LagrangeLeapfrog time = " + (Timer.milliTime() - start));
+          Console.OUT.println("LagrangeLeapfrog time = " + (Timer.milliTime() - start));
           /* problem->commNodes->Transfer(CommNodes::syncposvel) ; */
           
           if (LULESH_SHOW_PROGRESS) {
             Console.OUT.println("time =" + domain.time().toString() + ", dt=" + domain.deltatime().toString()) ;
           }
+
+          iter = iter + 1;
+          val outputFile = "/Users/daperlmu/Desktop/luleshx10Output";
+          val outputHandle = new File(outputFile);
+          val outputPrinter = outputHandle.printer(Boolean.TRUE);
+          outputPrinter.printf("Iteration %d\n", iter);
+          for (var index:int = 0; index < domain.numElem(); index++) {
+            outputPrinter.printf("x=%f, y=%f, z=%f, fx=%f, fy=%f, fz=%f\n", domain.x(index), domain.y(index), domain.z(index), domain.fx(index), domain.fy(index), domain.fz(index));
+          }
+          outputPrinter.flush();
+          outputPrinter.close();
         }
       }
 }
