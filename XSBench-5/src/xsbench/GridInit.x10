@@ -75,6 +75,9 @@ public abstract class GridInit implements XSbench_header {
 	public static def set_grid_ptrs(energy_grid:Rail[GridPoint], nuclide_grids:Rail[Rail[NuclideGridPoint]]):void {
 		val n_isotopes = nuclide_grids.size;
 		val n_gridpoints = nuclide_grids(0).size;
+		val nthreads = FakeOMP.omp_get_num_threads();
+		val n_unionized_grid_points = n_isotopes * n_gridpoints;
+		val n_unionized_grid_points_per_thread =  n_unionized_grid_points / nthreads;
 		
 		Console.OUT.print("Assigning pointers to Unionized Energy Grid...\n");
 
@@ -84,10 +87,11 @@ public abstract class GridInit implements XSbench_header {
 
 		// NOTE single thread version
 		// #pragma omp parallel for default(none) shared(energy_grid, nuclide_grids, n_isotopes, n_gridpoints)
-		for (var i:Long = 0; i < n_isotopes * n_gridpoints; ++i) {
+		val thread = FakeOMP.omp_get_thread_num();
+		for (var i:Long = 0; i < n_unionized_grid_points; ++i) {
 			val quarry = energy_grid(i).energy;
-			if (INFO && FakeOMP.omp_get_thread_num() == 0N && i % 200 == 0)
-				Console.OUT.printf("\rAligning Unionized Grid...(%.0f%% complete)", 100.0 * i as Double / (n_isotopes*n_gridpoints / FakeOMP.omp_get_num_threads()));
+			if (INFO && thread == 0N && i % 200 == 0)
+				Console.OUT.printf("\rAligning Unionized Grid...(%.0f%% complete)", 100.0 * i as Double / n_unionized_grid_points_per_thread);
 			for (var j:Long = 0; j < n_isotopes; ++j) {
 				// j is the nuclide i.d.
 				// log n binary search
@@ -101,9 +105,6 @@ public abstract class GridInit implements XSbench_header {
 
 		// NOTE multi thread version
 		// #pragma omp parallel for default(none) shared(energy_grid, nuclide_grids, n_isotopes, n_gridpoints)
-		val nthreads = FakeOMP.omp_get_num_threads();
-		val n_unionized_grid_points = n_isotopes * n_gridpoints;
-		val n_unionized_grid_points_per_thread =  n_unionized_grid_points / nthreads;
 		finish {
 			for (var thread_:Int = 0N; thread_ < nthreads - 1; ++thread_) {
 				val thread = thread_;

@@ -9,13 +9,13 @@ public abstract class Main implements XSbench_header {
     	// =====================================================================
     	
     	val version = 5;
-    	var n_isotopes:Long; // H-M Large is 355, H-M Small is 68
+    	val n_isotopes:Long; // H-M Large is 355, H-M Small is 68
     	val n_gridpoints = 11303;
     	val lookups = 15000000;
-    	var nthreads:Int;
+    	val nthreads:Int;
     	val max_procs = FakeOMP.omp_get_num_procs();
-    	var HM:String;
-    	var bgq_mode:Int = 0N;
+    	val HM:String;
+    	val bgq_mode:Int;
     	
     	// rand() is only used in the serial initialization stages.
     	// A custom RNG is used in parallel portions.
@@ -33,6 +33,7 @@ public abstract class Main implements XSbench_header {
     	if (args.size == 1) {
     		nthreads = Int.parse(args(0));	// first arg sets # of threads
     		n_isotopes = 355;			// defaults to H-M Large
+    		bgq_mode = 0N;				// defaults to invalid BG/Q mode
     	}
     	else if (args.size == 2) {
     		nthreads = Int.parse(args(0));	// first arg sets # of threads
@@ -41,6 +42,7 @@ public abstract class Main implements XSbench_header {
     			n_isotopes = 68;
     		else
     			n_isotopes = 355;
+    		bgq_mode = 0N;				// defaults to invalid BG/Q mode
     	}
     	else if (args.size == 3) {
     		nthreads = Int.parse(args(0));	// first arg sets # of threads
@@ -54,6 +56,7 @@ public abstract class Main implements XSbench_header {
     	else {
     		nthreads = max_procs;		// defaults to full CPU usage
     		n_isotopes = 355;			// defaults to H-M Large
+    		bgq_mode = 0N;				// defaults to invalid BG/Q mode
     	}
 
     	// Sets H-M size name
@@ -166,10 +169,9 @@ public abstract class Main implements XSbench_header {
     	// NOTE multi thread version
     	// OpenMP compiler directives - declaring variables as shared or private
     	// #pragma omp parallel default(none) private(i, thread, p_energy, mat, seed) shared(max_procs, n_isotopes, n_gridpoints, energy_grid, nuclide_grids, lookups, nthreads, mats, concs, num_nucs)
-    	val nthreads_ = nthreads;
     	finish {
-    		val lookups_per_thread = lookups / nthreads_;
-    		for (var thread_:Int = 0N; thread_ < nthreads_-1N; ++thread_) {
+    		val lookups_per_thread = lookups / nthreads;
+    		for (var thread_:Int = 0N; thread_ < nthreads-1N; ++thread_) {
     			val thread = thread_;
     			async {
     				val macro_xs_vector = new Rail[Double](5);
@@ -192,7 +194,7 @@ public abstract class Main implements XSbench_header {
     			}
     		}
     		/*async*/ {
-    			val thread = nthreads_ - 1N;
+    			val thread = nthreads - 1N;
     			val macro_xs_vector = new Rail[Double](5);
     			val seed = new Cell[ULong]((thread+1N)*19N+17N);
     			// #pragma omp for
