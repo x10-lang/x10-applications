@@ -1,0 +1,78 @@
+#!/usr/bin/perl
+
+# tests for proper compiling and linking of MADRE library
+# executes simple, perfectly balanced particle exchagnes and
+# tests for accuracy
+
+#write new Main.c --> test.c
+$RUN = join(' ',@ARGV);
+
+open MAIN, "../main/Main.c" or die $!;
+open TEST, ">test.c";
+while (<MAIN>) {
+    #match comm_choice
+    #match buff_size, set equal to 1.0
+    $_ =~ s/MC_BLOCK/MC_MADRE/;
+    $_ =~ s/MC_NONBLOCK/MC_MADRE/;
+    $_ =~ s/bufsize = 0.\d+;/bufsize = 0.0;/;
+    print TEST $_;
+}
+close MAIN;
+close TEST;
+#compile test.c
+system("make MADREprogram 1>/dev/null");
+
+@nprocs = (27); #guarantes perfect cubic topology
+@nparticles = (6000, 60000); #perfect load balancing
+$leakage = .5;
+$testcount=0;
+$successcount =0;
+open(TESTOUT, ">>testresults.txt");
+print TESTOUT "-----------------------------------------\nMADRE TEST\n-----------------------------------------\n";
+print "-----------------------------------------\nMADRE TEST\n-----------------------------------------\n";
+foreach $nprocs (@nprocs) {
+    foreach $nparticles (@nparticles) {
+	$totalnp = $nprocs*$nparticles;
+	print TESTOUT "Generating MADRE input parameters for....nparticles = $nparticles... nprocs = $nprocs\n";
+	open(PARAMETERS, ">MADREinput.in");
+	print PARAMETERS "$nprocs\n";
+	for ($i = 0; $i < $nprocs; $i++){
+	    print PARAMETERS "$nparticles $leakage\n";
+	}
+	close(PARAMETERS);
+	print TESTOUT "Finished writing input file....\n";
+
+	print TESTOUT "running....\n";
+	@result = `$RUN -n $nprocs ./test -f MADREinput.in -b periodic -m strict`;
+	$formattedtotalnp= sprintf("%8lld",$totalnp);
+	$formattedminmax= sprintf("%6d",$nparticles);
+	$formattedmean= sprintf("%6.2f",$nparticles);
+	@correct_result = ("reading input file: MADREinput.in\n","stage   1, $formattedtotalnp total np ([min:$formattedminmax max:$formattedminmax mean:$formattedmean  delta:0.00])\n");
+
+	for ($i=1; $i <=3; $i++){
+	    $updatednpg = ($leakage**$i)*$totalnp;
+	    $updatednp = ($leakage**$i)*$nparticles;
+	    $formattedtotalnp= sprintf("%8lld",$updatednpg);
+	    $formattedminmax= sprintf("%6d",$updatednp);
+	    $formattedmean= sprintf("%6.2f",$updatednp);
+	    $stage = 1+$i;
+	    $correct_result[$i+1] = "stage   $stage, $formattedtotalnp total np ([min:$formattedminmax max:$formattedminmax mean:$formattedmean  delta:0.00])\n";
+	}
+	if ($result[0] eq $correct_result[0] and $result[1] eq $correct_result[1] and $result[2] eq $correct_result[2] and $result[3] eq $correct_result[3] and $result[4] eq $correct_result[4]) {
+	    print TESTOUT "MADRE test success for np=$nparticles and nprocs=$nprocs and leakage=$leakage!\n";
+	    $successcount++;
+	}
+	else {
+	    print TESTOUT "MADRE test failure for np=$nparticles and nprocs=$nprocs and leakage=$leakage!\n";
+#alert command line 
+	    printf(" MADRE FAILURE! leakage= $leakage for np=$nparticles and nprocs=$nprocs!\n");
+	}
+	$testcount++;
+    }
+}
+print TESTOUT "MADRE test $successcount / $testcount success \n";
+print "MADRE test $successcount / $testcount success \n"; 
+print "-----------------------------------------\n";
+print TESTOUT "-----------------------------------------\n";
+close(TESTOUT);
+system("rm test test.c MADREinput.in timings.txt 2>/dev/null");

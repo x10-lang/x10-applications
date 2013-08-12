@@ -1,0 +1,52 @@
+#!/usr/bin/perl
+
+#this test just checks proper intialization of MC object and particles
+# for proper domain decomposition. No communication is tested
+system("make -C ..  1>/dev/null");
+
+$RUN = join(' ',@ARGV);
+
+@nprocs = (8, 25);
+@nparticles = (100, 1000, 8902);
+open(TESTOUT, ">>testresults.txt");
+print TESTOUT "-----------------------------------------\nLEAKAGE 0 TEST\n-----------------------------------------\n";
+print  "-----------------------------------------\nLEAKAGE 0 TEST\n-----------------------------------------\n";
+$testcount = 0;
+$successcount = 0;
+foreach $nprocs (@nprocs) {
+    foreach $nparticles (@nparticles) {
+	$totalnp = $nprocs*$nparticles;
+	print TESTOUT "Generating input parameters for....nparticles = $nparticles... nprocs = $nprocs\n";
+	open(PARAMETERS, ">l0input.in");
+	print PARAMETERS "$nprocs\n";
+	for ($i = 0; $i < $nprocs; $i++){
+	    print PARAMETERS "$nparticles 0.0\n";
+	}
+	close(PARAMETERS);
+	print TESTOUT "Finished writing input file....\n";
+	print TESTOUT "running....\n";
+	$result = `$RUN -n $nprocs ../main/Main -f l0input.in`;
+#check that all particles are absorbed instantly and no exchanges happen
+	$formattedtotalnp= sprintf("%8lld",$totalnp);
+	$formattedminmax= sprintf("%6d",$nparticles);
+	$formattedmean= sprintf("%6.2f",$nparticles);
+	$correct_result = "reading input file: l0input.in\nstage   1, $formattedtotalnp total np ([min:$formattedminmax max:$formattedminmax mean:$formattedmean  delta:0.00])\n";
+
+	if ($result eq $correct_result) {
+	    print TESTOUT "Leakage 0 test success for np=$nparticles and nprocs=$nprocs!\n";
+	    $successcount++;
+	}
+	else {
+	    print TESTOUT "Leakage 0 test failure for np=$nparticles and nprocs=$nprocs!\n";
+#alert command line 
+	    printf("FAILURE! leakage= 0.0 for np=$nparticles and nprocs=$nprocs!\n");
+	}
+	$testcount++;
+    }
+}
+print TESTOUT "Leakage 0 test $successcount / $testcount success \n";
+print "Leakage 0 test $successcount / $testcount success \n"; 
+print "-----------------------------------------\n";
+print TESTOUT "-----------------------------------------\n";
+close(TESTOUT);
+system("rm l0input.in timings.txt 2>/dev/null");

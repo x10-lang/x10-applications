@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+
+# tests for superficial accuracy in exchanges, and periodic boundary conditions
+# There should be a conservation of npg for the two cycles before MC_Cycle recognizes the infinite loop and quits
+
+$RUN = join(' ',@ARGV);
+
+#write new Main.c --> test.c
+open MAIN, "../main/Main.c" or die $!;
+open TEST, ">test.c";
+while (<MAIN>) {
+    #match comm_choice
+    #match buff_size, set equal to 1.0
+    $_ =~ s/MC_MADRE/MC_NONBLOCK/;
+    $_ =~ s/MC_BLOCK/MC_NONBLOCK/;
+    $_ =~ s/bufsize = 0.\d+;/bufsize = 1.5;/;
+    print TEST $_;
+}
+close MAIN;
+close TEST;
+#compile test.c
+system("make program 1>/dev/null");
+
+@nprocs = (8, 15, 25);
+@nparticles = (100, 1000, 8902);
+open(TESTOUT, ">>testresults.txt");
+print TESTOUT "-----------------------------------------\nLEAKAGE 1 TEST\n-----------------------------------------\n";
+print "-----------------------------------------\nLEAKAGE 1 TEST\n-----------------------------------------\n";
+$testcount=0;
+$successcount =0;
+foreach $nprocs (@nprocs) {
+    foreach $nparticles (@nparticles) {
+	$totalnp = $nprocs*$nparticles;
+	print TESTOUT "Generating input parameters for....nparticles = $nparticles... nprocs = $nprocs\n";
+	open(PARAMETERS, ">l1input.in");
+	print PARAMETERS "$nprocs\n";
+	for ($i = 0; $i < $nprocs; $i++){
+	    print PARAMETERS "$nparticles 1.0\n";
+	}
+	close(PARAMETERS);
+	print TESTOUT "Finished writing input file....\n";
+
+	print TESTOUT "running....\n";
+	@result = `$RUN -n $nprocs ./test -f l1input.in -b periodic 2>/dev/null`;
+#check that npg is conserved
+	$formattedtotalnp= sprintf("%8lld",$totalnp);
+	$formattedminmax= sprintf("%6d",$nparticles);
+	$formattedmean= sprintf("%6.2f",$nparticles);
+	@correct_result = ("reading input file: l1input.in\n","stage   1, $formattedtotalnp total np ([min:$formattedminmax max:$formattedminmax mean:$formattedmean  delta:0.00])\n", "Global number of particles is constant...\n");
+
+	if ($result[0] eq $correct_result[0] and $result[1] eq $correct_result[1] and $result[2] eq $correct_result[2]) {
+	    print TESTOUT "Leakage 1 test success for np=$nparticles and nprocs=$nprocs!\n";
+	    $successcount++;
+	}
+	else {
+	    print TESTOUT "Leakage 1 test failure for np=$nparticles and nprocs=$nprocs!\n";
+#alert command line 
+	    printf("FAILURE! leakage= 1.0 for np=$nparticles and nprocs=$nprocs!\n");
+	}
+	$testcount++;
+    }
+}
+print TESTOUT "LEAKAGE 1 test $successcount / $testcount success \n";
+print "LEAKAGE 1 test $successcount / $testcount success \n"; 
+print "-----------------------------------------\n";
+print TESTOUT "-----------------------------------------\n";
+close(TESTOUT);
+system("rm test test.c l1input.in timings.txt 2>/dev/null");

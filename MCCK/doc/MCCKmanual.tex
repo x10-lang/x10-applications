@@ -1,0 +1,136 @@
+\documentclass[11pt]{article}
+\usepackage{hyperref} 
+\parskip=.1in
+
+\begin{document}
+\markright{Monte Carlo Communication Kernel User Manual}
+\title{{\bf MCCK User Manual}\\
+  Version 1.0\\
+  Mathematics and Computer Science Division\\
+  Argonne National Laboratory}
+
+\author{
+Kyle Gerard Felker\\[2.0ex]
+Andrew Robert Siegel\\
+}
+
+\maketitle
+\cleardoublepage
+
+\pagenumbering{roman}
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+\pagestyle{headings}
+
+\section{Introduction}
+\label{sec:intro}
+
+MCCK, or Monte Carlo Communication Kernel, is a highly-scalable, portable C based library for simulating Monte Carlo neutron transport environments in nuclear reactor analysis. MCCK employs domain decomposition and the Message Passing Interface (MPI) to simulate the computation of fission cycles of massive numbers of neutral particles in parallel. The active development of MCCK occurs on the Subversion repository, located at 
+
+\texttt{https://svn.mcs.anl.gov/repos/cesar-codes/mini\_apps/mcck}. 
+
+Access is limited to approved users with MCS domain accounts. 
+
+\section{Background}
+\label{sec:back}
+
+Computational scientists have long used PDE-based deterministic methods for nuclear reactor analysis. The stochastic Monte Carlo (MC) approach offers several potential advantages compared to the deterministic formulations, and arguably extrapolates more readily to the modern hardware trends that lie on the path to exascale computing. MC simulations, though, are notoriously expensive computationally and require a tremendous amount of computing to obtain converged statistics. A number of algorithmic and implementation challenges thus remain before they can be robustly applied to practical reactor analysis. 
+
+One of these challenges involves developing memory decomposition strategies to enable robust Light Water Reactor (LWR) simulations. The key issue is that for traditional serial or naturally parallel MC implementations–i.e., those based on replication of the global domain on each node– neutrons can independently be created and tracked one by one from creation to absorption. This approach, however, severely limits available global memory to the maximum available on an individual node. A significant amount of the memory per node is needed to tally neutron interactions for the pre-defined geometric regions, or tally regions. For many classes of calculations such an approach is adequate; geometric descriptions are simple and the number of tally regions is modest. However, for real-world reactor core simulations, the need to tally localized quantities for hundreds of isotopes across tens of thousands of bins results in a memory requirement for tallies alone of approximately $10^{12}$ bytes of memory.
+
+One approach to increasing available memory is to implement spatial domain decomposition for the tallies. When carrying out physical space domain decomposition, though, tracking particles one by one from birth to absorption is no longer feasible performance-wise. Each process owns a subset of the physical space domain and only tracks the particles that pass within its boundaries. Good performance then requires tracking the particles in stages– that is, moving all particles locally on a partition until they are absorbed or reach the partition boundary. At the end of each stage large blocks of particles need to be moved to adjacent partitions \cite{Felker}. 
+
+The goal of the mini-application is to gauge the relevant performance regimes of the spatial domain decomposition technique and evaluate the benefits of various memory redistribution techniques.
+
+\section{Getting Started}
+\label{sec:getstart}
+
+\subsection{Installation}
+\label{subsec:install}
+
+\begin{enumerate}
+  \item Download the latest stable version of MCCK can be downloaded
+\begin{center} \texttt{	https://cesar.mcs.anl.gov/content/software/neutronics}\\ \end{center}
+Once downloaded, you can decompress MCCK using the following command on a linux or Mac OSX system:
+\texttt{tar -zxvf mcck-1.0.tgz}
+This will create the \texttt{mcck-1.0/ } directory. The source code is found in \texttt{mcck-1.0/src/}
+
+ \item (Optional for MADRE or FPMPI logging) MCCK can automatically link the MADRE and FPMPI libraries, but it presently lacks a configuration script. Therefore, if these features are desired, you must manually enter the locations of these libraries. Change into the \texttt{trunk} directory. Edit the \texttt{Makefile.h} file to accurately reflect the locations of your MADRE and FPMPI source directories. \\
+\item After ensuring that your desired C/MPI compiler is correctly defined in \texttt{Makefile.h} "MPICC" variable in the top level directory, type \texttt{make}. You have a few options when completing this step, all accessed by defining the corresponding macro as anything on the command line. For example, ``\texttt{make INCLUDE\_MADRE=1}''
+
+IMPORTANT NOTE: You must \texttt{make clean} when rebuilding MCCK with a new option, as the GNU Make utility won't automatically recognize changes in the macro definitions
+
+\begin{itemize}
+\item INCLUDE\_MADRE=1 \\
+Defines the INCLUDE\_MADRE macro in the \texttt{MC.h} header file which provides the \texttt{MC\_MADRE} option for communication. Links the MADRE library.
+\item LOG\_FPMPI=1\\
+Links the FPMPI library with MCCK to produce a text file containing timings of communication after runtime.
+\item LOG\_MPE=1\\
+Links the MPE library with MCCK to produce a Jumpshot log file for visual logging. Cannot use this flag simultaneously with LOG\_FPMPI.
+\end{itemize}
+\item Change into the \texttt{test} directory. 
+\end{enumerate}
+
+If compilation completes successfully, the executable "Main" will be placed in the \texttt{main/} subdirectory.
+
+To create your own MCCK Monte Carlo simulator, include ``MC.h'' in your source code file and link the library.
+
+\subsection{Running Jobs}
+\label{subsec:running}
+To run MCCK with default settings, use the following command:
+\begin{center}
+\texttt{mpiexec [-np NUM PROC] ./Main NPARTICLES GLOBAL\_LEAKAGE}
+\end{center}
+This command launches an initial batch of \texttt{NPARTICLES} on each of the \texttt{NUM PROC}. The two arguments are required for all simulations. There is no restriction on the number of processors for the simulation (tests have been executed with over 16,000 processors). The leakage rate, $\lambda$, is a lumped parameter which represents the neutron absorptive processes in an actual physics code. 
+
+$(1- \lambda_i)$ is the average probability that a particle is absorbed on processor $i$'s physical domain, and $\lambda_i$ is the average probability that a particle continues to leave that processor's domain. Thus, at each stage, the non-absorbed particles on each process are buffered in preparation for movement to the new processor's domain. 
+
+At each stage, the code will print to STDOUT a line similar to:
+
+stage   1,   160000 total np ([min: 40000 max: 40000 mean:40000.00  delta:0.00])
+\begin{center} $\vdots$ \end{center}
+
+stage  77,       52 total np ([min:     4 max:    19 mean: 13.00  delta:6.00])
+
+until all of the particles have been absorbed and the simulation ends. The statistics detail the communication stage number, the total number of live particles, the smallest number of live particles on a processor, the largest number of live particles on a processor, the mean, and ``load imbalance'' factor (i.e. difference between the mean and the max). 
+
+\subsection{Runtime options}
+\label{subsec:options}
+In addition to the standard runtime arguments, the user has several optional arguments at his or her disposal. 
+
+\begin{itemize}
+
+\item Strict load balancing (-m strict/nostrict)
+
+Strict load balancing ensures that every processor has an identical number of live particles at each stage. \texttt{nostrict} is the default. 
+
+\item Boundary conditions (-b BNDRY\_REFLECT/BNDRY\_LEAK/BNDRY\_PERIODIC)
+
+For the cubic domain, when neutrons travel to the boundary, they can either bounce back, leave the simulation, or wrap around to the opposite side. These are the respective options. \texttt{BNDRY\_REFLECT} is the default.
+
+\item Constant random number seed (-r)
+
+By default, the \texttt{srand()} call in the code is seeded by the system time, thus creating a new pseudorandnom sequence on each execution. If you are trying to reproduce results, use this option to seed the generator with the constant 3333.3.
+
+\item Variable leakage file (-f FILE.txt)
+
+By default, the leakage rate $\lambda_i$ is constant across processors. However, one can create an input file formatted as:
+
+6\\
+10 .5\\
+100 .9\\
+10 .5\\
+10 .5\\
+10 .5\\
+10 .75\\
+where the first line is equal to NUM PROCS and each of the subsequent NUM PROCS lines has the NUM PARTICLES and LEAKAGE local to that processor. 
+
+\end{itemize}
+
+\label{sec:references}
+\bibliographystyle{plain}
+\bibliography{MCBibliography}
+
+\end{document}
