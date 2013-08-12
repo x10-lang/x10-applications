@@ -4,7 +4,7 @@ NX10TMP = tmp-x10c++
 MX10BIN = XSBench.jar
 NX10BIN = XSBench
 
-APPFLAG = 1 small
+APPFLAG ?= 1 small
 
 all:	build
 
@@ -25,4 +25,4 @@ run-cpp:
 	./${NX10BIN} ${APPFLAG}
 
 clean:
-	rm -rf ${MX10BIN} ${NX10BIN} results.txt ${NX10TMP}
+	rm -rf ${MX10BIN} ${NX10BIN} ${NX10TMP}

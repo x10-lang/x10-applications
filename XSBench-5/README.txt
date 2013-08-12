@@ -41,17 +41,16 @@ make clean
 
 2a. Building
 
-x10c -O -NO_CHECKS -o XSBench.jar xsbench/*.x10
-
+make build-java
 
 2b. Running
 
-x10 -cp XSBench.jar xsbench.Main 1 small
+make APPFLAG="1 small" run-java
 
 
 2c. Cleaning
 
-rm XSBench.jar
+make clean
 
 
 
@@ -60,18 +59,15 @@ rm XSBench.jar
 
 3a. Building
 
-x10c++ -O -NO_CHECKS -o XSBench -d tmp-x10c++ xsbench/*.x10
-
+make build-cpp
 
 3b. Running
 
-./XSBench 1 small
-
+make APPFLAG="1 small" run-cpp
 
 3c. Cleaning
 
-rm XSBench
-rm -r tmp-x10c++
+make clean
 
 
 
