@@ -107,10 +107,10 @@ public class Jacobi {
         val i_spaces = new Rail[DenseIterationSpace_1{self!=null}](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
 
         while ((k<=mits)&&(error>tol)) {
+	    Array.copy(u, uold);
 	    error = finish(Reducible.SumReducer[Double]()) {
                  for (block in i_spaces) {
                      async {
-		         Array.copy(u, block.min, uold, block.min, block.max-block.min+1);
 		         var my_error:double = 0.0;
                          for ([i] in block) {
                              for (j in 1..(m-2)) {
