@@ -1,5 +1,4 @@
-import x10.array.Array;
-import x10.array.Array_2;
+import x10.array.*;
 
 /************************************************************
 * program to solve a finite difference 
@@ -42,9 +41,10 @@ public class Jacobi {
         val m=MSIZE;
         val tol=0.0000000001;
         val mits=5000;
+
+        Console.OUT.println("Running using "+Runtime.NTHREADS+" threads...");
   
         val jb = new Jacobi(m, n);
-  
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
         val end = System.nanoTime();
@@ -103,20 +103,28 @@ public class Jacobi {
         var error:double = 10.0 * tol;
         var k:long = 1;
 
+        val P:long = Runtime.NTHREADS; 
+        val i_spaces = new Rail[DenseIterationSpace_1{self!=null}](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
+
         while ((k<=mits)&&(error>tol)) {
-            error = 0.0;    
-
-            Array.copy(u, uold);
-
-            for (i in 1..(n-2)) {
-                for (j in 1..(m-2)) {
-                    val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
-                                 ay*(uold(i, j-1) + uold(i, j+1)) + 
-                                 b * uold(i, j) - f(i, j))/b;  
-                    u(i, j) = uold(i, j) - omega * resid;  
-                    error = error + resid*resid;   
-                }
-            }
+	    error = finish(Reducible.SumReducer[Double]()) {
+                 for (block in i_spaces) {
+                     async {
+		         Array.copy(u, block.min, uold, block.min, block.max-block.min+1);
+		         var my_error:double = 0.0;
+                         for ([i] in block) {
+                             for (j in 1..(m-2)) {
+                                 val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
+                                              ay*(uold(i, j-1) + uold(i, j+1)) + 
+                                              b * uold(i, j) - f(i, j))/b;  
+                                 u(i, j) = uold(i, j) - omega * resid;  
+                                 my_error += resid*resid;   
+                             }
+                         }
+                         offer my_error;
+                     }
+                 }
+            };
 
             k = k + 1;
             if (k%500==0) Console.OUT.println("Finished "+k+" iteration.");
