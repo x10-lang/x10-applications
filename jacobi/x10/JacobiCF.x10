@@ -1,5 +1,4 @@
 import x10.array.*;
-import x10.util.concurrent.AtomicDouble;
 
 /************************************************************
 * program to solve a finite difference 
@@ -24,7 +23,7 @@ import x10.util.concurrent.AtomicDouble;
 *       : f(n,m) - Right hand side function 
 *************************************************************/
 
-public class Jacobi {
+public class JacobiCF {
    
     static val MSIZE = 500;
 
@@ -45,7 +44,7 @@ public class Jacobi {
         val tol=0.0000000001;
         val mits=5000;
 
-        val jb = new Jacobi(m, n);
+        val jb = new JacobiCF(m, n);
         Console.OUT.println("Running using "+jb.P+" threads...");
 
         val start = System.nanoTime();
@@ -104,37 +103,37 @@ public class Jacobi {
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
         val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
-        val error = new AtomicDouble(10.0 * tol);
+        var error:double = 10.0 * tol;
         var k:long = 1;
 
-        while ((k<=mits)&&(error.get()>tol)) {
+        while ((k<=mits)&&(error>tol)) {
             Array.copy(u, uold);
 
-	    finish {
-                for (block in i_is) {
-                    async {
-		        var my_error:double = 0.0;
-                        for ([i] in block) {
-                            for (j in 1..(m-2)) {
-                                val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
-                                             ay*(uold(i, j-1) + uold(i, j+1)) + 
-                                             b * uold(i, j) - f(i, j))/b;  
-                                u(i, j) = uold(i, j) - omega * resid;  
-                                my_error += resid*resid;   
-                            }
-                        }
-                        error.getAndAdd(my_error);
+	    error = finish(Reducible.SumReducer[Double]()) {
+                 for (block in i_is) {
+                     async {
+		         var my_error:double = 0.0;
+                         for ([i] in block) {
+                             for (j in 1..(m-2)) {
+                                 val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
+                                              ay*(uold(i, j-1) + uold(i, j+1)) + 
+                                              b * uold(i, j) - f(i, j))/b;  
+                                 u(i, j) = uold(i, j) - omega * resid;  
+                                 my_error += resid*resid;   
+                             }
+                         }
+                         offer my_error;
                      }
                  }
-            }
+            };
 
             k = k + 1;
             if (k%500==0) Console.OUT.println("Finished "+k+" iteration.");
-            error.set(Math.sqrt(error.get())/(n*m));
+            error = Math.sqrt(error)/(n*m);
         }
 
         Console.OUT.println("Total Number of Iterations:"+k);
-        Console.OUT.println("Residual:"+error.get());
+        Console.OUT.println("Residual:"+error);
     }
 
 

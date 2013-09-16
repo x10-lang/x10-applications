@@ -24,7 +24,7 @@ import x10.util.concurrent.AtomicDouble;
 *       : f(n,m) - Right hand side function 
 *************************************************************/
 
-public class Jacobi {
+public class JacobiSPMD {
    
     static val MSIZE = 500;
 
@@ -45,7 +45,7 @@ public class Jacobi {
         val tol=0.0000000001;
         val mits=5000;
 
-        val jb = new Jacobi(m, n);
+        val jb = new JacobiSPMD(m, n);
         Console.OUT.println("Running using "+jb.P+" threads...");
 
         val start = System.nanoTime();
@@ -103,16 +103,24 @@ public class Jacobi {
         val ay = 1.0/(dy*dy); /* Y-direction coef */
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
-        val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
-        val error = new AtomicDouble(10.0 * tol);
-        var k:long = 1;
+	val residual = new Cell[Double](10.0 * tol);
+	val error = new AtomicDouble(0.0);
+        val k = new Cell[Long](1);
 
-        while ((k<=mits)&&(error.get()>tol)) {
-            Array.copy(u, uold);
-
-	    finish {
-                for (block in i_is) {
-                    async {
+	clocked	finish {
+            val is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
+	    var id:int = 0n;
+            for (block in is) {
+                val myId = id++;            
+                clocked async {
+                    while ((k()<=mits)&&(residual()>tol)) {
+		        // copy my portion of new solution to old
+                        for ([i] in block) {
+                            for (j in 0..(m-1)) {
+                                uold(i,j) = u(i,j);
+                            }
+                        }
+		    
 		        var my_error:double = 0.0;
                         for ([i] in block) {
                             for (j in 1..(m-2)) {
@@ -121,20 +129,25 @@ public class Jacobi {
                                              b * uold(i, j) - f(i, j))/b;  
                                 u(i, j) = uold(i, j) - omega * resid;  
                                 my_error += resid*resid;   
-                            }
+                             }
                         }
-                        error.getAndAdd(my_error);
-                     }
-                 }
-            }
+			error.getAndAdd(my_error);
 
-            k = k + 1;
-            if (k%500==0) Console.OUT.println("Finished "+k+" iteration.");
-            error.set(Math.sqrt(error.get())/(n*m));
+			Clock.advanceAll();
+                        if (myId == 0n) {
+                            k() += 1;
+			    residual() = Math.sqrt(error.get())/(n*m);
+			    error.set(0.0);
+                            if (k()%500==0) { Console.OUT.println("Finished "+k()+" iteration."); }
+                        }
+			Clock.advanceAll();
+                    }
+                }
+            }
         }
 
-        Console.OUT.println("Total Number of Iterations:"+k);
-        Console.OUT.println("Residual:"+error.get());
+        Console.OUT.println("Total Number of Iterations:"+k());
+        Console.OUT.println("Residual:"+residual());
     }
 
 
