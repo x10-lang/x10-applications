@@ -8,14 +8,14 @@ import x10.array.*;
 *
 * Modified: Sanjiv Shah,       Kuck and Associates, Inc. (KAI), 1998
 * Author:   Joseph Robicheaux, Kuck and Associates, Inc. (KAI), 1998
-* This X10 version by David Grove, IBM Research was translated in September 2013
+* This X10 version by David Grove, IBM Research, was translated in September 2013
 * from the C translation written by Chunhua Liao, University of Houston, Jan, 2005.
 * 
 * Input :  n - grid dimension in x direction 
 *          m - grid dimension in y direction
 *          alpha - Helmholtz constant (always greater than 0.0)
 *          tol   - error tolerance for iterative solver
-*          relax - Successice over relaxation parameter
+*          relax - Successive over relaxation parameter
 *          mits  - Maximum iterations for iterative solver
 *
 * On output 
@@ -36,15 +36,17 @@ public class Jacobi {
     val uold:Array_2[double];
     val f:Array_2[double];
 
+    val P:long = Runtime.NTHREADS;
+
     public static def main(Rail[String]) {
         val n=MSIZE;
         val m=MSIZE;
         val tol=0.0000000001;
         val mits=5000;
 
-        Console.OUT.println("Running using "+Runtime.NTHREADS+" threads...");
-  
         val jb = new Jacobi(m, n);
+        Console.OUT.println("Running using "+jb.P+" threads...");
+
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
         val end = System.nanoTime();
@@ -100,16 +102,15 @@ public class Jacobi {
         val ay = 1.0/(dy*dy); /* Y-direction coef */
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
+        val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
         var error:double = 10.0 * tol;
         var k:long = 1;
 
-        val P:long = Runtime.NTHREADS; 
-        val i_spaces = new Rail[DenseIterationSpace_1{self!=null}](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
-
         while ((k<=mits)&&(error>tol)) {
-	    Array.copy(u, uold);
+            Array.copy(u, uold);
+
 	    error = finish(Reducible.SumReducer[Double]()) {
-                 for (block in i_spaces) {
+                 for (block in i_is) {
                      async {
 		         var my_error:double = 0.0;
                          for ([i] in block) {
