@@ -21,13 +21,19 @@ X10RT_LIB ?= x10rt_sockets
 override CXXFLAGS += -I$(APGAS_DIR)/src -I$(APGAS_DIR)/src-crx -I$(DISTDIR)/include
 
 APGAS_LINK_ARGS = -L$(APGAS_DIR) -lapgas -Wl,--rpath -Wl,$(APGAS_DIR) \
-	-L$(DISTDIR)/lib -l$(X10RT_LIB) -Wl,--rpath -Wl,$(DISTDIR)/lib
+	-L$(DISTDIR)/lib -l$(X10RT_LIB) -Wl,--rpath -Wl,$(DISTDIR)/lib -lrt
 
 ###########
 # Targets #
 ###########
 
-override CXXFLAGS += -O2 -finline-functions
+ifdef USE_XLC
+	override CXXFLAGS += -O3 -qinline -qarch=auto -qtune=auto -qhot
+	CXX = xlC
+else
+	override CXXFLAGS += -O2 -finline-functions
+	CXX = g++
+endif
 
 jacobi: jacobi.cc
 	$(CXX) $(CXXFLAGS) -o $@ jacobi.cc -lm $(APGAS_LINK_ARGS) 

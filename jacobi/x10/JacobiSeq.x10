@@ -25,7 +25,7 @@ import x10.array.*;
 
 public class JacobiSeq {
    
-    static val MSIZE = 500;
+    static val MSIZE = 1000;
 
     static val relax = 1.0;
     static val alpha = 0.0543;

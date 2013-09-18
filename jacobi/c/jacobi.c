@@ -48,7 +48,7 @@ void error_check(void);
 *       : f(n,m) - Right hand side function 
 *************************************************************/
 
- #define MSIZE 500
+ #define MSIZE 1000
  int n,m,mits; 
  double tol,relax=1.0,alpha=0.0543; 
  double u[MSIZE][MSIZE],f[MSIZE][MSIZE],uold[MSIZE][MSIZE];
