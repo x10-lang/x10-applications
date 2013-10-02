@@ -1,31 +1,3 @@
-/*
- * main関数内のwhile(domain.time() < domain.stoptime())から本格的な処理が始まる。その前までは一部の変数の初期化する処理である。
- * まず、TimeIncrement()が呼ばれ、この関数の実行時間がTI timeとして表示される。
- * このTimeIncrement()関数は、変数domain.m_timeを変更する。この変数は、上記したmain関数内の本格的な処理の始まりのところの
- * while文の条件内のdomain.time()関数がreturnする変数なので、TimeIncrement()関数は全体の処理がいつ終了するのかを決めている。
- * 次に、LagrangeLeapFrog()が呼ばれ、この関数の実行時間がLagrangeLeapFrog timeとして表示される。この関数がこのプログラムの計算の核となる処理である。
- * この関数の中で複数の関数が呼ばれており、それらの実行時間が測定され、表示される。その中の関数について以下のとおりである。
- * 1. LagrangeNodal()関数
- * 2. LagrangeElements()関数
- * 3. CalcTimeConstraintsForElems()関数
- * 
- * まず、1のLagrangeNodal()関数：
- * 　この関数の中でも、複数の関数が呼ばれ、それらの実行時間を測定し、表示している。それらの関数は以下のとおりである。
- * 　1-1: CalcForceForNodes()関数
- * 　1-2: CalcAccelerationForNodes()関数
- * 　1-3: ApplyAccelerationBoundaryConditionsForNodes()関数
- * 　1-4: CalcVelocityForNodes()関数
- * 　1-5: CalcPositionForNodes()関数
- * 
- * 　　まず、1-1のCalcForceForNodes()関数：
- * 　　　この関数の中では、１つの関数について、その実行時間を測定し、表示している。その関数は以下のとおりである。
- * 　　　1-1-1: CalcVolumeForceForElems()関数
- * 　　　　
- * 　　　　まず、1-1-1: CalcVolumeForceForElems()関数
- * 　　　　この関数の中でも、複数の関数が呼ばれ、それらの実行時間を測定し、表示している。それらの関数は以下のとおりである。
-　　　　　　　1-1-1-1: InitStressTermsForElems()関数: 変数sigxx, sigyy, sigzzを初期化
- * 　　　　　1-1-1-2: IntegrateStressForElems()関数: CalcElemShapeFunctionDerivatives(), CalcElemNodeNormals(), SumElemStressesToNodeForces()の呼び出し、および変数m_fx, m_fy, m_fzの値変更
- */
 //@StackAllocate val v = @StackAllocateUninitialized new T(...);
 
 
