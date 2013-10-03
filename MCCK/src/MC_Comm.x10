@@ -25,7 +25,6 @@ public class MC_Comm {
 
       val numProcs:Int = mc.nprocs;
 		val mype = mc.mype;
-
 		var np:Int = mc.nparticles;
 
 		displ(0) = np;	
@@ -41,10 +40,20 @@ public class MC_Comm {
 			val h = here;
    		val hid = here.id;
 			
-  	  	 	for (pl in Place.places())  {
+/*
+  	  	 	async for (pl in Place.places()) {
+*/
+			for (var j:Int = 0n; j < 6n; ++j) {
+				val id = mc.grid.nabes(j);
+				if (id < 0)
+					continue;
+
+				val pl:Place = Place.place(id);
+/*
   	     	   if (pl.id == hid)
   	           	  continue;
-					
+*/					
+
    			np = mc.nparticles;
 				val numRecv = myRecvCount(pl.id) as Long;
 				
@@ -54,22 +63,38 @@ public class MC_Comm {
             val tempX = new Rail[Double](numRecv);
             val tempY = new Rail[Double](numRecv);
             val tempZ = new Rail[Double](numRecv);
-            val tempP = new Rail[Particle](numRecv);
+/*
+            val tempEnergy = new Rail[Double](numRecv);
+            val tempAngle = new Rail[Double](numRecv);
+            val tempAbsorbed = new Rail[Int](numRecv);
+            val tempProc = new Rail[Int](numRecv);
+*/
 
             val grefX = GlobalRail(tempX);
             val grefY = GlobalRail(tempY);
             val grefZ = GlobalRail(tempZ);
-				val grefP = GlobalRail(tempP);
+/*
+            val grefEnergy = GlobalRail(tempEnergy);
+            val grefAngle = GlobalRail(tempAngle);
+            val grefAbsorbed = GlobalRail(tempAbsorbed);
+            val grefProc = GlobalRail(tempProc);
+*/
 
 				val particlesRef = mc.particles;
 				val particles:Rail[Particle] = particlesRef();
 
-				at (pl) {
+				async at (pl) {
 					val from = sdispl(at (h) hid);
 					
                val fromX = new Rail[Double](numRecv);
                val fromY = new Rail[Double](numRecv);
                val fromZ = new Rail[Double](numRecv);
+/*
+               val fromEnergy = new Rail[Double](numRecv);
+               val fromAngle = new Rail[Double](numRecv);
+               val fromAbsorbed = new Rail[Int](numRecv);
+               val fromProc = new Rail[Int](numRecv);
+*/
 
 					for (var i:Int = 0n; i < numRecv; ++i) {
 						val particle:Particle = particlesRef()(from + i);
@@ -77,33 +102,23 @@ public class MC_Comm {
                   fromX(i) = particle.x;
                   fromY(i) = particle.y;
                   fromZ(i) = particle.z;
-
-//						val ii = i;
-//						val particle:Particle = particlesRef()(from + ii);
-//                fromX(ii) = particle.x;
-//                fromY(ii) = particle.y;
-//                fromZ(ii) = particle.z;
+/*
+                  fromEnergy(i) = particle.energy;
+                  fromAngle(i) = particle.angle;
+                  fromAbsorbed(i) = particle.absorbed;
+                  fromProc(i) = particle.proc;
+*/
 					}
                Rail.asyncCopy[Double](fromX, 0, grefX, 0, numRecv);
                Rail.asyncCopy[Double](fromY, 0, grefY, 0, numRecv);
                Rail.asyncCopy[Double](fromZ, 0, grefZ, 0, numRecv);
-//				Rail.asyncCopy[Particle](particlesRef(), from, grefP, 0, numRecv);				
-
-				}
-////////////////////////////////////////////////
 /*
-				val child:Rail[Int] = new Rail[Int](1);
-				child(0) = 1n;
-
-				val parent:Rail[Rail[Int]] = new Rail[Rail[Int]](1);
-				parent(0) = child;
-
-				calc(parent);
-
-				val child2:Rail[Int] = parent(0);
-				Console.OUT.println(child2(0));
+               Rail.asyncCopy[Double](fromEnergy, 0, grefEnergy, 0, numRecv);
+               Rail.asyncCopy[Double](fromAngle, 0, grefAngle, 0, numRecv);
+               Rail.asyncCopy[Int](fromAbsorbed, 0, grefAbsorbed, 0, numRecv);
+               Rail.asyncCopy[Int](fromProc, 0, grefProc, 0, numRecv);
 */
-////////////////////////////////////////////////
+				}
 
 				val to = displ(pl.id);
 				val end = to + numRecv;
@@ -114,7 +129,6 @@ public class MC_Comm {
 				 */
   	   	   for (var i:Int = to; i < end; ++i) {
 					particles(i) = new Particle(grefX(i), grefY(i), grefZ(i), 0d, 0d, 0n, mype);
-//					particles(i) = new Particle(grefP(i).x, grefP(i).y, grefP(i).z, 0d, 0d, 0n, mype);
 				}
   	      }
       }
@@ -122,11 +136,6 @@ public class MC_Comm {
     };
     
 	
-	 static def calc(a:Rail[Rail[Int]]):void {
-			val temp:Rail[Int] = a(0);
-			temp(0) = 10n;
-		}
-
     /** 3D Cartesian ordered checkerboard blocking communication */
     val blocking_exchange:(MC, Rail[Int], Rail[Int])=>void 
   			= (mc:MC, myRecvCount:Rail[Int], mySendCount:Rail[Int]) => {
