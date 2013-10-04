@@ -40,19 +40,12 @@ public class MC_Comm {
 			val h = here;
    		val hid = here.id;
 			
-/*
-  	  	 	async for (pl in Place.places()) {
-*/
-			for (var j:Int = 0n; j < 6n; ++j) {
+			async for (var j:Int = 0n; j < 6n; ++j) {
 				val id = mc.grid.nabes(j);
 				if (id < 0)
 					continue;
 
 				val pl:Place = Place.place(id);
-/*
-  	     	   if (pl.id == hid)
-  	           	  continue;
-*/					
 
    			np = mc.nparticles;
 				val numRecv = myRecvCount(pl.id) as Long;
@@ -60,66 +53,28 @@ public class MC_Comm {
 				if (numRecv == 0)
 					continue;
 
-            val tempX = new Rail[Double](numRecv);
-            val tempY = new Rail[Double](numRecv);
-            val tempZ = new Rail[Double](numRecv);
-/*
-            val tempEnergy = new Rail[Double](numRecv);
-            val tempAngle = new Rail[Double](numRecv);
-            val tempAbsorbed = new Rail[Int](numRecv);
-            val tempProc = new Rail[Int](numRecv);
-*/
+				val numRecv2 = numRecv * 2;
+				val numRecv3 = numRecv * 3;
 
-            val grefX = GlobalRail(tempX);
-            val grefY = GlobalRail(tempY);
-            val grefZ = GlobalRail(tempZ);
-/*
-            val grefEnergy = GlobalRail(tempEnergy);
-            val grefAngle = GlobalRail(tempAngle);
-            val grefAbsorbed = GlobalRail(tempAbsorbed);
-            val grefProc = GlobalRail(tempProc);
-*/
+            val tempP = new Rail[Double](numRecv3);
+            val grefP= GlobalRail(tempP);
 
 				val particlesRef = mc.particles;
 				val particles:Rail[Particle] = particlesRef();
 
 				async at (pl) {
-					val from = sdispl(at (h) hid);
-					
-               val fromX = new Rail[Double](numRecv);
-               val fromY = new Rail[Double](numRecv);
-               val fromZ = new Rail[Double](numRecv);
-/*
-               val fromEnergy = new Rail[Double](numRecv);
-               val fromAngle = new Rail[Double](numRecv);
-               val fromAbsorbed = new Rail[Int](numRecv);
-               val fromProc = new Rail[Int](numRecv);
-*/
+					val from = sdispl(hid);
+               val fromP = new Rail[Double](numRecv3);
 
 					for (var i:Int = 0n; i < numRecv; ++i) {
 						val particle:Particle = particlesRef()(from + i);
-
-                  fromX(i) = particle.x;
-                  fromY(i) = particle.y;
-                  fromZ(i) = particle.z;
-/*
-                  fromEnergy(i) = particle.energy;
-                  fromAngle(i) = particle.angle;
-                  fromAbsorbed(i) = particle.absorbed;
-                  fromProc(i) = particle.proc;
-*/
+						fromP(i) = particle.x;
+						fromP(numRecv + i) = particle.y;
+						fromP(numRecv2 + i) = particle.z;
 					}
-               Rail.asyncCopy[Double](fromX, 0, grefX, 0, numRecv);
-               Rail.asyncCopy[Double](fromY, 0, grefY, 0, numRecv);
-               Rail.asyncCopy[Double](fromZ, 0, grefZ, 0, numRecv);
-/*
-               Rail.asyncCopy[Double](fromEnergy, 0, grefEnergy, 0, numRecv);
-               Rail.asyncCopy[Double](fromAngle, 0, grefAngle, 0, numRecv);
-               Rail.asyncCopy[Int](fromAbsorbed, 0, grefAbsorbed, 0, numRecv);
-               Rail.asyncCopy[Int](fromProc, 0, grefProc, 0, numRecv);
-*/
-				}
 
+               Rail.asyncCopy[Double](fromP, 0, grefP, 0, numRecv3);
+				}
 				val to = displ(pl.id);
 				val end = to + numRecv;
 
@@ -128,7 +83,7 @@ public class MC_Comm {
 				 *  of user-defined types.
 				 */
   	   	   for (var i:Int = to; i < end; ++i) {
-					particles(i) = new Particle(grefX(i), grefY(i), grefZ(i), 0d, 0d, 0n, mype);
+					particles(i) = new Particle(grefP(i), grefP(numRecv + i), grefP(numRecv2 + i), 0d, 0d, 0n, mype);
 				}
   	      }
       }
