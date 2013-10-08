@@ -5,7 +5,7 @@ NativeX10BIN = MCCK
 
 NativeX10BINDIR = bin
 
-APPFLAG = 20000000 0.2 -procs 1 -hostfile ~/hostfiles/hostfile2
+APPFLAG = 20000000 0.2 -procs 1 -hostfile ~/hostfile
 
 all:	build
 
