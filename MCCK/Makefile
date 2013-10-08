@@ -9,9 +9,9 @@ APPFLAG = 20000000 0.2 -procs 1 -hostfile ~/hostfile
 
 all:	build
 
-build:	build-cpp #build-java 
+build:	build-cpp build-java 
 
-run:	run-cpp #run-java 
+run:	run-cpp run-java 
 
 build-java:
 	x10c ${X10FLAG} -o ${ManagedX10BIN} src/*.x10
