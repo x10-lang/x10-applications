@@ -9,10 +9,7 @@ Then, type
 $make 
 $make run-cpp
 
-You can give two parameters to MCCK: the number of particles and leakage. 
-You can also give the number of places.
-
-"make run-cpp" uses 2000000 for the number of partilces and 0.2 for the leakage . It runs in one place.  
+You can give two parameters to MCCK: the number of particles and leakage. You can also give the number of places. "make run-cpp" runs in one place, and uses 2000000 for the number of partilces and 0.2 for the leakage.
 
 You can change these configurations by editing the line of "APPFLAG" in the
 Makefile.
