@@ -1567,7 +1567,7 @@ public final class SolveWilson {
 
   static def parallel(range:LongRange, func:(LongRange)=>void) {
 
-    val size = range.max - range.min - 1;
+    val size = range.max - range.min + 1;
     if (size == 0) return;
     val nthreads = Math.min(Runtime.NTHREADS as Long, size);
     val chunk_size = Math.max((size + nthreads - 1) / nthreads, 1L);
