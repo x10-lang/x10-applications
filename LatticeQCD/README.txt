@@ -3,16 +3,17 @@ How to run Lattice QCD
 Koichi Shirahata
 Intern at IBM Research - Tokyo
 
-2013.10.31
+2013.11.1
 
 
 source code of LatticeQCD run on
--single place is in LatticeQCDsingleplace
+-one place one thread (sequential) is in LatticeQCDseq
+-parallel on single place is in LatticeQCDsingleplace
 -multiple places is in LatticeQCDdist
 
 
 
-1.  C++ version  (in LatticeQCDsingleplace/src-orig/)
+1.  C++ version  (in LatticeQCDseq/src-orig/)
 
 
 1a. Building
@@ -31,7 +32,7 @@ make clean
 
 
 
-2.  OpenMP version  (in LatticeQCDsingleplace/src-orig/)
+2.  OpenMP version  (in LatticeQCDparallel/src-orig/)
 
 
 2a. Building
@@ -53,7 +54,7 @@ make clean
 
 
 
-3.  X10 version with Managed X10 on single place (in LatticeQCDsingleplace/src/)
+3.  X10 version with Managed X10 of sequential version (in LatticeQCDseq/src/)
 
 
 3a. Building
@@ -65,9 +66,6 @@ make build-java
 
 make run-java
 
-#before running in x10, set the number of threads to run
-e.g. export X10_NTHREADS=4
-
 
 3c. Cleaning
 
@@ -75,7 +73,7 @@ make clean
 
 
 
-4.  X10 version with Native X10 on single place (in LatticeQCDsingleplace/src/)
+4.  X10 version with Native X10 of sequential version (in LatticeQCDseq/src/)
 
 
 4a. Building
@@ -87,9 +85,6 @@ make build-cpp
 
 make run-cpp
 
-#before running in x10, set the number of threads to run
-e.g. export X10_NTHREADS=4
-
 
 4c. Cleaning
 
@@ -97,7 +92,7 @@ make clean
 
 
 
-5.  X10 version with Managed X10 on multiple places (in LatticeQCDdist/src/)
+5.  X10 version with Managed X10 in parallel on single place (in LatticeQCDparallel/src/)
 
 
 5a. Building
@@ -109,8 +104,7 @@ make build-java
 
 make run-java
 
-#before running in x10, set the number of places and number of threads to run
-e.g. export X10_NPLACES=2
+#before running in x10, set the number of threads to run
 e.g. export X10_NTHREADS=4
 
 
@@ -120,15 +114,60 @@ make clean
 
 
 
-6.  X10 version with Native X10 on multiple places (in LatticeQCDdist/src/)
+6.  X10 version with Native X10 in parallel on single place (in LatticeQCDparallel/src/)
 
 
-5a. Building
+6a. Building
 
 make build-cpp
 
 
-5b. Running
+6b. Running
+
+make run-cpp
+
+#before running in x10, set the number of threads to run
+e.g. export X10_NTHREADS=4
+
+
+6c. Cleaning
+
+make clean
+
+
+
+7.  X10 version with Managed X10 on multiple places (in LatticeQCDdist/src/)
+
+
+7a. Building
+
+make build-java
+
+
+7b. Running
+
+make run-java
+
+#before running in x10, set the number of places and number of threads to run
+e.g. export X10_NPLACES=2
+e.g. export X10_NTHREADS=4
+
+
+7c. Cleaning
+
+make clean
+
+
+
+8.  X10 version with Native X10 on multiple places (in LatticeQCDdist/src/)
+
+
+8a. Building
+
+make build-cpp
+
+
+8b. Running
 
 make run-cpp
 
@@ -137,7 +176,7 @@ e.g. export X10_NPLACES=2
 e.g. export X10_NTHREADS=4
 
 
-5c. Cleaning
+8c. Cleaning
 
 make clean
 
