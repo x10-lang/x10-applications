@@ -12,6 +12,17 @@ source code of LatticeQCD run on
 -multiple places is in LatticeQCDdist
 
 
+Index
+1.  C++ version  (in LatticeQCDseq/src-orig/)
+2.  OpenMP version  (in LatticeQCDparallel/src-orig/)
+3.  X10 version with Managed X10 of sequential version (in LatticeQCDseq/src/)
+4.  X10 version with Native X10 of sequential version (in LatticeQCDseq/src/)
+5.  X10 version with Managed X10 in parallel on single place (in LatticeQCDparallel/src/)
+6.  X10 version with Native X10 in parallel on single place (in LatticeQCDparallel/src/)
+7.  X10 version with Managed X10 on multiple places (in LatticeQCDdist/src/)
+8.  X10 version with Native X10 on multiple places (in LatticeQCDdist/src/)
+
+
 
 1.  C++ version  (in LatticeQCDseq/src-orig/)
 
