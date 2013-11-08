@@ -20,12 +20,22 @@ import x10.compiler.Pragma;
 
 public final class SolveWilson {
   
+  // constants
   static val places = Place.places();
+  static val Np = Place.MAX_PLACES;
   
+  // static val Lszx = 4;
+  // static val Lszy = 4;
+  // static val Lszz = 4;
+  // static val Ltime = 8;
   static val Lszx = 8;
   static val Lszy = 8;
   static val Lszz = 8;
   static val Ltime = 16;
+  // static val Lszx = 16;
+  // static val Lszy = 16;
+  // static val Lszz = 16;
+  // static val Ltime = 32;
   static val Lx = Lszx;
   static val Ly = Lszy;
   static val Lz = Lszz;
@@ -39,9 +49,6 @@ public final class SolveWilson {
   static val LD2 = 2;
   static val Lvst = Lvc*LD*Lst;
   
-  // constants
-  static val Np = Place.MAX_PLACES;
-
   static val Npx = Math.pow2((    Math.log2(Np)) / LD);
   static val Npy = Math.pow2((1 + Math.log2(Np)) / LD);
   static val Npz = Math.pow2((2 + Math.log2(Np)) / LD);
@@ -64,6 +71,11 @@ public final class SolveWilson {
   static val ND2 = 2;
   static val Nvst = Nvc*ND*Nst;
   
+  static val id1 = 0;
+  static val id2 = Nvc;
+  static val id3 = Nvc*2;
+  static val id4 = Nvc*3;
+
   static val Ix = here.id % Npx;
   static val Iy = (here.id / Npx) % Npy;
   static val Iz = (here.id / (Npx * Npy)) % Npz;
@@ -78,7 +90,6 @@ public final class SolveWilson {
   static val St = (It * Lt) / Npt;
   static val Et = ((It + 1) * Lt) / Npt;
 
-  // debug
   static val Ixp = (Ex == Lx) ? here.id + 1 - Npx : here.id + 1;
   static val Iyp = (Ey == Ly) ? here.id + Npx - (Npx * Npy) : here.id + Npx;
   static val Izp = (Ez == Lz) ? here.id + (Npx * Npy) - (Npx * Npy * Npz) 
@@ -133,6 +144,11 @@ public final class SolveWilson {
   var mult_y_meanTime:Long = 0;
   var mult_z_meanTime:Long = 0;
   var mult_t_meanTime:Long = 0;
+
+  var send_x_meanTime:Long = 0;
+  var send_y_meanTime:Long = 0;
+  var send_z_meanTime:Long = 0;
+  var send_t_meanTime:Long = 0;
 
   /**
    * The main method for the SolveWilson class
@@ -195,7 +211,8 @@ public final class SolveWilson {
     
     try {
       
-      qcd.uinit(istart, u, "../conf_08080816.txt");
+      // qcd.uinit(istart, u, "../conf_08080816.txt");
+      qcd.uinit(istart, u, "");
       
       val Nvt = Nvc*ND*Nx*Ny*Nz;
       
@@ -203,16 +220,18 @@ public final class SolveWilson {
       
       var meanTime:Long = 0;
       
+      var send_meanTime:Long = 0;
+
       
-      for(ic in 0..(Ncol-1)) {
-      	for(id in 0..(ND-1)) {
-      // for (ic in 0..0) {
-      // 	for (id in 0..0) {
+      // for(ic in 0..(Ncol-1)) {
+      // 	for(id in 0..(ND-1)) {
+      for (ic in 0..0) {
+      	for (id in 0..0) {
 	  
       	  qcd.set_src(ic,id,0,0,0,0,bq);
 
       	  val startTime = System.currentTimeMillis();
-      	  qcd.solve_CG(enorm,nconv,diff,xq,u,bq);
+      	  send_meanTime += qcd.solve_CG(enorm,nconv,diff,xq,u,bq);
       	  meanTime += System.currentTimeMillis() - startTime;
 
       	  //timer
@@ -247,8 +266,12 @@ public final class SolveWilson {
       }
       
       //timer
-      meanTime /= Ncol * ND;
+      // meanTime /= Ncol * ND;
       Console.OUT.println("SolveWilson: " + meanTime + " ms");
+
+      // send_meanTime /= Ncol * ND;
+      Console.OUT.println("send: " + send_meanTime + " ms");
+      
 
     } catch (e:FileNotFoundException) {
       Console.OUT.println("file not found.");
@@ -262,6 +285,7 @@ public final class SolveWilson {
 	       b:PlaceLocalHandle[Rail[Double]]){
     
     val niter = 1000;
+    // val niter = 1;
 
     equate(Nvst, s, b);
     val snorm:Double;
@@ -313,11 +337,26 @@ public final class SolveWilson {
     Console.OUT.println("mult_y: " + mult_y_meanTime);
     Console.OUT.println("mult_z: " + mult_z_meanTime);
     Console.OUT.println("mult_t: " + mult_t_meanTime);
+    Console.OUT.println("send_x: " + send_x_meanTime);
+    Console.OUT.println("send_y: " + send_y_meanTime);
+    Console.OUT.println("send_z: " + send_z_meanTime);
+    Console.OUT.println("send_t: " + send_t_meanTime);
+
+    val send_time = send_x_meanTime + send_y_meanTime 
+    + send_z_meanTime + send_t_meanTime;
+
     mult_meanTime = 0;
     mult_x_meanTime = 0;
     mult_y_meanTime = 0;
     mult_z_meanTime = 0;
     mult_t_meanTime = 0;
+    send_x_meanTime = 0;
+    send_y_meanTime = 0;
+    send_z_meanTime = 0;
+    send_t_meanTime = 0;
+
+    //debug
+    return send_time;
 
   }
   /* ****************************************************** */
@@ -418,11 +457,6 @@ public final class SolveWilson {
     mult_t_meanTime += System.currentTimeMillis() - mult_t_startTime;
     mult_meanTime += System.currentTimeMillis() - mult_startTime;
 
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
     finish for (p in places) at(p) async {
       parallel(0..(Nst-1), (r:LongRange)=> {
 	for(ist in r){
@@ -444,422 +478,85 @@ public final class SolveWilson {
   def mult_xp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 0;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val ix = Nx-1;
-    val nn = 0;
-
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
-	for (iyzt in r) {
-
-	  val in_ = Nvc*ND*(nn + iyzt*Nx);
-	  val ix1 = Nvc * 2 * iyzt;
-	  val ix2 = ix1 + Nvc;
-
-	  for (ic in 0..(Ncol-1)) {
-	    vcp1_xp()(2*ic+  ix1) = v1()(2*ic  +id1+in_) - v1()(2*ic+1+id4+in_);
-	    vcp1_xp()(2*ic+1+ix1) = v1()(2*ic+1+id1+in_) + v1()(2*ic  +id4+in_);
-	    vcp1_xp()(2*ic  +ix2) = v1()(2*ic  +id2+in_) - v1()(2*ic+1+id3+in_);
-	    vcp1_xp()(2*ic+1+ix2) = v1()(2*ic+1+id2+in_) + v1()(2*ic  +id3+in_);	  
-	  }
-
-	}
-      });
+      make_xp_bnd(vcp1_xp, v1);
     }
 
-    // Send to plus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to plus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_xp();
-
-      at(Place.place(Ixp)) {
-	for (i in 0..(Nvc*2*Ny*Nz*Nt-1)) {
-	  vcp2_xp()(i) = vcp_local(i);
-	}
-      }
-
+      send(vcp1_xp, vcp2_xp, Ixp, 0..(Nvc*2*Ny*Nz*Nt-1));
     }
     
+    send_x_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
-	for (iyzt in r) {
-
-	  val iv = Nvc*ND*(ix + iyzt*Nx);
-	  val ig = Ndf*(ix + iyzt*Nx + idir*Nst);
-	  val ix1 = Nvc * 2 * iyzt;
-	  val ix2 = ix1 + Nvc;
-
-	  for(ic in 0..(Ncol-1)){
-	    val ic2 = ic*Nvc;
-
-	    val wt1r = mult_uv_r(u(), vcp2_xp(), ic2, ig, ix1);
-	    val wt1i = mult_uv_i(u(), vcp2_xp(), ic2, ig, ix1);
-	    val wt2r = mult_uv_r(u(), vcp2_xp(), ic2, ig, ix2);
-	    val wt2i = mult_uv_i(u(), vcp2_xp(), ic2, ig, ix2);
-
-
-	    v2()(2*ic   +id1+iv) =  wt1r;
-	    v2()(2*ic+1 +id1+iv) =  wt1i;
-	    v2()(2*ic   +id2+iv) =  wt2r;
-	    v2()(2*ic+1 +id2+iv) =  wt2i;
-	    v2()(2*ic   +id3+iv) =  wt2i;
-	    v2()(2*ic+1 +id3+iv) = -wt2r;
-	    v2()(2*ic   +id4+iv) =  wt1i;
-	    v2()(2*ic+1 +id4+iv) = -wt1r;
-	  }
-	}
-      });
+      set_xp_bnd(vcp2_xp, u, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
-	for (iyzt in r) {
-	  for(ix_ in 0..(Nx-2)) {
+      mult_xp_bulk(v2, u, v1);
+    } 
 
-	    val nn_ = ix_+1;
-
-	    val iv = Nvc*ND*(ix_ + iyzt*Nx);
-	    val in_ = Nvc*ND*(nn_ + iyzt*Nx);
-	    val ig = Ndf*(ix_ + iyzt*Nx + idir*Nst);
-
-	    val vt1_0 = v1()(   id1+in_) - v1()(1 +id4+in_);
-	    val vt1_1 = v1()(1 +id1+in_) + v1()(   id4+in_);
-	    val vt2_0 = v1()(   id2+in_) - v1()(1 +id3+in_);
-	    val vt2_1 = v1()(1 +id2+in_) + v1()(   id3+in_);
-	    val vt1_2 = v1()(2 +id1+in_) - v1()(3 +id4+in_);
-	    val vt1_3 = v1()(3 +id1+in_) + v1()(2 +id4+in_);
-	    val vt2_2 = v1()(2 +id2+in_) - v1()(3 +id3+in_);
-	    val vt2_3 = v1()(3 +id2+in_) + v1()(2 +id3+in_);
-	    val vt1_4 = v1()(4 +id1+in_) - v1()(5 +id4+in_);
-	    val vt1_5 = v1()(5 +id1+in_) + v1()(4 +id4+in_);
-	    val vt2_4 = v1()(4 +id2+in_) - v1()(5 +id3+in_);
-	    val vt2_5 = v1()(5 +id2+in_) + v1()(4 +id3+in_);
-
-	    for(ic in 0..(Ncol-1)){
-	      val ic2 = ic*Nvc;
-
-	      val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
-	      + u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
-	      + u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
-	      val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
-	      + u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
-	      + u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
-
-	      val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
-	      + u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
-	      + u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
-	      val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
-	      + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
-	      + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
-
-	      v2()(2*ic   +id1+iv) =  wt1r;
-	      v2()(2*ic+1 +id1+iv) =  wt1i;
-	      v2()(2*ic   +id2+iv) =  wt2r;
-	      v2()(2*ic+1 +id2+iv) =  wt2i;
-	      v2()(2*ic   +id3+iv) =  wt2i;
-	      v2()(2*ic+1 +id3+iv) = -wt2r;
-	      v2()(2*ic   +id4+iv) =  wt1i;
-	      v2()(2*ic+1 +id4+iv) = -wt1r;
-	    }
-	  }
-	}
-      }); //parallel
-    } //places
   }
 
   /* ****************************************************** */
   def mult_xm(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 0;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val ix = 0;
-    val nn = Nx-1;
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
-	for (iyzt in r) {
-	  val in_ = Nvc*ND*(nn + iyzt*Nx);
-	  val ig = Ndf*(nn + iyzt*Nx + idir*Nst);
-	  val ix1 = Nvc * 2 * iyzt;
-	  val ix2 = ix1 + Nvc;
-
-	  val vt1_0 = v1()(   id1+in_) + v1()(1 +id4+in_);
-	  val vt1_1 = v1()(1 +id1+in_) - v1()(   id4+in_);
-	  val vt2_0 = v1()(   id2+in_) + v1()(1 +id3+in_);
-	  val vt2_1 = v1()(1 +id2+in_) - v1()(   id3+in_);
-	  val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id4+in_);
-	  val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id4+in_);
-	  val vt2_2 = v1()(2 +id2+in_) + v1()(3 +id3+in_);
-	  val vt2_3 = v1()(3 +id2+in_) - v1()(2 +id3+in_);
-	  val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id4+in_);
-	  val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id4+in_);
-	  val vt2_4 = v1()(4 +id2+in_) + v1()(5 +id3+in_);
-	  val vt2_5 = v1()(5 +id2+in_) - v1()(4 +id3+in_);
-
-	  for(ic in 0..(Ncol-1)){
-	    val icr = 2*ic;
-	    val ici = 2*ic+1;
-	    val ic1 = 0;
-	    val ic2 = Nvc;
-	    val ic3 = 2*Nvc;
-
-	    vcp1_xm()(icr  +ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-	    + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-	    + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-	    vcp1_xm()(icr+1+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-	    + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-	    + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-	    vcp1_xm()(icr  +ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-	    + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-	    + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-	    vcp1_xm()(icr+1+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-	    + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-	    + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-	  }
-	}
-      });
+      make_xm_bnd(vcp1_xm, u, v1);
     }
 
-    // Send to minus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to minus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_xm();
-      at(Place.place(Ixm)) {
-	for (i in 0..(Nvc*2*Ny*Nz*Nt-1)) {
-	  vcp2_xm()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_xm, vcp2_xm, Ixm, 0..(Nvc*2*Ny*Nz*Nt-1));
     }
     
+    send_x_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
-	for (iyzt in r) {
-	  val iv = Nvc*ND*(ix + iyzt*Nx);
-	  val ix1 = Nvc * 2 * iyzt;
-	  val ix2 = ix1 + Nvc;
-
-	  for(ic in 0..(Ncol-1)){
-	    val icr = 2*ic;
-	    val ici = 2*ic+1;
-
-	    v2()(icr +id1+iv) +=  vcp2_xm()(icr+ix1);
-	    v2()(ici +id1+iv) +=  vcp2_xm()(ici+ix1);
-	    v2()(icr +id2+iv) +=  vcp2_xm()(icr+ix2);
-	    v2()(ici +id2+iv) +=  vcp2_xm()(ici+ix2);
-	    v2()(icr +id3+iv) += -vcp2_xm()(ici+ix2);
-	    v2()(ici +id3+iv) += +vcp2_xm()(icr+ix2);
-	    v2()(icr +id4+iv) += -vcp2_xm()(ici+ix1);
-	    v2()(ici +id4+iv) += +vcp2_xm()(icr+ix1);
-	  }
-	}
-      });
+      set_xm_bnd(vcp2_xm, v2);
     }
 
     // bulk part 
-    finish for (p in places) at(p) async {
-      parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
-	for (iyzt in r) {
-	  for(ix_ in 1..(Nx-1)){
-	    val nn_ = ix_-1;
-
-	    val iv = Nvc*ND*(ix_ + (iyzt)*Nx);
-	    val in_ = Nvc*ND*(nn_ + (iyzt)*Nx);
-	    val ig = Ndf*(nn_ + iyzt*Nx + idir*Nst);
-
-	    val vt1_0 = v1()(   id1+in_) + v1()(1 +id4+in_);
-	    val vt1_1 = v1()(1 +id1+in_) - v1()(   id4+in_);
-	    val vt2_0 = v1()(   id2+in_) + v1()(1 +id3+in_);
-	    val vt2_1 = v1()(1 +id2+in_) - v1()(   id3+in_);
-	    val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id4+in_);
-	    val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id4+in_);
-	    val vt2_2 = v1()(2 +id2+in_) + v1()(3 +id3+in_);
-	    val vt2_3 = v1()(3 +id2+in_) - v1()(2 +id3+in_);
-	    val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id4+in_);
-	    val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id4+in_);
-	    val vt2_4 = v1()(4 +id2+in_) + v1()(5 +id3+in_);
-	    val vt2_5 = v1()(5 +id2+in_) - v1()(4 +id3+in_);
-
-	    for(ic in 0..(Ncol-1)){
-	      val icr = 2*ic;
-	      val ici = 2*ic+1;
-	      val ic1 = 0;
-	      val ic2 = Nvc;
-	      val ic3 = 2*Nvc;
-
-	      val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-	      + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-	      + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-	      val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-	      + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-	      + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-	      val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-	      + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-	      + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-	      val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-	      + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-	      + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-	      v2()(icr +id1+iv) +=  wt1r;
-	      v2()(ici +id1+iv) +=  wt1i;
-	      v2()(icr +id2+iv) +=  wt2r;
-	      v2()(ici +id2+iv) +=  wt2i;
-	      v2()(icr +id3+iv) += -wt2i;
-	      v2()(ici +id3+iv) += +wt2r;
-	      v2()(icr +id4+iv) += -wt1i;
-	      v2()(ici +id4+iv) += +wt1r;
-	    }
-	  }
-	}
-      });
+    finish for (p in places) at(p) {
+      mult_xm_bulk(v2, u, v1);
     }
 
   }
+
   /* ****************************************************** */
   def mult_yp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 1;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val iy = Ny-1;
-    val nn = 0;
-
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Nz*Nt-1), (r:LongRange)=> {
-	for (izt in r) {
-	  for(ix in 0..(Nx-1)){
-
-	    val in_ = Nvc*ND*(ix + nn*Nx + izt*Nx*Ny);
-	    val ix1 = Nvc * 2 * (ix + izt * Nx);
-	    val ix2 = ix1 + Nvc;
-
-	    for (ic in 0..(Ncol-1)) {
-	      vcp1_yp()(2*ic  +ix1) = v1()(2*ic  +id1+in_) + v1()(2*ic  +id4+in_);
-	      vcp1_yp()(2*ic+1+ix1) = v1()(2*ic+1+id1+in_) + v1()(2*ic+1+id4+in_);
-	      vcp1_yp()(2*ic  +ix2) = v1()(2*ic  +id2+in_) - v1()(2*ic  +id3+in_);
-	      vcp1_yp()(2*ic+1+ix2) = v1()(2*ic+1+id2+in_) - v1()(2*ic+1+id3+in_);
-	    }
-	  }
-	}
-      });
+      make_yp_bnd(vcp1_yp, v1);
     }
 
-    // Send to plus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to plus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_yp();
-      at(Place.place(Iyp)) {
-	for (i in 0..(Nvc*2*Nx*Nz*Nt-1)) {
-	  vcp2_yp()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_yp, vcp2_yp, Iyp, 0..(Nvc*2*Nx*Nz*Nt-1));
     }
 
+    send_y_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Nz*Nt-1), (r:LongRange)=> {
-	for (izt in r) {
-	  for(ix in 0..(Nx-1)){
-
-	    val iv = Nvc*ND*(ix + iy*Nx + izt*Nx*Ny);
-	    val ig = Ndf*(ix + iy*Nx + izt*Nx*Ny + idir*Nst);
-	    val ix1 = Nvc * 2 * (ix + izt * Nx);
-	    val ix2 = ix1 + Nvc;
-
-	    for(ic in 0..(Ncol-1)){
-	      val ic2 = ic*Nvc;
-
-	      val wt1r = mult_uv_r(u(), vcp2_yp(), ic2, ig, ix1);
-	      val wt1i = mult_uv_i(u(), vcp2_yp(), ic2, ig, ix1);
-	      val wt2r = mult_uv_r(u(), vcp2_yp(), ic2, ig, ix2);
-	      val wt2i = mult_uv_i(u(), vcp2_yp(), ic2, ig, ix2);
-
-	      v2()(2*ic   +id1+iv) +=  wt1r;
-	      v2()(2*ic+1 +id1+iv) +=  wt1i;
-	      v2()(2*ic   +id2+iv) +=  wt2r;
-	      v2()(2*ic+1 +id2+iv) +=  wt2i;
-	      v2()(2*ic   +id3+iv) += -wt2r;
-	      v2()(2*ic+1 +id3+iv) += -wt2i;
-	      v2()(2*ic   +id4+iv) +=  wt1r;
-	      v2()(2*ic+1 +id4+iv) +=  wt1i;
-	    }
-	  }
-	}
-      });
+      set_yp_bnd(vcp2_yp, u, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(0..(Nz*Nt-1), (r:LongRange)=> {
-	for (izt in r) {
-	  for(iy_ in 0..(Ny-2)){
-	    val nn_ = iy_ + 1;
-	    for(ix in 0..(Nx-1)){
-
-	      val iv = Nvc*ND*(ix + iy_*Nx + izt*Nx*Ny);
-	      val in_ = Nvc*ND*(ix + nn_*Nx + izt*Nx*Ny);
-	      val ig = Ndf*(ix + iy_*Nx + izt*Nx*Ny + idir*Nst);
-
-	      val vt1_0 = v1()(   id1+in_) + v1()(   id4+in_);
-	      val vt1_1 = v1()(1 +id1+in_) + v1()(1 +id4+in_);
-	      val vt2_0 = v1()(   id2+in_) - v1()(   id3+in_);
-	      val vt2_1 = v1()(1 +id2+in_) - v1()(1 +id3+in_);
-	      val vt1_2 = v1()(2 +id1+in_) + v1()(2 +id4+in_);
-	      val vt1_3 = v1()(3 +id1+in_) + v1()(3 +id4+in_);
-	      val vt2_2 = v1()(2 +id2+in_) - v1()(2 +id3+in_);
-	      val vt2_3 = v1()(3 +id2+in_) - v1()(3 +id3+in_);
-	      val vt1_4 = v1()(4 +id1+in_) + v1()(4 +id4+in_);
-	      val vt1_5 = v1()(5 +id1+in_) + v1()(5 +id4+in_);
-	      val vt2_4 = v1()(4 +id2+in_) - v1()(4 +id3+in_);
-	      val vt2_5 = v1()(5 +id2+in_) - v1()(5 +id3+in_);
-
-	      for(ic in 0..(Ncol-1)){
-		val ic2 = ic*Nvc;
-		val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
-		+ u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
-		+ u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
-		val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
-		+ u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
-		+ u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
-
-		val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
-		+ u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
-		+ u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
-		val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
-		+ u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
-		+ u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
-
-		v2()(2*ic   +id1+iv) +=  wt1r;
-		v2()(2*ic+1 +id1+iv) +=  wt1i;
-		v2()(2*ic   +id2+iv) +=  wt2r;
-		v2()(2*ic+1 +id2+iv) +=  wt2i;
-		v2()(2*ic   +id3+iv) += -wt2r;
-		v2()(2*ic+1 +id3+iv) += -wt2i;
-		v2()(2*ic   +id4+iv) +=  wt1r;
-		v2()(2*ic+1 +id4+iv) +=  wt1i;
-	      }
-	    }
-	  }
-	}
-      });
+      mult_yp_bulk(v2, u, v1);
     }
   }
 
@@ -867,160 +564,27 @@ public final class SolveWilson {
   def mult_ym(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 1;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val iy = 0;
-    val nn = Ny-1;
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Nz*Nt-1), (r:LongRange)=> {
-	for (izt in r) {
-	  for(ix in 0..(Nx-1)){
-	    val in_ = Nvc*ND*(ix + nn*Nx + izt*Nx*Ny);
-	    val ig = Ndf*(ix + nn*Nx + izt*Nx*Ny + idir*Nst);
-	    val ix1 = Nvc * 2 * (ix + izt * Nx);
-	    val ix2 = ix1 + Nvc;
-
-	    val vt1_0 = v1()(   id1+in_) - v1()(   id4+in_);
-	    val vt1_1 = v1()(1 +id1+in_) - v1()(1 +id4+in_);
-	    val vt2_0 = v1()(   id2+in_) + v1()(   id3+in_);
-	    val vt2_1 = v1()(1 +id2+in_) + v1()(1 +id3+in_);
-	    val vt1_2 = v1()(2 +id1+in_) - v1()(2 +id4+in_);
-	    val vt1_3 = v1()(3 +id1+in_) - v1()(3 +id4+in_);
-	    val vt2_2 = v1()(2 +id2+in_) + v1()(2 +id3+in_);
-	    val vt2_3 = v1()(3 +id2+in_) + v1()(3 +id3+in_);
-	    val vt1_4 = v1()(4 +id1+in_) - v1()(4 +id4+in_);
-	    val vt1_5 = v1()(5 +id1+in_) - v1()(5 +id4+in_);
-	    val vt2_4 = v1()(4 +id2+in_) + v1()(4 +id3+in_);
-	    val vt2_5 = v1()(5 +id2+in_) + v1()(5 +id3+in_);
-
-	    for(ic in 0..(Ncol-1)){
-	      val icr = 2*ic;
-	      val ici = 2*ic+1;
-	      val ic1 = 0;
-	      val ic2 = Nvc;
-	      val ic3 = 2*Nvc;
-
-	      vcp1_ym()(icr+ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-	      + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-	      + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-	      vcp1_ym()(ici+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-	      + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-	      + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-	      vcp1_ym()(icr+ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-	      + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-	      + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-	      vcp1_ym()(ici+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-	      + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-	      + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-	    }
-	  }
-	}
-      });
+      make_ym_bnd(vcp1_ym, u, v1);
     }
 
-    // Send to minus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to minus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_ym();
-      at(Place.place(Iym)) {
-	for (i in 0..(Nvc*2*Nx*Nz*Nt-1)) {
-	  vcp2_ym()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_ym, vcp2_ym, Iym, 0..(Nvc*2*Nx*Nz*Nt-1));
     }
 
+    send_y_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Nz*Nt-1), (r:LongRange)=> {
-	for (izt in r) {
-	  for(ix in 0..(Nx-1)){
-	    val iv = Nvc*ND*(ix + iy*Nx + izt*Nx*Ny);
-	    val ix1 = Nvc * 2 * (ix + izt * Nx);
-	    val ix2 = ix1 + Nvc;
-
-	    for(ic in 0..(Ncol-1)){
-	      val icr = 2*ic;
-	      val ici = 2*ic+1;
-
-	      v2()(icr +id1+iv) +=  vcp2_ym()(icr+ix1);
-	      v2()(ici +id1+iv) +=  vcp2_ym()(ici+ix1);
-	      v2()(icr +id2+iv) +=  vcp2_ym()(icr+ix2);
-	      v2()(ici +id2+iv) +=  vcp2_ym()(ici+ix2);
-	      v2()(icr +id3+iv) +=  vcp2_ym()(icr+ix2);
-	      v2()(ici +id3+iv) +=  vcp2_ym()(ici+ix2);
-	      v2()(icr +id4+iv) += -vcp2_ym()(icr+ix1);
-	      v2()(ici +id4+iv) += -vcp2_ym()(ici+ix1);
-	    }
-	  }
-	}
-      });
+      set_ym_bnd(vcp2_ym, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(0..(Nz*Nt-1), (r:LongRange)=> {
-	for (izt in r) {
-	  for(iy_ in 1..(Ny-1)){
-	    val nn_ = iy_ - 1;
-	    for(ix in 0..(Nx-1)){
-
-	      val iv = Nvc*ND*(ix + iy_*Nx + izt*Nx*Ny);
-	      val in_ = Nvc*ND*(ix + nn_*Nx + izt*Nx*Ny);
-	      val ig = Ndf*(ix + nn_*Nx + izt*Nx*Ny + idir*Nst);
-
-	      val vt1_0 = v1()(   id1+in_) - v1()(   id4+in_);
-	      val vt1_1 = v1()(1 +id1+in_) - v1()(1 +id4+in_);
-	      val vt2_0 = v1()(   id2+in_) + v1()(   id3+in_);
-	      val vt2_1 = v1()(1 +id2+in_) + v1()(1 +id3+in_);
-	      val vt1_2 = v1()(2 +id1+in_) - v1()(2 +id4+in_);
-	      val vt1_3 = v1()(3 +id1+in_) - v1()(3 +id4+in_);
-	      val vt2_2 = v1()(2 +id2+in_) + v1()(2 +id3+in_);
-	      val vt2_3 = v1()(3 +id2+in_) + v1()(3 +id3+in_);
-	      val vt1_4 = v1()(4 +id1+in_) - v1()(4 +id4+in_);
-	      val vt1_5 = v1()(5 +id1+in_) - v1()(5 +id4+in_);
-	      val vt2_4 = v1()(4 +id2+in_) + v1()(4 +id3+in_);
-	      val vt2_5 = v1()(5 +id2+in_) + v1()(5 +id3+in_);
-
-	      for(ic in 0..(Ncol-1)){
-		val icr = 2*ic;
-		val ici = 2*ic+1;
-		val ic1 = 0;
-		val ic2 = Nvc;
-		val ic3 = 2*Nvc;
-
-		val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-		+ u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-		+ u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-		val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-		+ u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-		+ u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-		val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-		+ u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-		+ u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-		val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-		+ u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-		+ u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-		v2()(icr +id1+iv) +=  wt1r;
-		v2()(ici +id1+iv) +=  wt1i;
-		v2()(icr +id2+iv) +=  wt2r;
-		v2()(ici +id2+iv) +=  wt2i;
-		v2()(icr +id3+iv) +=  wt2r;
-		v2()(ici +id3+iv) +=  wt2i;
-		v2()(icr +id4+iv) += -wt1r;
-		v2()(ici +id4+iv) += -wt1i;
-	      }
-	    }
-	  }
-	}
-      });
+      mult_ym_bulk(v2, u, v1);
     }
 
   }
@@ -1028,295 +592,55 @@ public final class SolveWilson {
   def mult_zp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 2;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val iz = Nz-1;
-    val nn = 0;
-
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-1), (r:LongRange)=> {
-	for(it in r){
-	  for(ixy in 0..(Nx*Ny-1)){
-
-	    val in_ = Nvc*ND*(ixy + nn*Nx*Ny + it*Nx*Ny*Nz);
-	    val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
-	    val ix2 = ix1 + Nvc;
-
-	    for (ic in 0..(Ncol-1)) {
-	      vcp1_zp()(2*ic  +ix1) = v1()(2*ic  +id1+in_) - v1()(2*ic+1+id3+in_);
-	      vcp1_zp()(2*ic+1+ix1) = v1()(2*ic+1+id1+in_) + v1()(2*ic  +id3+in_);
-	      vcp1_zp()(2*ic  +ix2) = v1()(2*ic  +id2+in_) + v1()(2*ic+1+id4+in_);
-	      vcp1_zp()(2*ic+1+ix2) = v1()(2*ic+1+id2+in_) - v1()(2*ic  +id4+in_);
-	    }
-
-	  }
-	}
-      });
+      make_zp_bnd(vcp1_zp, v1);
     }
 
-    // Send to plus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to plus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_zp();
-      at(Place.place(Izp)) {
-	for (i in 0..(Nvc*2*Nx*Ny*Nt-1)) {
-	  vcp2_zp()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_zp, vcp2_zp, Izp, 0..(Nvc*2*Nx*Ny*Nt-1));
     }
 
+    send_z_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-1), (r:LongRange)=> {
-	for(it in r){
-	  for(ixy in 0..(Nx*Ny-1)){
-
-	    val iv = Nvc*ND*(ixy + iz*Nx*Ny + it*Nx*Ny*Nz);
-	    val ig = Ndf*(ixy + iz*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
-	    val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
-	    val ix2 = ix1 + Nvc;
-
-	    for(ic in 0..(Ncol-1)){
-	      val ic2 = ic*Nvc;
-
-	      val wt1r = mult_uv_r(u(), vcp2_zp(), ic2, ig, ix1);
-	      val wt1i = mult_uv_i(u(), vcp2_zp(), ic2, ig, ix1);
-	      val wt2r = mult_uv_r(u(), vcp2_zp(), ic2, ig, ix2);
-	      val wt2i = mult_uv_i(u(), vcp2_zp(), ic2, ig, ix2);
-
-	      v2()(2*ic   +id1+iv) +=  wt1r;
-	      v2()(2*ic+1 +id1+iv) +=  wt1i;
-	      v2()(2*ic   +id2+iv) +=  wt2r;
-	      v2()(2*ic+1 +id2+iv) +=  wt2i;
-	      v2()(2*ic   +id3+iv) +=  wt1i;
-	      v2()(2*ic+1 +id3+iv) += -wt1r;
-	      v2()(2*ic   +id4+iv) += -wt2i;
-	      v2()(2*ic+1 +id4+iv) +=  wt2r;
-	    }
-	  }
-	}
-      });
+      set_zp_bnd(vcp2_zp, u, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-1), (r:LongRange)=> {
-	for (it in r) {
-	  for(iz_ in 0..(Nz-2)){
-	    val nn_ = iz_ + 1;
-	    for(ixy in 0..(Nx*Ny-1)){
-
-	      val iv = Nvc*ND*(ixy + iz_*Nx*Ny + it*Nx*Ny*Nz);
-	      val in_ = Nvc*ND*(ixy + nn_*Nx*Ny + it*Nx*Ny*Nz);
-	      val ig = Ndf*(ixy + iz_*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
-
-	      val vt1_0 = v1()(   id1+in_) - v1()(1 +id3+in_);
-	      val vt1_1 = v1()(1 +id1+in_) + v1()(   id3+in_);
-	      val vt2_0 = v1()(   id2+in_) + v1()(1 +id4+in_);
-	      val vt2_1 = v1()(1 +id2+in_) - v1()(   id4+in_);
-	      val vt1_2 = v1()(2 +id1+in_) - v1()(3 +id3+in_);
-	      val vt1_3 = v1()(3 +id1+in_) + v1()(2 +id3+in_);
-	      val vt2_2 = v1()(2 +id2+in_) + v1()(3 +id4+in_);
-	      val vt2_3 = v1()(3 +id2+in_) - v1()(2 +id4+in_);
-	      val vt1_4 = v1()(4 +id1+in_) - v1()(5 +id3+in_);
-	      val vt1_5 = v1()(5 +id1+in_) + v1()(4 +id3+in_);
-	      val vt2_4 = v1()(4 +id2+in_) + v1()(5 +id4+in_);
-	      val vt2_5 = v1()(5 +id2+in_) - v1()(4 +id4+in_);
-
-	      for(ic in 0..(Ncol-1)){
-		val ic2 = ic*Nvc;
-
-		val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
-		+ u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
-		+ u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
-		val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
-		+ u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
-		+ u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
-
-		val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
-		+ u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
-		+ u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
-		val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
-		+ u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
-		+ u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
-
-		v2()(2*ic   +id1+iv) +=  wt1r;
-		v2()(2*ic+1 +id1+iv) +=  wt1i;
-		v2()(2*ic   +id2+iv) +=  wt2r;
-		v2()(2*ic+1 +id2+iv) +=  wt2i;
-		v2()(2*ic   +id3+iv) +=  wt1i;
-		v2()(2*ic+1 +id3+iv) += -wt1r;
-		v2()(2*ic   +id4+iv) += -wt2i;
-		v2()(2*ic+1 +id4+iv) +=  wt2r;
-	      }
-	    }
-	  }
-	}
-      });
+      mult_zp_bulk(v2, u, v1);
     }
+
   }
   /* ****************************************************** */
   def mult_zm(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
+  	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 2;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val iz = 0;
-    val nn = Nz-1;
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-1), (r:LongRange)=> {
-	for(it in r){
-    	  for(ixy in 0..(Nx*Ny-1)){
-    	    val in_ = Nvc*ND*(ixy + nn*Nx*Ny + it*Nx*Ny*Nz);
-    	    val ig = Ndf*(ixy + nn*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
-	    val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
-	    val ix2 = ix1 + Nvc;
-
-    	    val vt1_0 = v1()(   id1+in_) + v1()(1 +id3+in_);
-    	    val vt1_1 = v1()(1 +id1+in_) - v1()(   id3+in_);
-    	    val vt2_0 = v1()(   id2+in_) - v1()(1 +id4+in_);
-    	    val vt2_1 = v1()(1 +id2+in_) + v1()(   id4+in_);
-    	    val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id3+in_);
-    	    val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id3+in_);
-    	    val vt2_2 = v1()(2 +id2+in_) - v1()(3 +id4+in_);
-    	    val vt2_3 = v1()(3 +id2+in_) + v1()(2 +id4+in_);
-    	    val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id3+in_);
-    	    val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id3+in_);
-    	    val vt2_4 = v1()(4 +id2+in_) - v1()(5 +id4+in_);
-    	    val vt2_5 = v1()(5 +id2+in_) + v1()(4 +id4+in_);
-
-    	    for(ic in 0..(Ncol-1)){
-    	      val icr = 2*ic;
-    	      val ici = 2*ic+1;
-    	      val ic1 = 0;
-    	      val ic2 = Nvc;
-    	      val ic3 = 2*Nvc;
-
-    	      vcp1_zm()(icr+ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-    	      + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-    	      + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-    	      vcp1_zm()(ici+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-    	      + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-    	      + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-    	      vcp1_zm()(icr+ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-    	      + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-    	      + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-    	      vcp1_zm()(ici+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-    	      + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-    	      + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-	    }
-	  }
-	}
-      });
+      make_zm_bnd(vcp1_zm, u, v1);
     }
     
-    // Send to minus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to minus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_zm();
-      at(Place.place(Izm)) {
-	for (i in 0..(Nvc*2*Nx*Ny*Nt-1)) {
-	  vcp2_zm()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_zm, vcp2_zm, Izm, 0..(Nvc*2*Nx*Ny*Nt-1));
     }
 
+    send_z_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-1), (r:LongRange)=> {
-	for(it in r){
-    	  for(ixy in 0..(Nx*Ny-1)){
-    	    val iv = Nvc*ND*(ixy + iz*Nx*Ny + it*Nx*Ny*Nz);
-	    val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
-	    val ix2 = ix1 + Nvc;
-
-    	    for(ic in 0..(Ncol-1)){
-    	      val icr = 2*ic;
-    	      val ici = 2*ic+1;
-
-    	      v2()(icr +id1+iv) +=  vcp2_zm()(icr+ix1);
-    	      v2()(ici +id1+iv) +=  vcp2_zm()(ici+ix1);
-    	      v2()(icr +id2+iv) +=  vcp2_zm()(icr+ix2);
-    	      v2()(ici +id2+iv) +=  vcp2_zm()(ici+ix2);
-    	      v2()(icr +id3+iv) += -vcp2_zm()(ici+ix1);
-    	      v2()(ici +id3+iv) +=  vcp2_zm()(icr+ix1);
-    	      v2()(icr +id4+iv) +=  vcp2_zm()(ici+ix2);
-    	      v2()(ici +id4+iv) += -vcp2_zm()(icr+ix2);
-    	    }
-    	  }
-	}
-      });
+      set_zm_bnd(vcp2_zm, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-1), (r:LongRange)=> {
-	for (it in r) {
-    	  for(iz_ in 1..(Nz-1)){
-    	    val nn_ = iz_ - 1;
-    	    for(ixy in 0..(Nx*Ny-1)){
-
-    	      val iv = Nvc*ND*(ixy + iz_*Nx*Ny + it*Nx*Ny*Nz);
-    	      val in_ = Nvc*ND*(ixy + nn_*Nx*Ny + it*Nx*Ny*Nz);
-    	      val ig = Ndf*(ixy + nn_*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
-
-    	      val vt1_0 = v1()(   id1+in_) + v1()(1 +id3+in_);
-    	      val vt1_1 = v1()(1 +id1+in_) - v1()(   id3+in_);
-    	      val vt2_0 = v1()(   id2+in_) - v1()(1 +id4+in_);
-    	      val vt2_1 = v1()(1 +id2+in_) + v1()(   id4+in_);
-    	      val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id3+in_);
-    	      val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id3+in_);
-    	      val vt2_2 = v1()(2 +id2+in_) - v1()(3 +id4+in_);
-    	      val vt2_3 = v1()(3 +id2+in_) + v1()(2 +id4+in_);
-    	      val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id3+in_);
-    	      val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id3+in_);
-    	      val vt2_4 = v1()(4 +id2+in_) - v1()(5 +id4+in_);
-    	      val vt2_5 = v1()(5 +id2+in_) + v1()(4 +id4+in_);
-
-    	      for(ic in 0..(Ncol-1)){
-    		val icr = 2*ic;
-    		val ici = 2*ic+1;
-    		val ic1 = 0;
-    		val ic2 = Nvc;
-    		val ic3 = 2*Nvc;
-
-    		val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-    		+ u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-    		+ u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-    		val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-    		+ u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-    		+ u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-    		val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-    		+ u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-    		+ u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-    		val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-    		+ u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-    		+ u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-    		v2()(icr +id1+iv) +=  wt1r;
-    		v2()(ici +id1+iv) +=  wt1i;
-    		v2()(icr +id2+iv) +=  wt2r;
-    		v2()(ici +id2+iv) +=  wt2i;
-    		v2()(icr +id3+iv) += -wt1i;
-    		v2()(ici +id3+iv) +=  wt1r;
-    		v2()(icr +id4+iv) +=  wt2i;
-    		v2()(ici +id4+iv) += -wt2r;
-    	      }
-    	    }
-    	  }
-	}
-      });
+      mult_zm_bulk(v2, u, v1);
     }
   }
 
@@ -1324,271 +648,55 @@ public final class SolveWilson {
   def mult_tp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 3;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val it = Nt-1;
-    val nn = 0;
-
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
-	for (ixyz in r) {
-
-	  val in_ = Nvc*ND*(ixyz + nn*Nx*Ny*Nz);
-	  val ix1 = Nvc * 2 * ixyz;
-	  val ix2 = ix1 + Nvc;
-
-	  for (ic in 0..(Ncol-1)) {
-	    vcp1_tp()(2*ic  +ix1) = 2.0 * v1()(2*ic  +id3+in_);
-	    vcp1_tp()(2*ic+1+ix1) = 2.0 * v1()(2*ic+1+id3+in_);
-	    vcp1_tp()(2*ic  +ix2) = 2.0 * v1()(2*ic  +id4+in_);
-	    vcp1_tp()(2*ic+1+ix2) = 2.0 * v1()(2*ic+1+id4+in_);
-	  }
-
-	}
-      });
+      make_tp_bnd(vcp1_tp, v1);
     }
 
-    // Send to plus neighbor
+    val send_startTime = System.currentTimeMillis();
+
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_tp();
-      at(Place.place(Itp)) {
-	for (i in 0..(Nvc*2*Nx*Ny*Nz-1)) {
-	  vcp2_tp()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_tp, vcp2_tp, Itp, 0..(Nvc*2*Nx*Ny*Nz-1));
     }
 
+    send_t_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
-	for (ixyz in r) {
-
-    	  val iv = Nvc*ND*(ixyz + it*Nx*Ny*Nz);
-    	  val ig = Ndf*(ixyz + it*Nx*Ny*Nz + idir*Nst);
-    	  val ix1 = Nvc * 2 * ixyz;
-    	  val ix2 = ix1 + Nvc;
-
-	  for(ic in 0..(Ncol-1)){
-	    val ic2 = ic*Nvc;
-
-	    val wt1r = mult_uv_r(u(), vcp2_tp(), ic2, ig, ix1);
-	    val wt1i = mult_uv_i(u(), vcp2_tp(), ic2, ig, ix1);
-	    val wt2r = mult_uv_r(u(), vcp2_tp(), ic2, ig, ix2);
-	    val wt2i = mult_uv_i(u(), vcp2_tp(), ic2, ig, ix2);
-
-	    v2()(2*ic   +id3+iv) +=  wt1r;
-	    v2()(2*ic+1 +id3+iv) +=  wt1i;
-	    v2()(2*ic   +id4+iv) +=  wt2r;
-	    v2()(2*ic+1 +id4+iv) +=  wt2i;
-	  }
-	}
-      });
+      set_tp_bnd(vcp2_tp, u, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(0..(Nt-2), (r:LongRange)=> {
-	for (it_ in r) {
-	  val nn_ = it_ + 1;
-	  for(ixyz in 0..(Nx*Ny*Nz-1)) {
-
-	    val iv = Nvc*ND*(ixyz + it_*Nx*Ny*Nz);
-	    val in_ = Nvc*ND*(ixyz + nn_*Nx*Ny*Nz);
-	    val ig = Ndf*(ixyz + it_*Nx*Ny*Nz + idir*Nst);
-
-	    val vt1_0 = 2.0 * v1()(    id3+in_);
-	    val vt1_1 = 2.0 * v1()(1 + id3+in_);
-	    val vt2_0 = 2.0 * v1()(    id4+in_);
-	    val vt2_1 = 2.0 * v1()(1 + id4+in_);
-	    val vt1_2 = 2.0 * v1()(2 + id3+in_);
-	    val vt1_3 = 2.0 * v1()(3 + id3+in_);
-	    val vt2_2 = 2.0 * v1()(2 + id4+in_);
-	    val vt2_3 = 2.0 * v1()(3 + id4+in_);
-	    val vt1_4 = 2.0 * v1()(4 + id3+in_);
-	    val vt1_5 = 2.0 * v1()(5 + id3+in_);
-	    val vt2_4 = 2.0 * v1()(4 + id4+in_);
-	    val vt2_5 = 2.0 * v1()(5 + id4+in_);
-
-	    for (ic in 0..(Ncol-1)) {
-	      val ic2 = ic*Nvc;
-
-	      val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
-	      + u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
-	      + u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
-	      val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
-	      + u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
-	      + u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
-
-	      val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
-	      + u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
-	      + u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
-	      val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
-	      + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
-	      + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
-
-	      v2()(2*ic   +id3+iv) +=  wt1r;
-	      v2()(2*ic+1 +id3+iv) +=  wt1i;
-	      v2()(2*ic   +id4+iv) +=  wt2r;
-	      v2()(2*ic+1 +id4+iv) +=  wt2i;
-
-	    }
-	  }
-	}
-      });
+      mult_tp_bulk(v2, u, v1);
     }
+
   }
 
   /* ****************************************************** */
   def mult_tm(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
 	      v1:PlaceLocalHandle[Rail[Double]]){
 
-    val idir = 3;
-
-    val id1 = 0;
-    val id2 = Nvc;
-    val id3 = Nvc*2;
-    val id4 = Nvc*3;
-
-    // boundary part 
-    val it = 0;
-    val nn = Nt-1;
-
+    // boundary part
     finish for (p in places) at(p) async {
-      parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
-	for(ixyz in r) {
-	  val in_ = Nvc*ND*(ixyz + nn*Nx*Ny*Nz);
-	  val ig = Ndf*(ixyz + nn*Nx*Ny*Nz + idir*Nst);
-	  val ix1 = Nvc * 2 * ixyz;
-	  val ix2 = ix1 + Nvc;
-
-	  val vt1_0 = 2.0 * v1()(    id1+in_);
-	  val vt1_1 = 2.0 * v1()(1 + id1+in_);
-	  val vt2_0 = 2.0 * v1()(    id2+in_);
-	  val vt2_1 = 2.0 * v1()(1 + id2+in_);
-	  val vt1_2 = 2.0 * v1()(2 + id1+in_);
-	  val vt1_3 = 2.0 * v1()(3 + id1+in_);
-	  val vt2_2 = 2.0 * v1()(2 + id2+in_);
-	  val vt2_3 = 2.0 * v1()(3 + id2+in_);
-	  val vt1_4 = 2.0 * v1()(4 + id1+in_);
-	  val vt1_5 = 2.0 * v1()(5 + id1+in_);
-	  val vt2_4 = 2.0 * v1()(4 + id2+in_);
-	  val vt2_5 = 2.0 * v1()(5 + id2+in_);
-
-	  for(ic in 0..(Ncol-1)){
-	    val icr = 2*ic;
-	    val ici = 2*ic+1;
-	    val ic1 = 0;
-	    val ic2 = Nvc;
-	    val ic3 = 2*Nvc;
-
-	    vcp1_tm()(icr+ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-	    + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-	    + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-	    vcp1_tm()(ici+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-	    + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-	    + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-	    vcp1_tm()(icr+ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-	    + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-	    + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-	    vcp1_tm()(ici+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-	    + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-	    + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-	  }
-	}
-      });
+      make_tm_bnd(vcp1_tm, u, v1);
     }
 
-    // Send to minus neighbor
+    val send_startTime = System.currentTimeMillis();
+
+    // Send boundary to minus neighbor
     finish for (p in places) at(p) async {
-      val vcp_local = vcp1_tm();
-      at(Place.place(Itm)) {
-	for (i in 0..(Nvc*2*Nx*Ny*Nz-1)) {
-	  vcp2_tm()(i) = vcp_local(i);
-	}
-      }
+      send(vcp1_tm, vcp2_tm, Itm, 0..(Nvc*2*Nx*Ny*Nz-1));
     }
 
+    send_t_meanTime += System.currentTimeMillis() - send_startTime;
+
     finish for (p in places) at(p) async {
-      parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
-	for(ixyz in r) {
-	  val iv = Nvc*ND*(ixyz + it*Nx*Ny*Nz);
-	  val ix1 = Nvc * 2 * ixyz;
-	  val ix2 = ix1 + Nvc;
-
-	  for(ic in 0..(Ncol-1)){
-	    val icr = 2*ic;
-	    val ici = 2*ic+1;
-
-	    v2()(icr +id1+iv) +=  vcp2_tm()(icr+ix1);
-	    v2()(ici +id1+iv) +=  vcp2_tm()(ici+ix1);
-	    v2()(icr +id2+iv) +=  vcp2_tm()(icr+ix2);
-	    v2()(ici +id2+iv) +=  vcp2_tm()(ici+ix2);
-	  }
-	}
-      });
+      set_tm_bnd(vcp2_tm, v2);
     }
 
     // bulk part 
     finish for (p in places) at(p) async {
-      parallel(1..(Nt-1), (r:LongRange)=> {
-	for (it_ in r) {
-
-	  val nn_ = it_ - 1;
-	  for(ixyz in 0..(Nx*Ny*Nz-1)){
-
-	    val iv = Nvc*ND*(ixyz + it_*Nx*Ny*Nz);
-	    val in_ = Nvc*ND*(ixyz + nn_*Nx*Ny*Nz);
-	    val ig = Ndf*(ixyz + nn_*Nx*Ny*Nz + idir*Nst);
-
-	    val vt1_0 = 2.0 * v1()(    id1+in_);
-	    val vt1_1 = 2.0 * v1()(1 + id1+in_);
-	    val vt2_0 = 2.0 * v1()(    id2+in_);
-	    val vt2_1 = 2.0 * v1()(1 + id2+in_);
-	    val vt1_2 = 2.0 * v1()(2 + id1+in_);
-	    val vt1_3 = 2.0 * v1()(3 + id1+in_);
-	    val vt2_2 = 2.0 * v1()(2 + id2+in_);
-	    val vt2_3 = 2.0 * v1()(3 + id2+in_);
-	    val vt1_4 = 2.0 * v1()(4 + id1+in_);
-	    val vt1_5 = 2.0 * v1()(5 + id1+in_);
-	    val vt2_4 = 2.0 * v1()(4 + id2+in_);
-	    val vt2_5 = 2.0 * v1()(5 + id2+in_);
-
-	    for(ic in 0..(Ncol-1)){
-	      val icr = 2*ic;
-	      val ici = 2*ic+1;
-	      val ic1 = 0;
-	      val ic2 = Nvc;
-	      val ic3 = 2*Nvc;
-
-	      val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
-	      + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
-	      + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
-	      val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
-	      + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
-	      + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
-
-	      val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
-	      + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
-	      + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
-	      val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
-	      + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
-	      + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
-
-	      v2()(icr +id1+iv) +=  wt1r;
-	      v2()(ici +id1+iv) +=  wt1i;
-	      v2()(icr +id2+iv) +=  wt2r;
-	      v2()(ici +id2+iv) +=  wt2i;
-	    }
-	  }
-	}
-      });
+      mult_tm_bulk(v2, u, v1);
     }
   }
 
@@ -1731,7 +839,7 @@ public final class SolveWilson {
       // qcd_init_random_conf(u, Nx, Ny, Nz, Nt, 0, 0, 0, 0, 1, 1, 1, 1);
       
       //debug
-      Console.OUT.println("qcd_init_random_conf");
+      // Console.OUT.println("qcd_init_random_conf");
       for (p in places) at(p) {
 	qcd_init_random_conf(u, Lx, Ly, Lz, Lt, Ix, Iy, Iz, It, Npx, Npy, Npz, Npt);
       }
@@ -1796,6 +904,20 @@ public final class SolveWilson {
 
   }
   /* ****************************************************** */
+  //debug
+  def normv(nv:Long, v:GlobalRail[Double], offset:Long){
+
+    return reduce(offset..(offset+nv-1), (i:Long, r:Double)=>(r + v(i)*v(i)), 
+  		  (x:Double, y:Double)=>(x+y));
+
+  }
+  
+  def normv(nv:Long, v:GlobalRail[Double]){
+
+    return normv(nv, v, 0);
+
+  }
+
   // for single place
   def normv(nv:Long, v:Rail[Double], offset:Long){
 
@@ -2011,6 +1133,1093 @@ public final class SolveWilson {
       
     }
     return r;
+  }
+
+  static def send(vcp1:PlaceLocalHandle[Rail[Double]], 
+		      vcp2:PlaceLocalHandle[Rail[Double]],
+		      dst:Long,	range:LongRange) {
+
+    // val vcp_local = vcp1();
+    val gref_vcp1 = GlobalRail(vcp1());
+    at(Place.place(dst)) {
+      // for (i in range) {
+      // 	vcp2()(i) = vcp_local(i);
+      // } 
+      Rail.asyncCopy[Double](gref_vcp1, range.min, vcp2(), range.min, 
+      			     range.max + 1);
+    }
+
+  }
+
+  static def make_xp_bnd(vcp1_xp:PlaceLocalHandle[Rail[Double]],
+		       v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val nn = 0;
+
+    parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
+      for (iyzt in r) {
+
+	val in_ = Nvc*ND*(nn + iyzt*Nx);
+	val ix1 = Nvc * 2 * iyzt;
+	val ix2 = ix1 + Nvc;
+
+	for (ic in 0..(Ncol-1)) {
+	  vcp1_xp()(2*ic+  ix1) = v1()(2*ic  +id1+in_) - v1()(2*ic+1+id4+in_);
+	  vcp1_xp()(2*ic+1+ix1) = v1()(2*ic+1+id1+in_) + v1()(2*ic  +id4+in_);
+	  vcp1_xp()(2*ic  +ix2) = v1()(2*ic  +id2+in_) - v1()(2*ic+1+id3+in_);
+	  vcp1_xp()(2*ic+1+ix2) = v1()(2*ic+1+id2+in_) + v1()(2*ic  +id3+in_);	  
+	}
+
+      }
+    });
+
+  }
+
+  static def make_xm_bnd(vcp1_xm:PlaceLocalHandle[Rail[Double]],
+			 u:PlaceLocalHandle[Rail[Double]], 
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 0;
+    val nn = Nx-1;
+
+    parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
+      for (iyzt in r) {
+	val in_ = Nvc*ND*(nn + iyzt*Nx);
+	val ig = Ndf*(nn + iyzt*Nx + idir*Nst);
+	val ix1 = Nvc * 2 * iyzt;
+	val ix2 = ix1 + Nvc;
+
+	val vt1_0 = v1()(   id1+in_) + v1()(1 +id4+in_);
+	val vt1_1 = v1()(1 +id1+in_) - v1()(   id4+in_);
+	val vt2_0 = v1()(   id2+in_) + v1()(1 +id3+in_);
+	val vt2_1 = v1()(1 +id2+in_) - v1()(   id3+in_);
+	val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id4+in_);
+	val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id4+in_);
+	val vt2_2 = v1()(2 +id2+in_) + v1()(3 +id3+in_);
+	val vt2_3 = v1()(3 +id2+in_) - v1()(2 +id3+in_);
+	val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id4+in_);
+	val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id4+in_);
+	val vt2_4 = v1()(4 +id2+in_) + v1()(5 +id3+in_);
+	val vt2_5 = v1()(5 +id2+in_) - v1()(4 +id3+in_);
+
+	for(ic in 0..(Ncol-1)){
+	  val icr = 2*ic;
+	  val ici = 2*ic+1;
+	  val ic1 = 0;
+	  val ic2 = Nvc;
+	  val ic3 = 2*Nvc;
+
+	  vcp1_xm()(icr  +ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+	  + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+	  + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+	  vcp1_xm()(icr+1+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+	  + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+	  + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+	  vcp1_xm()(icr  +ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+	  + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+	  + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+	  vcp1_xm()(icr+1+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+	  + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+	  + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+	}
+      }
+    });
+  }
+
+  static def make_yp_bnd(vcp1_yp:PlaceLocalHandle[Rail[Double]],
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val nn = 0;
+
+    parallel(0..(Nz*Nt-1), (r:LongRange)=> {
+      for (izt in r) {
+	for(ix in 0..(Nx-1)){
+
+	  val in_ = Nvc*ND*(ix + nn*Nx + izt*Nx*Ny);
+	  val ix1 = Nvc * 2 * (ix + izt * Nx);
+	  val ix2 = ix1 + Nvc;
+
+	  for (ic in 0..(Ncol-1)) {
+	    vcp1_yp()(2*ic  +ix1) = v1()(2*ic  +id1+in_) + v1()(2*ic  +id4+in_);
+	    vcp1_yp()(2*ic+1+ix1) = v1()(2*ic+1+id1+in_) + v1()(2*ic+1+id4+in_);
+	    vcp1_yp()(2*ic  +ix2) = v1()(2*ic  +id2+in_) - v1()(2*ic  +id3+in_);
+	    vcp1_yp()(2*ic+1+ix2) = v1()(2*ic+1+id2+in_) - v1()(2*ic+1+id3+in_);
+	  }
+	}
+      }
+    });
+  }
+
+  static def make_ym_bnd(vcp1_ym:PlaceLocalHandle[Rail[Double]],
+			 u:PlaceLocalHandle[Rail[Double]], 
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 1;
+    val nn = Ny-1;
+
+    parallel(0..(Nz*Nt-1), (r:LongRange)=> {
+      for (izt in r) {
+	for(ix in 0..(Nx-1)){
+	  val in_ = Nvc*ND*(ix + nn*Nx + izt*Nx*Ny);
+	  val ig = Ndf*(ix + nn*Nx + izt*Nx*Ny + idir*Nst);
+	  val ix1 = Nvc * 2 * (ix + izt * Nx);
+	  val ix2 = ix1 + Nvc;
+
+	  val vt1_0 = v1()(   id1+in_) - v1()(   id4+in_);
+	  val vt1_1 = v1()(1 +id1+in_) - v1()(1 +id4+in_);
+	  val vt2_0 = v1()(   id2+in_) + v1()(   id3+in_);
+	  val vt2_1 = v1()(1 +id2+in_) + v1()(1 +id3+in_);
+	  val vt1_2 = v1()(2 +id1+in_) - v1()(2 +id4+in_);
+	  val vt1_3 = v1()(3 +id1+in_) - v1()(3 +id4+in_);
+	  val vt2_2 = v1()(2 +id2+in_) + v1()(2 +id3+in_);
+	  val vt2_3 = v1()(3 +id2+in_) + v1()(3 +id3+in_);
+	  val vt1_4 = v1()(4 +id1+in_) - v1()(4 +id4+in_);
+	  val vt1_5 = v1()(5 +id1+in_) - v1()(5 +id4+in_);
+	  val vt2_4 = v1()(4 +id2+in_) + v1()(4 +id3+in_);
+	  val vt2_5 = v1()(5 +id2+in_) + v1()(5 +id3+in_);
+
+	  for(ic in 0..(Ncol-1)){
+	    val icr = 2*ic;
+	    val ici = 2*ic+1;
+	    val ic1 = 0;
+	    val ic2 = Nvc;
+	    val ic3 = 2*Nvc;
+
+	    vcp1_ym()(icr+ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+	    + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+	    + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+	    vcp1_ym()(ici+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+	    + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+	    + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+	    vcp1_ym()(icr+ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+	    + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+	    + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+	    vcp1_ym()(ici+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+	    + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+	    + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+	  }
+	}
+      }
+    });
+  }
+
+  static def make_zp_bnd(vcp1_zp:PlaceLocalHandle[Rail[Double]],
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val nn = 0;
+
+    parallel(0..(Nt-1), (r:LongRange)=> {
+      for(it in r){
+	for(ixy in 0..(Nx*Ny-1)){
+
+	  val in_ = Nvc*ND*(ixy + nn*Nx*Ny + it*Nx*Ny*Nz);
+	  val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
+	  val ix2 = ix1 + Nvc;
+
+	  for (ic in 0..(Ncol-1)) {
+	    vcp1_zp()(2*ic  +ix1) = v1()(2*ic  +id1+in_) - v1()(2*ic+1+id3+in_);
+	    vcp1_zp()(2*ic+1+ix1) = v1()(2*ic+1+id1+in_) + v1()(2*ic  +id3+in_);
+	    vcp1_zp()(2*ic  +ix2) = v1()(2*ic  +id2+in_) + v1()(2*ic+1+id4+in_);
+	    vcp1_zp()(2*ic+1+ix2) = v1()(2*ic+1+id2+in_) - v1()(2*ic  +id4+in_);
+	  }
+
+	}
+      }
+    });
+
+  }
+
+  static def make_zm_bnd(vcp1_zm:PlaceLocalHandle[Rail[Double]],
+			 u:PlaceLocalHandle[Rail[Double]], 
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 2;
+    val nn = Nz-1;
+
+    parallel(0..(Nt-1), (r:LongRange)=> {
+      for(it in r){
+    	for(ixy in 0..(Nx*Ny-1)){
+    	  val in_ = Nvc*ND*(ixy + nn*Nx*Ny + it*Nx*Ny*Nz);
+    	  val ig = Ndf*(ixy + nn*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
+	  val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
+	  val ix2 = ix1 + Nvc;
+
+    	  val vt1_0 = v1()(   id1+in_) + v1()(1 +id3+in_);
+    	  val vt1_1 = v1()(1 +id1+in_) - v1()(   id3+in_);
+    	  val vt2_0 = v1()(   id2+in_) - v1()(1 +id4+in_);
+    	  val vt2_1 = v1()(1 +id2+in_) + v1()(   id4+in_);
+    	  val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id3+in_);
+    	  val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id3+in_);
+    	  val vt2_2 = v1()(2 +id2+in_) - v1()(3 +id4+in_);
+    	  val vt2_3 = v1()(3 +id2+in_) + v1()(2 +id4+in_);
+    	  val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id3+in_);
+    	  val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id3+in_);
+    	  val vt2_4 = v1()(4 +id2+in_) - v1()(5 +id4+in_);
+    	  val vt2_5 = v1()(5 +id2+in_) + v1()(4 +id4+in_);
+
+    	  for(ic in 0..(Ncol-1)){
+    	    val icr = 2*ic;
+    	    val ici = 2*ic+1;
+    	    val ic1 = 0;
+    	    val ic2 = Nvc;
+    	    val ic3 = 2*Nvc;
+
+    	    vcp1_zm()(icr+ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+    	    + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+    	    + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+    	    vcp1_zm()(ici+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+    	    + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+    	    + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+    	    vcp1_zm()(icr+ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+    	    + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+    	    + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+    	    vcp1_zm()(ici+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+    	    + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+    	    + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+	  }
+	}
+      }
+    });
+
+  }
+
+  static def make_tp_bnd(vcp1_tp:PlaceLocalHandle[Rail[Double]],
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val nn = 0;
+
+    parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
+      for (ixyz in r) {
+
+	val in_ = Nvc*ND*(ixyz + nn*Nx*Ny*Nz);
+	val ix1 = Nvc * 2 * ixyz;
+	val ix2 = ix1 + Nvc;
+
+	for (ic in 0..(Ncol-1)) {
+	  vcp1_tp()(2*ic  +ix1) = 2.0 * v1()(2*ic  +id3+in_);
+	  vcp1_tp()(2*ic+1+ix1) = 2.0 * v1()(2*ic+1+id3+in_);
+	  vcp1_tp()(2*ic  +ix2) = 2.0 * v1()(2*ic  +id4+in_);
+	  vcp1_tp()(2*ic+1+ix2) = 2.0 * v1()(2*ic+1+id4+in_);
+	}
+
+      }
+    });
+
+  }
+
+  static def make_tm_bnd(vcp1_tm:PlaceLocalHandle[Rail[Double]],
+			 u:PlaceLocalHandle[Rail[Double]], 
+			 v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 3;
+    val nn = Nt-1;
+
+    parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
+      for(ixyz in r) {
+	val in_ = Nvc*ND*(ixyz + nn*Nx*Ny*Nz);
+	val ig = Ndf*(ixyz + nn*Nx*Ny*Nz + idir*Nst);
+	val ix1 = Nvc * 2 * ixyz;
+	val ix2 = ix1 + Nvc;
+
+	val vt1_0 = 2.0 * v1()(    id1+in_);
+	val vt1_1 = 2.0 * v1()(1 + id1+in_);
+	val vt2_0 = 2.0 * v1()(    id2+in_);
+	val vt2_1 = 2.0 * v1()(1 + id2+in_);
+	val vt1_2 = 2.0 * v1()(2 + id1+in_);
+	val vt1_3 = 2.0 * v1()(3 + id1+in_);
+	val vt2_2 = 2.0 * v1()(2 + id2+in_);
+	val vt2_3 = 2.0 * v1()(3 + id2+in_);
+	val vt1_4 = 2.0 * v1()(4 + id1+in_);
+	val vt1_5 = 2.0 * v1()(5 + id1+in_);
+	val vt2_4 = 2.0 * v1()(4 + id2+in_);
+	val vt2_5 = 2.0 * v1()(5 + id2+in_);
+
+	for(ic in 0..(Ncol-1)){
+	  val icr = 2*ic;
+	  val ici = 2*ic+1;
+	  val ic1 = 0;
+	  val ic2 = Nvc;
+	  val ic3 = 2*Nvc;
+
+	  vcp1_tm()(icr+ix1) = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+	  + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+	  + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+	  vcp1_tm()(ici+ix1) = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+	  + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+	  + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+	  vcp1_tm()(icr+ix2) = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+	  + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+	  + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+	  vcp1_tm()(ici+ix2) = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+	  + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+	  + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+	}
+      }
+    });
+
+  }
+
+  static def set_xp_bnd(vcp2_xp:PlaceLocalHandle[Rail[Double]], 
+			u:PlaceLocalHandle[Rail[Double]],
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 0;
+    val ix = Nx-1;
+
+    parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
+      for (iyzt in r) {
+
+	val iv = Nvc*ND*(ix + iyzt*Nx);
+	val ig = Ndf*(ix + iyzt*Nx + idir*Nst);
+	val ix1 = Nvc * 2 * iyzt;
+	val ix2 = ix1 + Nvc;
+
+	for(ic in 0..(Ncol-1)){
+	  val ic2 = ic*Nvc;
+
+	  val wt1r = mult_uv_r(u(), vcp2_xp(), ic2, ig, ix1);
+	  val wt1i = mult_uv_i(u(), vcp2_xp(), ic2, ig, ix1);
+	  val wt2r = mult_uv_r(u(), vcp2_xp(), ic2, ig, ix2);
+	  val wt2i = mult_uv_i(u(), vcp2_xp(), ic2, ig, ix2);
+
+	  v2()(2*ic   +id1+iv) =  wt1r;
+	  v2()(2*ic+1 +id1+iv) =  wt1i;
+	  v2()(2*ic   +id2+iv) =  wt2r;
+	  v2()(2*ic+1 +id2+iv) =  wt2i;
+	  v2()(2*ic   +id3+iv) =  wt2i;
+	  v2()(2*ic+1 +id3+iv) = -wt2r;
+	  v2()(2*ic   +id4+iv) =  wt1i;
+	  v2()(2*ic+1 +id4+iv) = -wt1r;
+	}
+      }
+    });
+
+  }
+
+  static def set_xm_bnd(vcp2_xm:PlaceLocalHandle[Rail[Double]], 
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val ix = 0;
+
+    parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
+      for (iyzt in r) {
+	val iv = Nvc*ND*(ix + iyzt*Nx);
+	val ix1 = Nvc * 2 * iyzt;
+	val ix2 = ix1 + Nvc;
+
+	for(ic in 0..(Ncol-1)){
+	  val icr = 2*ic;
+	  val ici = 2*ic+1;
+
+	  v2()(icr +id1+iv) +=  vcp2_xm()(icr+ix1);
+	  v2()(ici +id1+iv) +=  vcp2_xm()(ici+ix1);
+	  v2()(icr +id2+iv) +=  vcp2_xm()(icr+ix2);
+	  v2()(ici +id2+iv) +=  vcp2_xm()(ici+ix2);
+	  v2()(icr +id3+iv) += -vcp2_xm()(ici+ix2);
+	  v2()(ici +id3+iv) += +vcp2_xm()(icr+ix2);
+	  v2()(icr +id4+iv) += -vcp2_xm()(ici+ix1);
+	  v2()(ici +id4+iv) += +vcp2_xm()(icr+ix1);
+	}
+      }
+    });
+  }
+
+  static def set_yp_bnd(vcp2_yp:PlaceLocalHandle[Rail[Double]], 
+			u:PlaceLocalHandle[Rail[Double]],
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 1;
+    val iy = Ny-1;
+
+    parallel(0..(Nz*Nt-1), (r:LongRange)=> {
+      for (izt in r) {
+	for(ix in 0..(Nx-1)){
+
+	  val iv = Nvc*ND*(ix + iy*Nx + izt*Nx*Ny);
+	  val ig = Ndf*(ix + iy*Nx + izt*Nx*Ny + idir*Nst);
+	  val ix1 = Nvc * 2 * (ix + izt * Nx);
+	  val ix2 = ix1 + Nvc;
+
+	  for(ic in 0..(Ncol-1)){
+	    val ic2 = ic*Nvc;
+
+	    val wt1r = mult_uv_r(u(), vcp2_yp(), ic2, ig, ix1);
+	    val wt1i = mult_uv_i(u(), vcp2_yp(), ic2, ig, ix1);
+	    val wt2r = mult_uv_r(u(), vcp2_yp(), ic2, ig, ix2);
+	    val wt2i = mult_uv_i(u(), vcp2_yp(), ic2, ig, ix2);
+
+	    v2()(2*ic   +id1+iv) +=  wt1r;
+	    v2()(2*ic+1 +id1+iv) +=  wt1i;
+	    v2()(2*ic   +id2+iv) +=  wt2r;
+	    v2()(2*ic+1 +id2+iv) +=  wt2i;
+	    v2()(2*ic   +id3+iv) += -wt2r;
+	    v2()(2*ic+1 +id3+iv) += -wt2i;
+	    v2()(2*ic   +id4+iv) +=  wt1r;
+	    v2()(2*ic+1 +id4+iv) +=  wt1i;
+	  }
+	}
+      }
+    });
+  }
+
+  static def set_ym_bnd(vcp2_ym:PlaceLocalHandle[Rail[Double]], 
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val iy = 0;
+
+    parallel(0..(Nz*Nt-1), (r:LongRange)=> {
+      for (izt in r) {
+	for(ix in 0..(Nx-1)){
+	  val iv = Nvc*ND*(ix + iy*Nx + izt*Nx*Ny);
+	  val ix1 = Nvc * 2 * (ix + izt * Nx);
+	  val ix2 = ix1 + Nvc;
+
+	  for(ic in 0..(Ncol-1)){
+	    val icr = 2*ic;
+	    val ici = 2*ic+1;
+
+	    v2()(icr +id1+iv) +=  vcp2_ym()(icr+ix1);
+	    v2()(ici +id1+iv) +=  vcp2_ym()(ici+ix1);
+	    v2()(icr +id2+iv) +=  vcp2_ym()(icr+ix2);
+	    v2()(ici +id2+iv) +=  vcp2_ym()(ici+ix2);
+	    v2()(icr +id3+iv) +=  vcp2_ym()(icr+ix2);
+	    v2()(ici +id3+iv) +=  vcp2_ym()(ici+ix2);
+	    v2()(icr +id4+iv) += -vcp2_ym()(icr+ix1);
+	    v2()(ici +id4+iv) += -vcp2_ym()(ici+ix1);
+	  }
+	}
+      }
+    });
+  }
+
+  static def set_zp_bnd(vcp2_zp:PlaceLocalHandle[Rail[Double]], 
+			u:PlaceLocalHandle[Rail[Double]],
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 2;
+    val iz = Nz-1;
+
+    parallel(0..(Nt-1), (r:LongRange)=> {
+      for(it in r){
+	for(ixy in 0..(Nx*Ny-1)){
+
+	  val iv = Nvc*ND*(ixy + iz*Nx*Ny + it*Nx*Ny*Nz);
+	  val ig = Ndf*(ixy + iz*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
+	  val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
+	  val ix2 = ix1 + Nvc;
+
+	  for(ic in 0..(Ncol-1)){
+	    val ic2 = ic*Nvc;
+
+	    val wt1r = mult_uv_r(u(), vcp2_zp(), ic2, ig, ix1);
+	    val wt1i = mult_uv_i(u(), vcp2_zp(), ic2, ig, ix1);
+	    val wt2r = mult_uv_r(u(), vcp2_zp(), ic2, ig, ix2);
+	    val wt2i = mult_uv_i(u(), vcp2_zp(), ic2, ig, ix2);
+
+	    v2()(2*ic   +id1+iv) +=  wt1r;
+	    v2()(2*ic+1 +id1+iv) +=  wt1i;
+	    v2()(2*ic   +id2+iv) +=  wt2r;
+	    v2()(2*ic+1 +id2+iv) +=  wt2i;
+	    v2()(2*ic   +id3+iv) +=  wt1i;
+	    v2()(2*ic+1 +id3+iv) += -wt1r;
+	    v2()(2*ic   +id4+iv) += -wt2i;
+	    v2()(2*ic+1 +id4+iv) +=  wt2r;
+	  }
+	}
+      }
+    });
+
+  }
+
+  static def set_zm_bnd(vcp2_zm:PlaceLocalHandle[Rail[Double]], 
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val iz = 0;
+
+    parallel(0..(Nt-1), (r:LongRange)=> {
+      for(it in r){
+    	for(ixy in 0..(Nx*Ny-1)){
+    	  val iv = Nvc*ND*(ixy + iz*Nx*Ny + it*Nx*Ny*Nz);
+	  val ix1 = Nvc * 2 * (ixy + it * Nx * Ny);
+	  val ix2 = ix1 + Nvc;
+
+    	  for(ic in 0..(Ncol-1)){
+    	    val icr = 2*ic;
+    	    val ici = 2*ic+1;
+
+    	    v2()(icr +id1+iv) +=  vcp2_zm()(icr+ix1);
+    	    v2()(ici +id1+iv) +=  vcp2_zm()(ici+ix1);
+    	    v2()(icr +id2+iv) +=  vcp2_zm()(icr+ix2);
+    	    v2()(ici +id2+iv) +=  vcp2_zm()(ici+ix2);
+    	    v2()(icr +id3+iv) += -vcp2_zm()(ici+ix1);
+    	    v2()(ici +id3+iv) +=  vcp2_zm()(icr+ix1);
+    	    v2()(icr +id4+iv) +=  vcp2_zm()(ici+ix2);
+    	    v2()(ici +id4+iv) += -vcp2_zm()(icr+ix2);
+    	  }
+    	}
+      }
+    });
+
+  }
+
+  static def set_tp_bnd(vcp2_tp:PlaceLocalHandle[Rail[Double]], 
+			u:PlaceLocalHandle[Rail[Double]],
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 3;
+    val it = Nt-1;
+
+    parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
+      for (ixyz in r) {
+
+    	val iv = Nvc*ND*(ixyz + it*Nx*Ny*Nz);
+    	val ig = Ndf*(ixyz + it*Nx*Ny*Nz + idir*Nst);
+    	val ix1 = Nvc * 2 * ixyz;
+    	val ix2 = ix1 + Nvc;
+
+	for(ic in 0..(Ncol-1)){
+	  val ic2 = ic*Nvc;
+
+	  val wt1r = mult_uv_r(u(), vcp2_tp(), ic2, ig, ix1);
+	  val wt1i = mult_uv_i(u(), vcp2_tp(), ic2, ig, ix1);
+	  val wt2r = mult_uv_r(u(), vcp2_tp(), ic2, ig, ix2);
+	  val wt2i = mult_uv_i(u(), vcp2_tp(), ic2, ig, ix2);
+
+	  v2()(2*ic   +id3+iv) +=  wt1r;
+	  v2()(2*ic+1 +id3+iv) +=  wt1i;
+	  v2()(2*ic   +id4+iv) +=  wt2r;
+	  v2()(2*ic+1 +id4+iv) +=  wt2i;
+	}
+      }
+    });
+
+  }
+
+  static def set_tm_bnd(vcp2_tm:PlaceLocalHandle[Rail[Double]], 
+			v2:PlaceLocalHandle[Rail[Double]]) {
+
+    val it = 0;
+
+    parallel(0..(Nx*Ny*Nz-1), (r:LongRange)=> {
+      for(ixyz in r) {
+	val iv = Nvc*ND*(ixyz + it*Nx*Ny*Nz);
+	val ix1 = Nvc * 2 * ixyz;
+	val ix2 = ix1 + Nvc;
+
+	for(ic in 0..(Ncol-1)){
+	  val icr = 2*ic;
+	  val ici = 2*ic+1;
+
+	  v2()(icr +id1+iv) +=  vcp2_tm()(icr+ix1);
+	  v2()(ici +id1+iv) +=  vcp2_tm()(ici+ix1);
+	  v2()(icr +id2+iv) +=  vcp2_tm()(icr+ix2);
+	  v2()(ici +id2+iv) +=  vcp2_tm()(ici+ix2);
+	}
+      }
+    });
+
+  }
+
+  static def mult_xp_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 0;
+
+    parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
+      for (iyzt in r) {
+	for(ix_ in 0..(Nx-2)) {
+
+	  val nn_ = ix_+1;
+
+	  val iv = Nvc*ND*(ix_ + iyzt*Nx);
+	  val in_ = Nvc*ND*(nn_ + iyzt*Nx);
+	  val ig = Ndf*(ix_ + iyzt*Nx + idir*Nst);
+
+	  val vt1_0 = v1()(   id1+in_) - v1()(1 +id4+in_);
+	  val vt1_1 = v1()(1 +id1+in_) + v1()(   id4+in_);
+	  val vt2_0 = v1()(   id2+in_) - v1()(1 +id3+in_);
+	  val vt2_1 = v1()(1 +id2+in_) + v1()(   id3+in_);
+	  val vt1_2 = v1()(2 +id1+in_) - v1()(3 +id4+in_);
+	  val vt1_3 = v1()(3 +id1+in_) + v1()(2 +id4+in_);
+	  val vt2_2 = v1()(2 +id2+in_) - v1()(3 +id3+in_);
+	  val vt2_3 = v1()(3 +id2+in_) + v1()(2 +id3+in_);
+	  val vt1_4 = v1()(4 +id1+in_) - v1()(5 +id4+in_);
+	  val vt1_5 = v1()(5 +id1+in_) + v1()(4 +id4+in_);
+	  val vt2_4 = v1()(4 +id2+in_) - v1()(5 +id3+in_);
+	  val vt2_5 = v1()(5 +id2+in_) + v1()(4 +id3+in_);
+
+	  for(ic in 0..(Ncol-1)){
+	    val ic2 = ic*Nvc;
+
+	    val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
+	    + u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
+	    + u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
+	    val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
+	    + u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
+	    + u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
+
+	    val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
+	    + u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
+	    + u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
+	    val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
+	    + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
+	    + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
+
+	    v2()(2*ic   +id1+iv) =  wt1r;
+	    v2()(2*ic+1 +id1+iv) =  wt1i;
+	    v2()(2*ic   +id2+iv) =  wt2r;
+	    v2()(2*ic+1 +id2+iv) =  wt2i;
+	    v2()(2*ic   +id3+iv) =  wt2i;
+	    v2()(2*ic+1 +id3+iv) = -wt2r;
+	    v2()(2*ic   +id4+iv) =  wt1i;
+	    v2()(2*ic+1 +id4+iv) = -wt1r;
+	  }
+	}
+      }
+    });
+  }
+
+  static def mult_xm_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 0;
+
+    parallel(0..(Ny*Nz*Nt-1), (r:LongRange)=> {
+      for (iyzt in r) {
+	for(ix_ in 1..(Nx-1)){
+	  val nn_ = ix_-1;
+
+	  val iv = Nvc*ND*(ix_ + (iyzt)*Nx);
+	  val in_ = Nvc*ND*(nn_ + (iyzt)*Nx);
+	  val ig = Ndf*(nn_ + iyzt*Nx + idir*Nst);
+
+	  val vt1_0 = v1()(   id1+in_) + v1()(1 +id4+in_);
+	  val vt1_1 = v1()(1 +id1+in_) - v1()(   id4+in_);
+	  val vt2_0 = v1()(   id2+in_) + v1()(1 +id3+in_);
+	  val vt2_1 = v1()(1 +id2+in_) - v1()(   id3+in_);
+	  val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id4+in_);
+	  val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id4+in_);
+	  val vt2_2 = v1()(2 +id2+in_) + v1()(3 +id3+in_);
+	  val vt2_3 = v1()(3 +id2+in_) - v1()(2 +id3+in_);
+	  val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id4+in_);
+	  val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id4+in_);
+	  val vt2_4 = v1()(4 +id2+in_) + v1()(5 +id3+in_);
+	  val vt2_5 = v1()(5 +id2+in_) - v1()(4 +id3+in_);
+
+	  for(ic in 0..(Ncol-1)){
+	    val icr = 2*ic;
+	    val ici = 2*ic+1;
+	    val ic1 = 0;
+	    val ic2 = Nvc;
+	    val ic3 = 2*Nvc;
+
+	    val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+	    + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+	    + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+	    val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+	    + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+	    + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+	    val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+	    + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+	    + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+	    val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+	    + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+	    + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+	    v2()(icr +id1+iv) +=  wt1r;
+	    v2()(ici +id1+iv) +=  wt1i;
+	    v2()(icr +id2+iv) +=  wt2r;
+	    v2()(ici +id2+iv) +=  wt2i;
+	    v2()(icr +id3+iv) += -wt2i;
+	    v2()(ici +id3+iv) += +wt2r;
+	    v2()(icr +id4+iv) += -wt1i;
+	    v2()(ici +id4+iv) += +wt1r;
+	  }
+	}
+      }
+    });
+  }
+
+  static def mult_yp_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 1;
+
+    parallel(0..(Nz*Nt-1), (r:LongRange)=> {
+      for (izt in r) {
+	for(iy_ in 0..(Ny-2)){
+	  val nn_ = iy_ + 1;
+	  for(ix in 0..(Nx-1)){
+
+	    val iv = Nvc*ND*(ix + iy_*Nx + izt*Nx*Ny);
+	    val in_ = Nvc*ND*(ix + nn_*Nx + izt*Nx*Ny);
+	    val ig = Ndf*(ix + iy_*Nx + izt*Nx*Ny + idir*Nst);
+
+	    val vt1_0 = v1()(   id1+in_) + v1()(   id4+in_);
+	    val vt1_1 = v1()(1 +id1+in_) + v1()(1 +id4+in_);
+	    val vt2_0 = v1()(   id2+in_) - v1()(   id3+in_);
+	    val vt2_1 = v1()(1 +id2+in_) - v1()(1 +id3+in_);
+	    val vt1_2 = v1()(2 +id1+in_) + v1()(2 +id4+in_);
+	    val vt1_3 = v1()(3 +id1+in_) + v1()(3 +id4+in_);
+	    val vt2_2 = v1()(2 +id2+in_) - v1()(2 +id3+in_);
+	    val vt2_3 = v1()(3 +id2+in_) - v1()(3 +id3+in_);
+	    val vt1_4 = v1()(4 +id1+in_) + v1()(4 +id4+in_);
+	    val vt1_5 = v1()(5 +id1+in_) + v1()(5 +id4+in_);
+	    val vt2_4 = v1()(4 +id2+in_) - v1()(4 +id3+in_);
+	    val vt2_5 = v1()(5 +id2+in_) - v1()(5 +id3+in_);
+
+	    for(ic in 0..(Ncol-1)){
+	      val ic2 = ic*Nvc;
+	      val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
+	      + u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
+	      + u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
+	      val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
+	      + u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
+	      + u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
+
+	      val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
+	      + u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
+	      + u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
+	      val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
+	      + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
+	      + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
+
+	      v2()(2*ic   +id1+iv) +=  wt1r;
+	      v2()(2*ic+1 +id1+iv) +=  wt1i;
+	      v2()(2*ic   +id2+iv) +=  wt2r;
+	      v2()(2*ic+1 +id2+iv) +=  wt2i;
+	      v2()(2*ic   +id3+iv) += -wt2r;
+	      v2()(2*ic+1 +id3+iv) += -wt2i;
+	      v2()(2*ic   +id4+iv) +=  wt1r;
+	      v2()(2*ic+1 +id4+iv) +=  wt1i;
+	    }
+	  }
+	}
+      }
+    });
+  }
+
+  static def mult_ym_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 1;
+
+    parallel(0..(Nz*Nt-1), (r:LongRange)=> {
+      for (izt in r) {
+	for(iy_ in 1..(Ny-1)){
+	  val nn_ = iy_ - 1;
+	  for(ix in 0..(Nx-1)){
+
+	    val iv = Nvc*ND*(ix + iy_*Nx + izt*Nx*Ny);
+	    val in_ = Nvc*ND*(ix + nn_*Nx + izt*Nx*Ny);
+	    val ig = Ndf*(ix + nn_*Nx + izt*Nx*Ny + idir*Nst);
+
+	    val vt1_0 = v1()(   id1+in_) - v1()(   id4+in_);
+	    val vt1_1 = v1()(1 +id1+in_) - v1()(1 +id4+in_);
+	    val vt2_0 = v1()(   id2+in_) + v1()(   id3+in_);
+	    val vt2_1 = v1()(1 +id2+in_) + v1()(1 +id3+in_);
+	    val vt1_2 = v1()(2 +id1+in_) - v1()(2 +id4+in_);
+	    val vt1_3 = v1()(3 +id1+in_) - v1()(3 +id4+in_);
+	    val vt2_2 = v1()(2 +id2+in_) + v1()(2 +id3+in_);
+	    val vt2_3 = v1()(3 +id2+in_) + v1()(3 +id3+in_);
+	    val vt1_4 = v1()(4 +id1+in_) - v1()(4 +id4+in_);
+	    val vt1_5 = v1()(5 +id1+in_) - v1()(5 +id4+in_);
+	    val vt2_4 = v1()(4 +id2+in_) + v1()(4 +id3+in_);
+	    val vt2_5 = v1()(5 +id2+in_) + v1()(5 +id3+in_);
+
+	    for(ic in 0..(Ncol-1)){
+	      val icr = 2*ic;
+	      val ici = 2*ic+1;
+	      val ic1 = 0;
+	      val ic2 = Nvc;
+	      val ic3 = 2*Nvc;
+
+	      val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+	      + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+	      + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+	      val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+	      + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+	      + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+	      val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+	      + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+	      + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+	      val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+	      + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+	      + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+	      v2()(icr +id1+iv) +=  wt1r;
+	      v2()(ici +id1+iv) +=  wt1i;
+	      v2()(icr +id2+iv) +=  wt2r;
+	      v2()(ici +id2+iv) +=  wt2i;
+	      v2()(icr +id3+iv) +=  wt2r;
+	      v2()(ici +id3+iv) +=  wt2i;
+	      v2()(icr +id4+iv) += -wt1r;
+	      v2()(ici +id4+iv) += -wt1i;
+	    }
+	  }
+	}
+      }
+    });
+
+  }
+
+  static def mult_zp_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 2;
+
+    parallel(0..(Nt-1), (r:LongRange)=> {
+      for (it in r) {
+	for(iz_ in 0..(Nz-2)){
+	  val nn_ = iz_ + 1;
+	  for(ixy in 0..(Nx*Ny-1)){
+
+	    val iv = Nvc*ND*(ixy + iz_*Nx*Ny + it*Nx*Ny*Nz);
+	    val in_ = Nvc*ND*(ixy + nn_*Nx*Ny + it*Nx*Ny*Nz);
+	    val ig = Ndf*(ixy + iz_*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
+
+	    val vt1_0 = v1()(   id1+in_) - v1()(1 +id3+in_);
+	    val vt1_1 = v1()(1 +id1+in_) + v1()(   id3+in_);
+	    val vt2_0 = v1()(   id2+in_) + v1()(1 +id4+in_);
+	    val vt2_1 = v1()(1 +id2+in_) - v1()(   id4+in_);
+	    val vt1_2 = v1()(2 +id1+in_) - v1()(3 +id3+in_);
+	    val vt1_3 = v1()(3 +id1+in_) + v1()(2 +id3+in_);
+	    val vt2_2 = v1()(2 +id2+in_) + v1()(3 +id4+in_);
+	    val vt2_3 = v1()(3 +id2+in_) - v1()(2 +id4+in_);
+	    val vt1_4 = v1()(4 +id1+in_) - v1()(5 +id3+in_);
+	    val vt1_5 = v1()(5 +id1+in_) + v1()(4 +id3+in_);
+	    val vt2_4 = v1()(4 +id2+in_) + v1()(5 +id4+in_);
+	    val vt2_5 = v1()(5 +id2+in_) - v1()(4 +id4+in_);
+
+	    for(ic in 0..(Ncol-1)){
+	      val ic2 = ic*Nvc;
+
+	      val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
+	      + u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
+	      + u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
+	      val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
+	      + u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
+	      + u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
+
+	      val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
+	      + u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
+	      + u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
+	      val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
+	      + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
+	      + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
+
+	      v2()(2*ic   +id1+iv) +=  wt1r;
+	      v2()(2*ic+1 +id1+iv) +=  wt1i;
+	      v2()(2*ic   +id2+iv) +=  wt2r;
+	      v2()(2*ic+1 +id2+iv) +=  wt2i;
+	      v2()(2*ic   +id3+iv) +=  wt1i;
+	      v2()(2*ic+1 +id3+iv) += -wt1r;
+	      v2()(2*ic   +id4+iv) += -wt2i;
+	      v2()(2*ic+1 +id4+iv) +=  wt2r;
+	    }
+	  }
+	}
+      }
+    });
+
+  }
+
+  static def mult_zm_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 2;
+
+    parallel(0..(Nt-1), (r:LongRange)=> {
+      for (it in r) {
+    	for(iz_ in 1..(Nz-1)){
+    	  val nn_ = iz_ - 1;
+    	  for(ixy in 0..(Nx*Ny-1)){
+
+    	    val iv = Nvc*ND*(ixy + iz_*Nx*Ny + it*Nx*Ny*Nz);
+    	    val in_ = Nvc*ND*(ixy + nn_*Nx*Ny + it*Nx*Ny*Nz);
+    	    val ig = Ndf*(ixy + nn_*Nx*Ny + it*Nx*Ny*Nz + idir*Nst);
+
+    	    val vt1_0 = v1()(   id1+in_) + v1()(1 +id3+in_);
+    	    val vt1_1 = v1()(1 +id1+in_) - v1()(   id3+in_);
+    	    val vt2_0 = v1()(   id2+in_) - v1()(1 +id4+in_);
+    	    val vt2_1 = v1()(1 +id2+in_) + v1()(   id4+in_);
+    	    val vt1_2 = v1()(2 +id1+in_) + v1()(3 +id3+in_);
+    	    val vt1_3 = v1()(3 +id1+in_) - v1()(2 +id3+in_);
+    	    val vt2_2 = v1()(2 +id2+in_) - v1()(3 +id4+in_);
+    	    val vt2_3 = v1()(3 +id2+in_) + v1()(2 +id4+in_);
+    	    val vt1_4 = v1()(4 +id1+in_) + v1()(5 +id3+in_);
+    	    val vt1_5 = v1()(5 +id1+in_) - v1()(4 +id3+in_);
+    	    val vt2_4 = v1()(4 +id2+in_) - v1()(5 +id4+in_);
+    	    val vt2_5 = v1()(5 +id2+in_) + v1()(4 +id4+in_);
+
+    	    for(ic in 0..(Ncol-1)){
+    	      val icr = 2*ic;
+    	      val ici = 2*ic+1;
+    	      val ic1 = 0;
+    	      val ic2 = Nvc;
+    	      val ic3 = 2*Nvc;
+
+    	      val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+    	      + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+    	      + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+    	      val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+    	      + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+    	      + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+    	      val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+    	      + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+    	      + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+    	      val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+    	      + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+    	      + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+    	      v2()(icr +id1+iv) +=  wt1r;
+    	      v2()(ici +id1+iv) +=  wt1i;
+    	      v2()(icr +id2+iv) +=  wt2r;
+    	      v2()(ici +id2+iv) +=  wt2i;
+    	      v2()(icr +id3+iv) += -wt1i;
+    	      v2()(ici +id3+iv) +=  wt1r;
+    	      v2()(icr +id4+iv) +=  wt2i;
+    	      v2()(ici +id4+iv) += -wt2r;
+    	    }
+    	  }
+    	}
+      }
+    });
+
+  }
+
+  static def mult_tp_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 3;
+
+    parallel(0..(Nt-2), (r:LongRange)=> {
+      for (it_ in r) {
+	val nn_ = it_ + 1;
+	for(ixyz in 0..(Nx*Ny*Nz-1)) {
+
+	  val iv = Nvc*ND*(ixyz + it_*Nx*Ny*Nz);
+	  val in_ = Nvc*ND*(ixyz + nn_*Nx*Ny*Nz);
+	  val ig = Ndf*(ixyz + it_*Nx*Ny*Nz + idir*Nst);
+
+	  val vt1_0 = 2.0 * v1()(    id3+in_);
+	  val vt1_1 = 2.0 * v1()(1 + id3+in_);
+	  val vt2_0 = 2.0 * v1()(    id4+in_);
+	  val vt2_1 = 2.0 * v1()(1 + id4+in_);
+	  val vt1_2 = 2.0 * v1()(2 + id3+in_);
+	  val vt1_3 = 2.0 * v1()(3 + id3+in_);
+	  val vt2_2 = 2.0 * v1()(2 + id4+in_);
+	  val vt2_3 = 2.0 * v1()(3 + id4+in_);
+	  val vt1_4 = 2.0 * v1()(4 + id3+in_);
+	  val vt1_5 = 2.0 * v1()(5 + id3+in_);
+	  val vt2_4 = 2.0 * v1()(4 + id4+in_);
+	  val vt2_5 = 2.0 * v1()(5 + id4+in_);
+
+	  for (ic in 0..(Ncol-1)) {
+	    val ic2 = ic*Nvc;
+
+	    val wt1r = u()(0+ic2+ig)*vt1_0 - u()(1+ic2+ig)*vt1_1
+	    + u()(2+ic2+ig)*vt1_2 - u()(3+ic2+ig)*vt1_3
+	    + u()(4+ic2+ig)*vt1_4 - u()(5+ic2+ig)*vt1_5;
+	    val wt1i = u()(0+ic2+ig)*vt1_1 + u()(1+ic2+ig)*vt1_0
+	    + u()(2+ic2+ig)*vt1_3 + u()(3+ic2+ig)*vt1_2
+	    + u()(4+ic2+ig)*vt1_5 + u()(5+ic2+ig)*vt1_4;
+
+	    val wt2r = u()(0+ic2+ig)*vt2_0 - u()(1+ic2+ig)*vt2_1
+	    + u()(2+ic2+ig)*vt2_2 - u()(3+ic2+ig)*vt2_3
+	    + u()(4+ic2+ig)*vt2_4 - u()(5+ic2+ig)*vt2_5;
+	    val wt2i = u()(0+ic2+ig)*vt2_1 + u()(1+ic2+ig)*vt2_0
+	    + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
+	    + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
+
+	    v2()(2*ic   +id3+iv) +=  wt1r;
+	    v2()(2*ic+1 +id3+iv) +=  wt1i;
+	    v2()(2*ic   +id4+iv) +=  wt2r;
+	    v2()(2*ic+1 +id4+iv) +=  wt2i;
+
+	  }
+	}
+      }
+    });
+
+  }
+
+  static def mult_tm_bulk(v2:PlaceLocalHandle[Rail[Double]], 
+			  u:PlaceLocalHandle[Rail[Double]], 
+			  v1:PlaceLocalHandle[Rail[Double]]) {
+
+    val idir = 3;
+
+    parallel(1..(Nt-1), (r:LongRange)=> {
+      for (it_ in r) {
+
+	val nn_ = it_ - 1;
+	for(ixyz in 0..(Nx*Ny*Nz-1)){
+
+	  val iv = Nvc*ND*(ixyz + it_*Nx*Ny*Nz);
+	  val in_ = Nvc*ND*(ixyz + nn_*Nx*Ny*Nz);
+	  val ig = Ndf*(ixyz + nn_*Nx*Ny*Nz + idir*Nst);
+
+	  val vt1_0 = 2.0 * v1()(    id1+in_);
+	  val vt1_1 = 2.0 * v1()(1 + id1+in_);
+	  val vt2_0 = 2.0 * v1()(    id2+in_);
+	  val vt2_1 = 2.0 * v1()(1 + id2+in_);
+	  val vt1_2 = 2.0 * v1()(2 + id1+in_);
+	  val vt1_3 = 2.0 * v1()(3 + id1+in_);
+	  val vt2_2 = 2.0 * v1()(2 + id2+in_);
+	  val vt2_3 = 2.0 * v1()(3 + id2+in_);
+	  val vt1_4 = 2.0 * v1()(4 + id1+in_);
+	  val vt1_5 = 2.0 * v1()(5 + id1+in_);
+	  val vt2_4 = 2.0 * v1()(4 + id2+in_);
+	  val vt2_5 = 2.0 * v1()(5 + id2+in_);
+
+	  for(ic in 0..(Ncol-1)){
+	    val icr = 2*ic;
+	    val ici = 2*ic+1;
+	    val ic1 = 0;
+	    val ic2 = Nvc;
+	    val ic3 = 2*Nvc;
+
+	    val wt1r = u()(icr+ic1+ig)*vt1_0 + u()(ici+ic1+ig)*vt1_1
+	    + u()(icr+ic2+ig)*vt1_2 + u()(ici+ic2+ig)*vt1_3
+	    + u()(icr+ic3+ig)*vt1_4 + u()(ici+ic3+ig)*vt1_5;
+	    val wt1i = u()(icr+ic1+ig)*vt1_1 - u()(ici+ic1+ig)*vt1_0
+	    + u()(icr+ic2+ig)*vt1_3 - u()(ici+ic2+ig)*vt1_2
+	    + u()(icr+ic3+ig)*vt1_5 - u()(ici+ic3+ig)*vt1_4;
+
+	    val wt2r = u()(icr+ic1+ig)*vt2_0 + u()(ici+ic1+ig)*vt2_1
+	    + u()(icr+ic2+ig)*vt2_2 + u()(ici+ic2+ig)*vt2_3
+	    + u()(icr+ic3+ig)*vt2_4 + u()(ici+ic3+ig)*vt2_5;
+	    val wt2i = u()(icr+ic1+ig)*vt2_1 - u()(ici+ic1+ig)*vt2_0
+	    + u()(icr+ic2+ig)*vt2_3 - u()(ici+ic2+ig)*vt2_2
+	    + u()(icr+ic3+ig)*vt2_5 - u()(ici+ic3+ig)*vt2_4;
+
+	    v2()(icr +id1+iv) +=  wt1r;
+	    v2()(ici +id1+iv) +=  wt1i;
+	    v2()(icr +id2+iv) +=  wt2r;
+	    v2()(ici +id2+iv) +=  wt2i;
+	  }
+	}
+      }
+    });
+
   }
 
 }
