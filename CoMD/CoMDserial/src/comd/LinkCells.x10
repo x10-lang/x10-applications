@@ -25,15 +25,18 @@ public class LinkCells {
     
     val par:Parallel;
     val per:PerformanceTimer;
-    val ix:Cell[Int], iy:Cell[Int], iz:Cell[Int];
-    val xyz:Rail[MyTypes.real_t];
+    static val ix:Cell[Int] = new Cell[Int](0n); //OPT: Change to 'static'
+	static val iy:Cell[Int] = new Cell[Int](0n); //OPT: Change to 'static'
+	static val iz:Cell[Int] = new Cell[Int](0n); //OPT: Change to 'static'
+    static val xyz:Rail[MyTypes.real_t] = new Rail[MyTypes.real_t](3);  //OPT: Change to 'static'
     def this (par:Parallel, per:PerformanceTimer) {
     	this.par = par;
     	this.per = per;
-    	this.ix = new Cell[Int](0n);
-    	this.iy = new Cell[Int](0n);
-    	this.iz = new Cell[Int](0n);
-    	this.xyz = new Rail[MyTypes.real_t](3);
+//OPT: Change to 'static'
+//    	this.ix = new Cell[Int](0n);
+//    	this.iy = new Cell[Int](0n);
+//    	this.iz = new Cell[Int](0n);
+//    	this.xyz = new Rail[MyTypes.real_t](3);
     }
     /// In CoMD 1.1, atoms are stored in link cells.  Link cells are widely
     /// used in classical MD to avoid an O(N^2) search for atoms that
@@ -158,7 +161,9 @@ public class LinkCells {
         xyz(2) = z;
         
     	// Find correct box.
-    	val iBox = getBoxFromCoord(boxes, xyz);
+//OPT: Array flattening
+//    	val iBox = getBoxFromCoord(boxes, xyz);
+    	val iBox = getBoxFromCoord(boxes, x, y, z);
     	var iOff:Int = iBox*MAXATOMS;
     	iOff += boxes.nAtoms(iBox);
     
@@ -169,13 +174,24 @@ public class LinkCells {
     	atoms.gid(iOff) = gid;
     	atoms.iSpecies(iOff) = iType;
 
-    	atoms.r(iOff)(0) = x;
-    	atoms.r(iOff)(1) = y;
-    	atoms.r(iOff)(2) = z;
+//OPT: Array flattening
+//    	atoms.r(iOff)(0) = x;
+//    	atoms.r(iOff)(1) = y;
+//    	atoms.r(iOff)(2) = z;
+		val iOff3 = iOff*3;
+    	atoms.r(iOff3) = x;
+    	atoms.r(iOff3+1) = y;
+    	atoms.r(iOff3+2) = z;
+//End of OPT: Array flattening
     
-    	atoms.p(iOff)(0) = px;
-    	atoms.p(iOff)(1) = py;
-    	atoms.p(iOff)(2) = pz;
+//OPT: Array flattening
+//    	atoms.p(iOff)(0) = px;
+//    	atoms.p(iOff)(1) = py;
+//    	atoms.p(iOff)(2) = pz;
+    	atoms.p(iOff3) = px;
+    	atoms.p(iOff3+1) = py;
+    	atoms.p(iOff3+2) = pz;
+//End of OPT: Array flattening
     }
 
     /// Calculates the link cell index from the grid coords.  The valid
@@ -273,7 +289,9 @@ public class LinkCells {
     		val iOff = iBox*MAXATOMS;
     		var ii:Int=0n;
     		while (ii < boxes.nAtoms(iBox)) {
-    			val jBox = getBoxFromCoord(boxes, atoms.r(iOff+ii));
+//    			val jBox = getBoxFromCoord(boxes, atoms.r(iOff+ii));
+				val index = (iOff+ii)*3;
+    			val jBox = getBoxFromCoord(boxes, atoms.r(index), atoms.r(index+1), atoms.r(index+2));
     			if (jBox != iBox)
     				moveAtom(boxes, atoms, ii, iBox, jBox);
     			else
@@ -306,9 +324,22 @@ public class LinkCells {
     	val jOff = MAXATOMS*jBox+jAtom;
     	atoms.gid(jOff) = atoms.gid(iOff);
     	atoms.iSpecies(jOff) = atoms.iSpecies(iOff);
-    	atoms.r(jOff) = atoms.r(iOff);
-    	atoms.p(jOff) = atoms.p(iOff);
+//OPT: Array flattening (atoms.r, atoms.p, atoms.f)
+//    	atoms.r(jOff) = atoms.r(iOff);
+//    	atoms.p(jOff) = atoms.p(iOff);
     	atoms.f(jOff) = atoms.f(iOff);
+		val iOff3 = iOff*3;
+		val jOff3 = jOff*3;
+    	atoms.r(jOff3) = atoms.r(iOff3);
+    	atoms.r(jOff3+1) = atoms.r(iOff3+1);
+    	atoms.r(jOff3+2) = atoms.r(iOff3+2);
+    	atoms.p(jOff3) = atoms.p(iOff3);
+    	atoms.p(jOff3+1) = atoms.p(iOff3+1);
+    	atoms.p(jOff3+2) = atoms.p(iOff3+2);
+    	atoms.f(jOff3) = atoms.f(iOff3);
+    	atoms.f(jOff3+1) = atoms.f(iOff3+1);
+    	atoms.f(jOff3+2) = atoms.f(iOff3+2);
+//End of OPT: Array flattening (atoms.r, atoms.p, atoms.f)
     	atoms.U(jOff) = atoms.U(iOff);
     }
 
@@ -322,27 +353,32 @@ public class LinkCells {
     /// assignments for atoms that are near a link cell boundaries.  If no
     /// ranks claim an atom in a local cell it will be lost.  If multiple
     /// ranks claim an atom it will be duplicated.
-    public def getBoxFromCoord(boxes:LinkCell, rr:MyTypes.real3 ):int {
+//OPT: Array flattening
+//    public static def getBoxFromCoord(boxes:LinkCell, rr:MyTypes.real3 ):int {
+    public def getBoxFromCoord(boxes:LinkCell, rr:Double, rr1:Double, rr2:Double ):int {
     
-    	var ix:Int = (Math.floor((rr(0) - boxes.localMin(0))*boxes.invBoxSize(0))) as Int;
-    	var iy:Int = (Math.floor((rr(1) - boxes.localMin(1))*boxes.invBoxSize(1))) as Int;
-    	var iz:Int = (Math.floor((rr(2) - boxes.localMin(2))*boxes.invBoxSize(2))) as Int;
+//    	var ix:Int = (Math.floor((rr(0) - boxes.localMin(0))*boxes.invBoxSize(0))) as Int;
+//    	var iy:Int = (Math.floor((rr(1) - boxes.localMin(1))*boxes.invBoxSize(1))) as Int;
+//    	var iz:Int = (Math.floor((rr(2) - boxes.localMin(2))*boxes.invBoxSize(2))) as Int;
+    	var ix:Int = (Math.floor((rr - boxes.localMin(0))*boxes.invBoxSize(0))) as Int;
+    	var iy:Int = (Math.floor((rr1 - boxes.localMin(1))*boxes.invBoxSize(1))) as Int;
+    	var iz:Int = (Math.floor((rr2 - boxes.localMin(2))*boxes.invBoxSize(2))) as Int;
     
     	// For each axis, if we are inside the local domain, make sure we get
     	// a local link cell.  Otherwise, make sure we get a halo link cell.
-    	if (rr(0) < boxes.localMax(0)) 
+    	if (rr < boxes.localMax(0)) //OPT: Array flattening (rr)
     	{
     		if (ix == boxes.gridSize(0)) ix = boxes.gridSize(0) - 1n;
     	}
     	else
     		ix = boxes.gridSize(0); // assign to halo cell
-    	if (rr(1) < boxes.localMax(1))
+    	if (rr1 < boxes.localMax(1)) //OPT: Array flattening (rr1)
     	{
     		if (iy == boxes.gridSize(1)) iy = boxes.gridSize(1) - 1n;
     	}
     	else
     		iy = boxes.gridSize(1);
-    	if (rr(2) < boxes.localMax(2))
+    	if (rr2 < boxes.localMax(2)) //OPT: Array flattening (rr2)
     	{
     		if (iz == boxes.gridSize(2)) iz = boxes.gridSize(2) - 1n;
     	}

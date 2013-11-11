@@ -197,6 +197,11 @@ public class Eam {
     static class WrappedReal_t { var value:MyTypes.real_t; }
     public def eamForce(s:CoMDTypes.SimFlat):int
     {
+/*
+		var total:Double = 0;
+		val start = System.nanoTime();
+*/
+
     	val pot:EamPotential = s.pot as EamPotential;
     	assert s.pot != null;
 
@@ -217,9 +222,11 @@ public class Eam {
     	// zero forces / energy / rho /rhoprime
     	var etot:MyTypes.real_t = MyTypes.real_t0;
         for (var iBox:Int=0n; iBox<s.boxes.nTotalBoxes*LinkCells.MAXATOMS; iBox++) {
-        	s.atoms.f(iBox)(0) = MyTypes.real_t0;
-        	s.atoms.f(iBox)(1) = MyTypes.real_t0;
-        	s.atoms.f(iBox)(2) = MyTypes.real_t0;
+			//OPT: Array index
+			val iBox3=iBox*3;
+        	s.atoms.f(iBox3) = MyTypes.real_t0;
+        	s.atoms.f(iBox3+1) = MyTypes.real_t0;
+        	s.atoms.f(iBox3+2) = MyTypes.real_t0;
         }
         s.atoms.U.clear();
         s.pot.dfEmbed.clear();
@@ -228,6 +235,7 @@ public class Eam {
     	for (var iBox:Int=0n; iBox<s.boxes.nLocalBoxes; iBox++)
     	{
     		var nIBox:Int = s.boxes.nAtoms(iBox);
+			// OPT: MH-20131008
     		var nNbrBoxes:Int = lc.getNeighborBoxes(s.boxes, iBox, nbrBoxes);
     		// loop over neighbor boxes of iBox (some may be halo boxes)
     		for (var jTmp:Int=0n; jTmp<nNbrBoxes; jTmp++)
@@ -240,50 +248,80 @@ public class Eam {
     			var ii:Int = 0n;
     			for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<nIBox; ii++,iOff++)
     			{
+					val iOff3 = iOff*3; //OPT: Loop invariant
     				// loop over atoms in jBox
     				var ij:Int = 0n;
     				for (var jOff:Int=LinkCells.MAXATOMS*jBox; ij<nJBox; ij++,jOff++)
     				{
     					if ( (iBox==jBox) &&(ij <= ii) ) continue;
-
+						
+						val jOff3 = jOff*3; //OPT: Loop invariant
     					var r2:Double = 0.0;
-   						for (var k:Int=0n; k<3; k++)
-    					{
-    						dr(k)=s.atoms.r(iOff)(k)-s.atoms.r(jOff)(k);
-    						r2+=dr(k)*dr(k);
-    					}
+//OPT: Loop unrolling + array flattening
+//   					for (var k:Int=0n; k<3; k++)
+//    					{
+//    						dr(k)=s.atoms.r(iOff3+k) - s.atoms.r(jOff3+k);
+//    						r2+=dr(k)*dr(k);
+//    					}
+    					val dr0 =s.atoms.r(iOff3) - s.atoms.r(jOff3);
+    					r2+=dr0*dr0;
+    					val dr1 =s.atoms.r(iOff3+1) - s.atoms.r(jOff3+1);
+    					r2+=dr1*dr1;
+    					val dr2 =s.atoms.r(iOff3+2) - s.atoms.r(jOff3+2);
+    					r2+=dr2*dr2;
+//End of OPT: Loop unrolling + array flattening
+
     					if(r2>rCut2) continue;
 
     					val r:Double = Math.sqrt(r2);
-    					interpolate(s.pot.phi, r as MyTypes.real_t, phiTmp, dPhi);
-    					interpolate(s.pot.rho, r as MyTypes.real_t, rhoTmp, dRho);
+    					interpolate(s.pot.phi, r, phiTmp, dPhi);
+    					interpolate(s.pot.rho, r, rhoTmp, dRho);
 
-    					for (var k:Int=0n; k<3; k++)
-    					{
-    						s.atoms.f(iOff)(k) -= (dPhi.value*dr(k)/r) as MyTypes.real_t;
-    						s.atoms.f(jOff)(k) += (dPhi.value*dr(k)/r) as MyTypes.real_t;
-    					}
+//OPT: Loop unrolling + array flattening
+//    					for (var k:Int=0n; k<3n; k++)
+//    					{
+//							val cal = (dPhi.value*dr(k)/r) as MyTypes.real_t;
+//    						s.atoms.f(iOff3+k) -= cal;
+//    						s.atoms.f(jOff3+k) += cal;
+//    					}
+						var cal:MyTypes.real_t = (dPhi.value*dr0/r) as MyTypes.real_t;
+    					s.atoms.f(iOff3) -= cal;
+    					s.atoms.f(jOff3) += cal;
+						cal = (dPhi.value*dr1/r) as MyTypes.real_t;
+    					s.atoms.f(iOff3+1) -= cal;
+    					s.atoms.f(jOff3+1) += cal;
+						cal = (dPhi.value*dr2/r) as MyTypes.real_t;
+    					s.atoms.f(iOff3+2) -= cal;
+    					s.atoms.f(jOff3+2) += cal;
+//End of OPT: Loop unrolling + array flattening
 
     					// update energy terms
     					// calculate energy contribution based on whether
     					// the neighbor box is local or remote
+						val phi = phiTmp.value; //OPT: CSE
+
     					if (jBox < s.boxes.nLocalBoxes)
-    						etot += phiTmp.value;
+    						etot += phi; //OPT: CSE
     					else
-    						etot += 0.5*phiTmp.value;
+    						etot += 0.5*phi; //OPT: CSE
 
-    					s.atoms.U(iOff) += (0.5*phiTmp.value) as MyTypes.real_t;
-    					s.atoms.U(jOff) += (0.5*phiTmp.value) as MyTypes.real_t;
-
+    					s.atoms.U(iOff) += 0.5*phi; //OPT: CSE
+    					s.atoms.U(jOff) += 0.5*phi; //OPT: CSE
+					
+						val rho = rhoTmp.value; //OPT: CSE
     					// accumulate rhobar for each atom
-    					s.pot.rhobar(iOff) += rhoTmp.value;
-    					s.pot.rhobar(jOff) += rhoTmp.value;
-
+    					s.pot.rhobar(iOff) += rho; //OPT: CSE
+    					s.pot.rhobar(jOff) += rho; //OPT: CSE
 
     				} // loop over atoms in jBox
     			} // loop over atoms in iBox
     		} // loop over neighbor boxes
     	} // loop over local boxes
+
+/*
+		total += (System.nanoTime() - start)/1000000d;
+		Console.ERR.println("Interpolate: " + total + " (ms)");
+*/
 
     	// Compute Embedding Energy
     	// loop over all local boxes
@@ -331,22 +369,45 @@ public class Eam {
     					if ((iBox==jBox) && (ij <= ii))  continue;
     
     					var r2:Double = 0.0;
-    					for (var k:Int=0n; k<3; k++)
-    					{
-    						dr(k)=s.atoms.r(iOff)(k)-s.atoms.r(jOff)(k);
-    						r2+=dr(k)*dr(k);
-    					}
+//OPT: Loop unrolling + array flattening
+//    					for (var k:Int=0n; k<3; k++)
+//    					{
+//    						dr(k)=s.atoms.r(iOff*3+k)-s.atoms.r(jOff*3+k);
+//    						r2+=dr(k)*dr(k);
+//    					}
+  						val dr0 = s.atoms.r(iOff*3)-s.atoms.r(jOff*3);
+  						r2+=dr0*dr0;
+  						val dr1 = s.atoms.r(iOff*3+1)-s.atoms.r(jOff*3+1);
+  						r2+=dr1*dr1;
+  						val dr2 = s.atoms.r(iOff*3+2)-s.atoms.r(jOff*3+2);
+  						r2+=dr2*dr2;
+//End of OPT: Loop unrolling + array flattening
+
     					if(r2>=rCut2) continue;
 
-    					val r:MyTypes.real_t = Math.sqrt(r2) as MyTypes.real_t;
+    					val r:MyTypes.real_t = Math.sqrt(r2);// as MyTypes.real_t;
 
     					interpolate(s.pot.rho, r, rhoTmp, dRho);
 
-    					for (var k:Int=0n; k<3; k++)
-    					{
-    						s.atoms.f(iOff)(k) -= (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr(k)/r;
-    						s.atoms.f(jOff)(k) += (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr(k)/r;
-    					}
+//OPT: Loop unrolling + array flattening
+//    					for (var k:Int=0n; k<3; k++)
+//    					{
+////    						s.atoms.f(iOff*3+k) -= (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr(k)/r;
+////    						s.atoms.f(jOff*3+k) += (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr(k)/r;
+//							val cal = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr(k)/r;
+//    						s.atoms.f(iOff*3+k) -= cal;
+//    						s.atoms.f(jOff*3+k) += cal;
+//    					}
+						var cal:MyTypes.real_t = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr0/r;
+  						s.atoms.f(iOff*3) -= cal;
+  						s.atoms.f(jOff*3) += cal;
+						cal = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr1/r;
+  						s.atoms.f(iOff*3+1) -= cal;
+  						s.atoms.f(jOff*3+1) += cal;
+						cal = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr2/r;
+  						s.atoms.f(iOff*3+2) -= cal;
+  						s.atoms.f(jOff*3+2) += cal;
+//End of OPT: Loop unrolling + array flattening
 
     				} // loop over atoms in jBox
     			} // loop over atoms in iBox
@@ -428,7 +489,7 @@ public class Eam {
     	assert table.values != null;
 
     	table.n = n;
-    	table.invDx = (1.0/dx) as MyTypes.real_t;
+    	table.invDx = (1.0/dx);// as MyTypes.real_t;
     	table.x0 = x0;
 
     	for (var ii:Int=0n; ii<n; ++ii)
@@ -461,29 +522,39 @@ public class Eam {
     /// \param [in] r Point where function value is needed.
     /// \param [out] f The interpolated value of f(r).
     /// \param [out] df The interpolated value of df(r)/dr.
+	// OPT: MH-20131008
     @Inline public static def interpolate(table:InterpolationObject, r:MyTypes.real_t, f:Cell[MyTypes.real_t], df:Cell[MyTypes.real_t]):void
     {
+//		var total:Double = 0;
+//		val start = System.nanoTime();
+
     	//const real_t* tt = table.values; // alias
+
+		val tt:Rail[MyTypes.real_t] = table.values;	//OPT: CSE
     
     	var r1:MyTypes.real_t = r;
     	if ( r < table.x0 ) r1 = table.x0;
 
     	r1 = (r1-table.x0)*(table.invDx) ;
-    	var ii:Int = Math.floor(r1) as Int;
+    	var ii:Long = Math.floor(r1) as Long;
     	if (ii > table.n)
     	{
     		ii = table.n;
     		r1 = table.n / table.invDx;
     	}
     	// reset r to fractional distance
-    	r1 = (r1 - Math.floor(r1)) as MyTypes.real_t;
+    	r1 = (r1 - Math.floor(r1));
 
-    	val g1:MyTypes.real_t = table.values(ii+1+1) - table.values(ii+1-1); // shift table.values
-    	val g2:MyTypes.real_t = table.values(ii+1+2) - table.values(ii+1);   // shift table.values
+		//OPT: CSE (table.values with tt)
+    	val g1 = tt(ii+2) - tt(ii); // shift table.values
+    	val g2 = tt(ii+3) - tt(ii+1);   // shift table.values
 
-    	f.value = (table.values(ii+1) + 0.5*r1*(g1 + r1*(table.values(ii+1+1) + table.values(ii+1-1) - 2.0*table.values(ii+1)))) as MyTypes.real_t; // shift table.values
+    	f.value = (tt(ii+1) + 0.5*r1*(g1 + r1*(tt(ii+2) + tt(ii) - 2.0*tt(ii+1))));
 
-    	df.value = (0.5*(g1 + r1*(g2-g1))*table.invDx) as MyTypes.real_t;
+    	df.value = (0.5*(g1 + r1*(g2-g1))*table.invDx); 
+
+//		total += (System.nanoTime() - start)/1000000d;
+//		Console.ERR.println("Interpolate: " + total + " (ms)");
     }
 
     /// Broadcasts an InterpolationObject from rank 0 to all other ranks.

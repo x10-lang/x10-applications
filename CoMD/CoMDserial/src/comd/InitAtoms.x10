@@ -13,9 +13,10 @@ public class InitAtoms {
     	var gid:Rail[Int];      //!< A globally unique id for each atom
     	var iSpecies:Rail[Int]; //!< the species index of the atom
 
-    	var r:Rail[MyTypes.real3];     //!< positions
-    	var p:Rail[MyTypes.real3];     //!< momenta of atoms
-    	var f:Rail[MyTypes.real3];     //!< forces 
+		//OPT: Array flattening (r, p, f: MyTypes.real3 -> real_t)
+    	var r:Rail[MyTypes.real_t];     //!< positions
+    	var p:Rail[MyTypes.real_t];     //!< momenta of atoms
+    	var f:Rail[MyTypes.real_t];     //!< forces 
     	var U:Rail[MyTypes.real_t];     //!< potential energy per atom
     }
 
@@ -41,9 +42,10 @@ public class InitAtoms {
 
     	atoms.gid = new Rail[Int](maxTotalAtoms);
     	atoms.iSpecies = new Rail[Int](maxTotalAtoms);
-    	atoms.r = new Rail[MyTypes.real3](maxTotalAtoms);
-    	atoms.p = new Rail[MyTypes.real3](maxTotalAtoms);
-    	atoms.f = new Rail[MyTypes.real3](maxTotalAtoms);
+		val maxTotalAtoms3 = maxTotalAtoms*3; //OPT: Array flattening (r, p, f: MyTypes.real3 -> real_t)
+    	atoms.r = new Rail[MyTypes.real_t](maxTotalAtoms3); //OPT: Array flattening
+    	atoms.p = new Rail[MyTypes.real_t](maxTotalAtoms3); //OPT: Array flattening
+    	atoms.f = new Rail[MyTypes.real_t](maxTotalAtoms3); //OPT: Array flattening
     	atoms.U = new Rail[MyTypes.real_t](maxTotalAtoms);
 
     	atoms.nLocal = 0n;
@@ -53,12 +55,25 @@ public class InitAtoms {
     	{
     		atoms.gid(iOff) = 0n;
     		atoms.iSpecies(iOff) = 0n;
-    		atoms.r(iOff) = new MyTypes.real3(3);
-    		atoms.p(iOff) = new MyTypes.real3(3);
-    		atoms.f(iOff) = new MyTypes.real3(3);
-    		MyTypes.zeroReal3(atoms.r(iOff));
-    		MyTypes.zeroReal3(atoms.p(iOff));
-    		MyTypes.zeroReal3(atoms.f(iOff));
+//OPT: Array flattening (r)
+//    		atoms.r(iOff) = new MyTypes.real3(3);
+			val iOff3 = iOff * 3;
+    		atoms.r(iOff3) = MyTypes.real_t0;
+    		atoms.r(iOff3+1) = MyTypes.real_t0;
+    		atoms.r(iOff3+2) = MyTypes.real_t0;
+//OPT: Array flattening (p)
+//    		atoms.p(iOff) = new MyTypes.real3(3);
+    		atoms.p(iOff3) = MyTypes.real_t0;
+    		atoms.p(iOff3+1) = MyTypes.real_t0;
+    		atoms.p(iOff3+2) = MyTypes.real_t0;
+//OPT: Array flattening (f)
+//    		atoms.f(iOff) = new MyTypes.real3(3);
+    		atoms.f(iOff3) = MyTypes.real_t0;
+    		atoms.f(iOff3+1) = MyTypes.real_t0;
+    		atoms.f(iOff3+2) = MyTypes.real_t0;
+//    		MyTypes.zeroReal3(atoms.r(iOff));
+//    		MyTypes.zeroReal3(atoms.p(iOff));
+//    		MyTypes.zeroReal3(atoms.f(iOff));
     		atoms.U(iOff) = 0.0f;
     	}
 
@@ -143,9 +158,11 @@ public class InitAtoms {
     			val iSpecies:Int = s.atoms.iSpecies(iOff);
     			val mass:MyTypes.real_t = s.species(iSpecies).mass;
 
-    			s.atoms.p(iOff)(0) += mass * vShift(0);
-    			s.atoms.p(iOff)(1) += mass * vShift(1);
-    			s.atoms.p(iOff)(2) += mass * vShift(2);
+//OPT: Array flattening (s.atoms.p)
+				val iOff3 = iOff*3;
+    			s.atoms.p(iOff3) += mass * vShift(0);
+    			s.atoms.p(iOff3+1) += mass * vShift(1);
+    			s.atoms.p(iOff3+2) += mass * vShift(2);
     		}
     	}
     }
@@ -171,9 +188,13 @@ public class InitAtoms {
     			val mass:MyTypes.real_t = s.species(iType).mass;
     			val sigma:MyTypes.real_t = Math.sqrt(Constants.kB_eV * temperature/mass) as MyTypes.real_t;
     			val seed = rnd.mkSeed(s.atoms.gid(iOff) as UInt, 123un);
-    			s.atoms.p(iOff)(0) = mass * sigma * rnd.gasdev(seed);
-    			s.atoms.p(iOff)(1) = mass * sigma * rnd.gasdev(seed);
-    			s.atoms.p(iOff)(2) = mass * sigma * rnd.gasdev(seed);
+//OPT: CSE (mass*sigma with tmp)
+				val iOff3 = iOff*3;
+				val tmp=mass*sigma;
+//OPT: Array flattening (s.atoms.p)
+    			s.atoms.p(iOff3) = tmp * rnd.gasdev(seed);
+    			s.atoms.p(iOff3+1) = tmp * rnd.gasdev(seed);
+    			s.atoms.p(iOff3+2) = tmp * rnd.gasdev(seed);
     		}
     	}
     	// compute the resulting temperature
@@ -191,9 +212,11 @@ public class InitAtoms {
     		var ii:Int = 0n;
     		for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<s.boxes.nAtoms(iBox); ++ii, ++iOff)
     		{
-    			s.atoms.p(iOff)(0) *= scaleFactor;
-    			s.atoms.p(iOff)(1) *= scaleFactor;
-    			s.atoms.p(iOff)(2) *= scaleFactor;
+//OPT: Array flattening (s.atoms.p)
+				val iOff3 = iOff * 3;
+    			s.atoms.p(iOff3) *= scaleFactor;
+    			s.atoms.p(iOff3+1) *= scaleFactor;
+    			s.atoms.p(iOff3+2) *= scaleFactor;
     		}
     	}
     	ts.kineticEnergy(s);
@@ -212,9 +235,14 @@ public class InitAtoms {
     		for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<s.boxes.nAtoms(iBox); ++ii, ++iOff)
     		{
     			val seed = rnd.mkSeed(s.atoms.gid(iOff) as UInt, 457un);
-    			s.atoms.r(iOff)(0) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
-    			s.atoms.r(iOff)(1) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
-    			s.atoms.r(iOff)(2) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
+//OPT: Array flattening (s.atoms.r)
+//    			s.atoms.r(iOff)(0) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
+//    			s.atoms.r(iOff)(1) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
+//    			s.atoms.r(iOff)(2) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
+				val iOff3 = iOff * 3;
+    			s.atoms.r(iOff3) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
+    			s.atoms.r(iOff3+1) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
+    			s.atoms.r(iOff3+2) += ((2.0*rnd.lcg61(seed)-1.0) * delta) as MyTypes.real_t;
     		}
     	}
     }
@@ -232,9 +260,11 @@ public class InitAtoms {
     		var ii:Int = 0n;
     		for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<s.boxes.nAtoms(iBox); ++ii, ++iOff)
     		{
-    			vcmLocal(0) += s.atoms.p(iOff)(0);
-    			vcmLocal(1) += s.atoms.p(iOff)(1);
-    			vcmLocal(2) += s.atoms.p(iOff)(2);
+//OPT: Array flattening (s.atoms.p)
+				val iOff3 = iOff * 3;
+    			vcmLocal(0) += s.atoms.p(iOff3);
+    			vcmLocal(1) += s.atoms.p(iOff3+1);
+    			vcmLocal(2) += s.atoms.p(iOff3+2);
 
     			var iSpecies:Int = s.atoms.iSpecies(iOff);
     			vcmLocal(3) += s.species(iSpecies).mass;
