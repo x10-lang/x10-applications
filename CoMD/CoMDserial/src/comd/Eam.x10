@@ -120,27 +120,27 @@ public class Eam {
     val per:PerformanceTimer;
     val he:HaloExchange;
     val lc:LinkCells;
-    val nbrBoxes:Rail[Int];
-    val dr:MyTypes.real3;
-    val phiTmp:Cell[MyTypes.real_t],
-        dPhi:Cell[MyTypes.real_t],
-        rhoTmp:Cell[MyTypes.real_t],
-    	dRho:Cell[MyTypes.real_t],
-        fEmbed:Cell[MyTypes.real_t],
-        dfEmbed:Cell[MyTypes.real_t];
+    //val nbrBoxes:Rail[Int];
+    //val dr:MyTypes.real3;
+    //val phiTmp:Cell[MyTypes.real_t],
+        //dPhi:Cell[MyTypes.real_t],
+        //rhoTmp:Cell[MyTypes.real_t],
+    	//dRho:Cell[MyTypes.real_t],
+        //fEmbed:Cell[MyTypes.real_t],
+        //dfEmbed:Cell[MyTypes.real_t];
     def this (par:Parallel, per:PerformanceTimer, he:HaloExchange, lc:LinkCells) {
     	this.par = par;
     	this.per = per;
     	this.he = he;
     	this.lc = lc;
-    	this.nbrBoxes = new Rail[Int](27);
-    	this.dr = new MyTypes.real3(3);
-    	this.phiTmp = new Cell[MyTypes.real_t](MyTypes.real_t0);
-    	this.dPhi = new Cell[MyTypes.real_t](MyTypes.real_t0);
-    	this.rhoTmp = new Cell[MyTypes.real_t](MyTypes.real_t0);
-    	this.dRho = new Cell[MyTypes.real_t](MyTypes.real_t0);
-        this.fEmbed = new Cell[MyTypes.real_t](MyTypes.real_t0);
-    	this.dfEmbed = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	//this.nbrBoxes = new Rail[Int](27);
+    	//this.dr = new MyTypes.real3(3);
+    	//this.phiTmp = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	//this.dPhi = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	//this.rhoTmp = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	//this.dRho = new Cell[MyTypes.real_t](MyTypes.real_t0);
+        //this.fEmbed = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	//this.dfEmbed = new Cell[MyTypes.real_t](MyTypes.real_t0);
     }
     
     /// Allocate and initialize the EAM potential data structure.
@@ -201,49 +201,68 @@ public class Eam {
 		var total:Double = 0;
 		val start = System.nanoTime();
 */
+    	// OPT: loop invariant references
+    	val atoms:InitAtoms.Atoms = s.atoms;
+    	val boxes:LinkCells.LinkCell = s.boxes;
+    	val nLocalBoxes = boxes.nLocalBoxes;
+    	val nTotalBoxes = boxes.nTotalBoxes;
+    	val nAtoms = boxes.nAtoms;
+    	val atoms_r = atoms.r;
+    	val atoms_f = atoms.f;
+    	val atoms_U = atoms.U;
+    	val nbrBoxes:Rail[Int] = new Rail[Int](27);
+    	val phiTmp = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	val dPhi = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	val rhoTmp = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	val dRho = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	val fEmbed = new Cell[MyTypes.real_t](MyTypes.real_t0);
+    	val dfEmbed = new Cell[MyTypes.real_t](MyTypes.real_t0);
 
     	val pot:EamPotential = s.pot as EamPotential;
-    	assert s.pot != null;
+    	assert pot != null;
 
     	// set up halo exchange and internal storage on first call to forces.
-    	if (s.pot.forceExchange == null)
+    	if (pot.forceExchange == null)
     	{
-    		val maxTotalAtoms = LinkCells.MAXATOMS*s.boxes.nTotalBoxes;
-    		s.pot.dfEmbed = new Rail[MyTypes.real_t](maxTotalAtoms);
-    		s.pot.rhobar  = new Rail[MyTypes.real_t](maxTotalAtoms);
-    		s.pot.forceExchange = he.initForceHaloExchange(s.domain, s.boxes);
-    		s.pot.forceExchangeData = new ForceExchangeData();
-    		s.pot.forceExchangeData.dfEmbed = s.pot.dfEmbed;
-    		s.pot.forceExchangeData.boxes = s.boxes;
+    		val maxTotalAtoms = LinkCells.MAXATOMS*nTotalBoxes;
+    		pot.dfEmbed = new Rail[MyTypes.real_t](maxTotalAtoms);
+    		pot.rhobar  = new Rail[MyTypes.real_t](maxTotalAtoms);
+    		pot.forceExchange = he.initForceHaloExchange(s.domain, boxes);
+    		pot.forceExchangeData = new ForceExchangeData();
+    		pot.forceExchangeData.dfEmbed = pot.dfEmbed;
+    		pot.forceExchangeData.boxes = boxes;
     	}
+    	// OPT: loop invariant references
+    	val potDfEmbed = pot.dfEmbed;
+    	val potRhobar = pot.rhobar;
     
-    	val rCut2:MyTypes.real_t = (s.pot.cutoff*s.pot.cutoff) as MyTypes.real_t;
+    	val rCut2:MyTypes.real_t = (pot.cutoff*pot.cutoff) as MyTypes.real_t;
 
     	// zero forces / energy / rho /rhoprime
     	var etot:MyTypes.real_t = MyTypes.real_t0;
-        for (var iBox:Int=0n; iBox<s.boxes.nTotalBoxes*LinkCells.MAXATOMS; iBox++) {
+        for (var iBox:Int=0n; iBox<nTotalBoxes*LinkCells.MAXATOMS; iBox++) {
 			//OPT: Array index
 			val iBox3=iBox*3;
-        	s.atoms.f(iBox3) = MyTypes.real_t0;
-        	s.atoms.f(iBox3+1) = MyTypes.real_t0;
-        	s.atoms.f(iBox3+2) = MyTypes.real_t0;
+        	atoms_f(iBox3) = MyTypes.real_t0;
+        	atoms_f(iBox3+1) = MyTypes.real_t0;
+        	atoms_f(iBox3+2) = MyTypes.real_t0;
         }
-        s.atoms.U.clear();
-        s.pot.dfEmbed.clear();
-        s.pot.rhobar.clear();
+        atoms_U.clear();
+        potDfEmbed.clear();
+        potRhobar.clear();
 
-    	for (var iBox:Int=0n; iBox<s.boxes.nLocalBoxes; iBox++)
+    	for (var iBox:Int=0n; iBox<nLocalBoxes; iBox++)
     	{
-    		var nIBox:Int = s.boxes.nAtoms(iBox);
+    		var nIBox:Int = nAtoms(iBox);
 			// OPT: MH-20131008
-    		var nNbrBoxes:Int = lc.getNeighborBoxes(s.boxes, iBox, nbrBoxes);
+    		var nNbrBoxes:Int = lc.getNeighborBoxes(boxes, iBox, nbrBoxes);
     		// loop over neighbor boxes of iBox (some may be halo boxes)
     		for (var jTmp:Int=0n; jTmp<nNbrBoxes; jTmp++)
     		{
     			var jBox:Int = nbrBoxes(jTmp);
     			if (jBox < iBox ) continue;
 
-    			var nJBox:Int = s.boxes.nAtoms(jBox);
+    			var nJBox:Int = nAtoms(jBox);
     			// loop over atoms in iBox
     			var ii:Int = 0n;
     			for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<nIBox; ii++,iOff++)
@@ -263,19 +282,19 @@ public class Eam {
 //    						dr(k)=s.atoms.r(iOff3+k) - s.atoms.r(jOff3+k);
 //    						r2+=dr(k)*dr(k);
 //    					}
-    					val dr0 =s.atoms.r(iOff3) - s.atoms.r(jOff3);
+    					val dr0 =atoms_r(iOff3) - atoms_r(jOff3);
     					r2+=dr0*dr0;
-    					val dr1 =s.atoms.r(iOff3+1) - s.atoms.r(jOff3+1);
+    					val dr1 =atoms_r(iOff3+1) - atoms_r(jOff3+1);
     					r2+=dr1*dr1;
-    					val dr2 =s.atoms.r(iOff3+2) - s.atoms.r(jOff3+2);
+    					val dr2 =atoms_r(iOff3+2) - atoms_r(jOff3+2);
     					r2+=dr2*dr2;
 //End of OPT: Loop unrolling + array flattening
 
     					if(r2>rCut2) continue;
 
     					val r:Double = Math.sqrt(r2);
-    					interpolate(s.pot.phi, r, phiTmp, dPhi);
-    					interpolate(s.pot.rho, r, rhoTmp, dRho);
+    					interpolate(pot.phi, r, phiTmp, dPhi);
+    					interpolate(pot.rho, r, rhoTmp, dRho);
 
 //OPT: Loop unrolling + array flattening
 //    					for (var k:Int=0n; k<3n; k++)
@@ -285,14 +304,14 @@ public class Eam {
 //    						s.atoms.f(jOff3+k) += cal;
 //    					}
 						var cal:MyTypes.real_t = (dPhi.value*dr0/r) as MyTypes.real_t;
-    					s.atoms.f(iOff3) -= cal;
-    					s.atoms.f(jOff3) += cal;
+    					atoms_f(iOff3) -= cal;
+    					atoms_f(jOff3) += cal;
 						cal = (dPhi.value*dr1/r) as MyTypes.real_t;
-    					s.atoms.f(iOff3+1) -= cal;
-    					s.atoms.f(jOff3+1) += cal;
+    					atoms_f(iOff3+1) -= cal;
+    					atoms_f(jOff3+1) += cal;
 						cal = (dPhi.value*dr2/r) as MyTypes.real_t;
-    					s.atoms.f(iOff3+2) -= cal;
-    					s.atoms.f(jOff3+2) += cal;
+    					atoms_f(iOff3+2) -= cal;
+    					atoms_f(jOff3+2) += cal;
 //End of OPT: Loop unrolling + array flattening
 
     					// update energy terms
@@ -300,18 +319,18 @@ public class Eam {
     					// the neighbor box is local or remote
 						val phi = phiTmp.value; //OPT: CSE
 
-    					if (jBox < s.boxes.nLocalBoxes)
+    					if (jBox < nLocalBoxes)
     						etot += phi; //OPT: CSE
     					else
     						etot += 0.5*phi; //OPT: CSE
 
-    					s.atoms.U(iOff) += 0.5*phi; //OPT: CSE
-    					s.atoms.U(jOff) += 0.5*phi; //OPT: CSE
+    					atoms_U(iOff) += 0.5*phi; //OPT: CSE
+    					atoms_U(jOff) += 0.5*phi; //OPT: CSE
 					
 						val rho = rhoTmp.value; //OPT: CSE
     					// accumulate rhobar for each atom
-    					s.pot.rhobar(iOff) += rho; //OPT: CSE
-    					s.pot.rhobar(jOff) += rho; //OPT: CSE
+    					potRhobar(iOff) += rho; //OPT: CSE
+    					potRhobar(jOff) += rho; //OPT: CSE
 
     				} // loop over atoms in jBox
     			} // loop over atoms in iBox
@@ -325,49 +344,51 @@ public class Eam {
 
     	// Compute Embedding Energy
     	// loop over all local boxes
-    	for (var iBox:Int=0n; iBox<s.boxes.nLocalBoxes; iBox++)
+    	for (var iBox:Int=0n; iBox<nLocalBoxes; iBox++)
     	{
-    		var nIBox:Int =  s.boxes.nAtoms(iBox);
+    		var nIBox:Int =  nAtoms(iBox);
 
     		// loop over atoms in iBox
     		var ii:Int = 0n;
     		for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<nIBox; ii++,iOff++)
     		{
-    			interpolate(s.pot.f, s.pot.rhobar(iOff), fEmbed, dfEmbed);
-    			s.pot.dfEmbed(iOff) = dfEmbed.value; // save derivative for halo exchange
+    			interpolate(pot.f, potRhobar(iOff), fEmbed, dfEmbed);
+    			potDfEmbed(iOff) = dfEmbed.value; // save derivative for halo exchange
     			etot += fEmbed.value; 
-    			s.atoms.U(iOff) += fEmbed.value;
+    			atoms_U(iOff) += fEmbed.value;
     		}
     	}
 
     	// exchange derivative of the embedding energy with repsect to rhobar
     	per.startTimer(per.eamHaloTimer);
-    	he.haloExchange(s.pot.forceExchange, s.pot.forceExchangeData);
+    	he.haloExchange(pot.forceExchange, pot.forceExchangeData);
     	per.stopTimer(per.eamHaloTimer);
 
     	// third pass
     	// loop over local boxes
-    	for (var iBox:Int=0n; iBox<s.boxes.nLocalBoxes; iBox++)
+    	for (var iBox:Int=0n; iBox<nLocalBoxes; iBox++)
     	{
-    		val nIBox:Int =  s.boxes.nAtoms(iBox);
-    		val nNbrBoxes:Int = lc.getNeighborBoxes(s.boxes, iBox, nbrBoxes);
+    		val nIBox:Int =  nAtoms(iBox);
+    		val nNbrBoxes:Int = lc.getNeighborBoxes(boxes, iBox, nbrBoxes);
     		// loop over neighbor boxes of iBox (some may be halo boxes)
     		for (var jTmp:Int=0n; jTmp<nNbrBoxes; jTmp++)
     		{
     			val jBox:Int = nbrBoxes(jTmp);
     			if(jBox < iBox) continue;
 
-    			val nJBox:Int = s.boxes.nAtoms(jBox);
+    			val nJBox:Int = nAtoms(jBox);
     			// loop over atoms in iBox
     			var ii:Int = 0n;
     			for (var iOff:Int=LinkCells.MAXATOMS*iBox; ii<nIBox; ii++,iOff++)
     			{
+    				val iOff3 = iOff*3; //OPT: Array flattening
     				// loop over atoms in jBox
                     var ij:Int = 0n;
     				for (var jOff:Int=LinkCells.MAXATOMS*jBox; ij<nJBox; ij++,jOff++)
     				{ 
     					if ((iBox==jBox) && (ij <= ii))  continue;
     
+    					val jOff3 = jOff*3; //OPT: Array flattening
     					var r2:Double = 0.0;
 //OPT: Loop unrolling + array flattening
 //    					for (var k:Int=0n; k<3; k++)
@@ -375,11 +396,11 @@ public class Eam {
 //    						dr(k)=s.atoms.r(iOff*3+k)-s.atoms.r(jOff*3+k);
 //    						r2+=dr(k)*dr(k);
 //    					}
-  						val dr0 = s.atoms.r(iOff*3)-s.atoms.r(jOff*3);
+  						val dr0 = atoms_r(iOff3)-atoms_r(jOff3);
   						r2+=dr0*dr0;
-  						val dr1 = s.atoms.r(iOff*3+1)-s.atoms.r(jOff*3+1);
+  						val dr1 = atoms_r(iOff3+1)-atoms_r(jOff3+1);
   						r2+=dr1*dr1;
-  						val dr2 = s.atoms.r(iOff*3+2)-s.atoms.r(jOff*3+2);
+  						val dr2 = atoms_r(iOff3+2)-atoms_r(jOff3+2);
   						r2+=dr2*dr2;
 //End of OPT: Loop unrolling + array flattening
 
@@ -387,7 +408,7 @@ public class Eam {
 
     					val r:MyTypes.real_t = Math.sqrt(r2);// as MyTypes.real_t;
 
-    					interpolate(s.pot.rho, r, rhoTmp, dRho);
+    					interpolate(pot.rho, r, rhoTmp, dRho);
 
 //OPT: Loop unrolling + array flattening
 //    					for (var k:Int=0n; k<3; k++)
@@ -398,15 +419,15 @@ public class Eam {
 //    						s.atoms.f(iOff*3+k) -= cal;
 //    						s.atoms.f(jOff*3+k) += cal;
 //    					}
-						var cal:MyTypes.real_t = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr0/r;
-  						s.atoms.f(iOff*3) -= cal;
-  						s.atoms.f(jOff*3) += cal;
-						cal = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr1/r;
-  						s.atoms.f(iOff*3+1) -= cal;
-  						s.atoms.f(jOff*3+1) += cal;
-						cal = (s.pot.dfEmbed(iOff)+s.pot.dfEmbed(jOff))*dRho.value*dr2/r;
-  						s.atoms.f(iOff*3+2) -= cal;
-  						s.atoms.f(jOff*3+2) += cal;
+						var cal:MyTypes.real_t = (potDfEmbed(iOff)+potDfEmbed(jOff))*dRho.value*dr0/r;
+  						atoms_f(iOff3) -= cal;
+  						atoms_f(jOff3) += cal;
+						cal = (potDfEmbed(iOff)+potDfEmbed(jOff))*dRho.value*dr1/r;
+  						atoms_f(iOff3+1) -= cal;
+  						atoms_f(jOff3+1) += cal;
+						cal = (potDfEmbed(iOff)+potDfEmbed(jOff))*dRho.value*dr2/r;
+  						atoms_f(iOff3+2) -= cal;
+  						atoms_f(jOff3+2) += cal;
 //End of OPT: Loop unrolling + array flattening
 
     				} // loop over atoms in jBox
