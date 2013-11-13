@@ -214,16 +214,6 @@ BasePotential* initEamPot(const char* dir, const char* file, const char* type)
 /// 
 int eamForce(SimFlat* s)
 {
-   //OPT: loop invariant references
-   Atoms* atoms = s->atoms;
-   LinkCell* boxes = s->boxes;
-   int nLocalBoxes = boxes->nLocalBoxes;
-   int nTotalBoxes = boxes->nTotalBoxes;
-   int* nAtoms = boxes->nAtoms;
-   real3* atoms_r = atoms->r;
-   real3* atoms_f = atoms->f;
-   real_t* atoms_U = atoms->U;
-
    EamPotential* pot = (EamPotential*) s->pot;
    assert(pot);
 
@@ -243,24 +233,24 @@ int eamForce(SimFlat* s)
 
    // zero forces / energy / rho /rhoprime
    real_t etot = 0.0;
-   memset(atoms_f,  0, nTotalBoxes*MAXATOMS*sizeof(real3));
-   memset(atoms_U,  0, nTotalBoxes*MAXATOMS*sizeof(real_t));
-   memset(pot->dfEmbed, 0, nTotalBoxes*MAXATOMS*sizeof(real_t));
-   memset(pot->rhobar,  0, nTotalBoxes*MAXATOMS*sizeof(real_t));
+   memset(s->atoms->f,  0, s->boxes->nTotalBoxes*MAXATOMS*sizeof(real3));
+   memset(s->atoms->U,  0, s->boxes->nTotalBoxes*MAXATOMS*sizeof(real_t));
+   memset(pot->dfEmbed, 0, s->boxes->nTotalBoxes*MAXATOMS*sizeof(real_t));
+   memset(pot->rhobar,  0, s->boxes->nTotalBoxes*MAXATOMS*sizeof(real_t));
 
    int nbrBoxes[27];
    // loop over local boxes
-   for (int iBox=0; iBox<nLocalBoxes; iBox++)
+   for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++)
    {
-      int nIBox = nAtoms[iBox];
-      int nNbrBoxes = getNeighborBoxes(boxes, iBox, nbrBoxes);
+      int nIBox = s->boxes->nAtoms[iBox];
+      int nNbrBoxes = getNeighborBoxes(s->boxes, iBox, nbrBoxes);
       // loop over neighbor boxes of iBox (some may be halo boxes)
       for (int jTmp=0; jTmp<nNbrBoxes; jTmp++)
       {
          int jBox = nbrBoxes[jTmp];
          if (jBox < iBox ) continue;
 
-         int nJBox = nAtoms[jBox];
+         int nJBox = s->boxes->nAtoms[jBox];
          // loop over atoms in iBox
          for (int iOff=MAXATOMS*iBox,ii=0; ii<nIBox; ii++,iOff++)
          {
@@ -273,7 +263,7 @@ int eamForce(SimFlat* s)
                real3 dr;
                for (int k=0; k<3; k++)
                {
-                  dr[k]=atoms_r[iOff][k]-atoms_r[jOff][k];
+                  dr[k]=s->atoms->r[iOff][k]-s->atoms->r[jOff][k];
                   r2+=dr[k]*dr[k];
                }
                if(r2>rCut2) continue;
@@ -286,20 +276,20 @@ int eamForce(SimFlat* s)
 
                for (int k=0; k<3; k++)
                {
-                  atoms_f[iOff][k] -= dPhi*dr[k]/r;
-                  atoms_f[jOff][k] += dPhi*dr[k]/r;
+                  s->atoms->f[iOff][k] -= dPhi*dr[k]/r;
+                  s->atoms->f[jOff][k] += dPhi*dr[k]/r;
                }
 
                // update energy terms
                // calculate energy contribution based on whether
                // the neighbor box is local or remote
-               if (jBox < nLocalBoxes)
+               if (jBox < s->boxes->nLocalBoxes)
                   etot += phiTmp;
                else
                   etot += 0.5*phiTmp;
 
-               atoms_U[iOff] += 0.5*phiTmp;
-               atoms_U[jOff] += 0.5*phiTmp;
+               s->atoms->U[iOff] += 0.5*phiTmp;
+               s->atoms->U[jOff] += 0.5*phiTmp;
 
                // accumulate rhobar for each atom
                pot->rhobar[iOff] += rhoTmp;
@@ -312,10 +302,10 @@ int eamForce(SimFlat* s)
 
    // Compute Embedding Energy
    // loop over all local boxes
-   for (int iBox=0; iBox<nLocalBoxes; iBox++)
+   for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++)
    {
       int iOff;
-      int nIBox = nAtoms[iBox];
+      int nIBox =  s->boxes->nAtoms[iBox];
 
       // loop over atoms in iBox
       for (int iOff=MAXATOMS*iBox,ii=0; ii<nIBox; ii++,iOff++)
@@ -324,7 +314,7 @@ int eamForce(SimFlat* s)
          interpolate(pot->f, pot->rhobar[iOff], &fEmbed, &dfEmbed);
          pot->dfEmbed[iOff] = dfEmbed; // save derivative for halo exchange
          etot += fEmbed; 
-         atoms_U[iOff] += fEmbed;
+         s->atoms->U[iOff] += fEmbed;
       }
    }
 
@@ -335,17 +325,17 @@ int eamForce(SimFlat* s)
 
    // third pass
    // loop over local boxes
-   for (int iBox=0; iBox<nLocalBoxes; iBox++)
+   for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++)
    {
-      int nIBox = nAtoms[iBox];
-      int nNbrBoxes = getNeighborBoxes(boxes, iBox, nbrBoxes);
+      int nIBox =  s->boxes->nAtoms[iBox];
+      int nNbrBoxes = getNeighborBoxes(s->boxes, iBox, nbrBoxes);
       // loop over neighbor boxes of iBox (some may be halo boxes)
       for (int jTmp=0; jTmp<nNbrBoxes; jTmp++)
       {
          int jBox = nbrBoxes[jTmp];
          if(jBox < iBox) continue;
 
-         int nJBox = nAtoms[jBox];
+         int nJBox = s->boxes->nAtoms[jBox];
          // loop over atoms in iBox
          for (int iOff=MAXATOMS*iBox,ii=0; ii<nIBox; ii++,iOff++)
          {
@@ -358,7 +348,7 @@ int eamForce(SimFlat* s)
                real3 dr;
                for (int k=0; k<3; k++)
                {
-                  dr[k]=atoms_r[iOff][k]-atoms_r[jOff][k];
+                  dr[k]=s->atoms->r[iOff][k]-s->atoms->r[jOff][k];
                   r2+=dr[k]*dr[k];
                }
                if(r2>=rCut2) continue;
@@ -370,8 +360,8 @@ int eamForce(SimFlat* s)
 
                for (int k=0; k<3; k++)
                {
-                  atoms_f[iOff][k] -= (pot->dfEmbed[iOff]+pot->dfEmbed[jOff])*dRho*dr[k]/r;
-                  atoms_f[jOff][k] += (pot->dfEmbed[iOff]+pot->dfEmbed[jOff])*dRho*dr[k]/r;
+                  s->atoms->f[iOff][k] -= (pot->dfEmbed[iOff]+pot->dfEmbed[jOff])*dRho*dr[k]/r;
+                  s->atoms->f[jOff][k] += (pot->dfEmbed[iOff]+pot->dfEmbed[jOff])*dRho*dr[k]/r;
                }
 
             } // loop over atoms in jBox
