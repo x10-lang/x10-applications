@@ -210,9 +210,9 @@ public class LjForce {
     					r2 = (1.0/r2) as MyTypes.real_t;
     					val r6:MyTypes.real_t = s6 * (r2*r2*r2);
     					val eLocal:MyTypes.real_t = (r6 * (r6 - 1.0) - eShift) as MyTypes.real_t;
-						val cal = 0.5*eLocal; //OPT: CSE (0.5*eLocal with cal)
-    					U(iOff) += cal as MyTypes.real_t; //OPT: CSE (0.5*eLocal with cal)
-    					U(jOff) += cal as MyTypes.real_t; //OPT: CSE (0.5*eLocal with cal)
+						val cal:MyTypes.real_t = 0.5*eLocal as MyTypes.real_t; //OPT: CSE (0.5*eLocal with cal)
+    					U(iOff) += cal; //OPT: CSE (0.5*eLocal with cal)
+    					U(jOff) += cal; //OPT: CSE (0.5*eLocal with cal)
 
     					// calculate energy contribution based on whether
     					// the neighbor box is local or remote
