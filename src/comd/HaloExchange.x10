@@ -110,6 +110,7 @@ public class HaloExchange {
     var recvBufM0:Rail[MyTypes.real_t];
     var recvBufP0:Rail[MyTypes.real_t];
     val tmp:Rail[AtomMsg];
+//    static val tmp:Rail[AtomMsg] = new Rail[AtomMsg](LinkCells.MAXATOMS);
     val shift:MyTypes.real3;
     def this (par:Parallel, per:PerformanceTimer, dc:Decomposition, lc:LinkCells) {
         this.par = par;
@@ -480,12 +481,18 @@ public class HaloExchange {
                 nBufr = nBuf * 6n;
                 bufi(nBufi++)	= s.atoms.gid(ii);
                 bufi(nBufi)		= s.atoms.iSpecies(ii);
+/*
                 bufr(nBufr++)	= s.atoms.r(ii)(0) + shift(0);
                 bufr(nBufr++)	= s.atoms.r(ii)(1) + shift(1);
                 bufr(nBufr++)	= s.atoms.r(ii)(2) + shift(2);
-                bufr(nBufr++)	= s.atoms.p(ii)(0);
-                bufr(nBufr++)	= s.atoms.p(ii)(1);
-                bufr(nBufr)		= s.atoms.p(ii)(2);
+*/
+					val ii3 = ii * 3;
+                bufr(nBufr++)	= s.atoms.r(ii3) + shift(0);
+                bufr(nBufr++)	= s.atoms.r(ii3+1) + shift(1);
+                bufr(nBufr++)	= s.atoms.r(ii3+2) + shift(2);
+                bufr(nBufr++)	= s.atoms.p(ii3);
+                bufr(nBufr++)	= s.atoms.p(ii3+1);
+                bufr(nBufr)		= s.atoms.p(ii3+2);
     			++nBuf;
     		}
     	}
@@ -521,6 +528,7 @@ public class HaloExchange {
     		val py:MyTypes.real_t = bufr(iir++);
     		val pz:MyTypes.real_t = bufr(iir++);
     		lc.putAtomInBox(s.boxes, s.atoms, gid, valueType, rx, ry, rz, px, py, pz);
+//    		LinkCells.putAtomInBox(s.boxes, s.atoms, gid, valueType, rx, ry, rz, px, py, pz);
     	}
     	return nBuf;
     }
@@ -703,12 +711,18 @@ public class HaloExchange {
     	{
     		tmp(iTmp).gid  = atoms.gid(ii);
     		tmp(iTmp).valueType = atoms.iSpecies(ii);
+/*
     		tmp(iTmp).rx =   atoms.r(ii)(0);
     		tmp(iTmp).ry =   atoms.r(ii)(1);
     		tmp(iTmp).rz =   atoms.r(ii)(2);
-    		tmp(iTmp).px =   atoms.p(ii)(0);
-    		tmp(iTmp).py =   atoms.p(ii)(1);
-    		tmp(iTmp).pz =   atoms.p(ii)(2);
+*/
+			val ii3 = ii * 3;
+    		tmp(iTmp).rx =   atoms.r(ii3);
+    		tmp(iTmp).ry =   atoms.r(ii3+1);
+    		tmp(iTmp).rz =   atoms.r(ii3+2);
+    		tmp(iTmp).px =   atoms.p(ii3);
+    		tmp(iTmp).py =   atoms.p(ii3+1);
+    		tmp(iTmp).pz =   atoms.p(ii3+2);
     	}
         qsort(tmp, 0l, nAtoms - 1);
     	iTmp = 0n;
@@ -716,12 +730,18 @@ public class HaloExchange {
     	{
     		atoms.gid(ii)   = tmp(iTmp).gid;
     		atoms.iSpecies(ii) = tmp(iTmp).valueType;
+/*
     		atoms.r(ii)(0)  = tmp(iTmp).rx;
     		atoms.r(ii)(1)  = tmp(iTmp).ry;
     		atoms.r(ii)(2)  = tmp(iTmp).rz;
-    		atoms.p(ii)(0)  = tmp(iTmp).px;
-    		atoms.p(ii)(1)  = tmp(iTmp).py;
-    		atoms.p(ii)(2)  = tmp(iTmp).pz;
+*/
+			val ii3 = ii * 3;
+    		atoms.r(ii3)  = tmp(iTmp).rx;
+    		atoms.r(ii3+1)  = tmp(iTmp).ry;
+    		atoms.r(ii3+2)  = tmp(iTmp).rz;
+    		atoms.p(ii3)  = tmp(iTmp).px;
+    		atoms.p(ii3+1)  = tmp(iTmp).py;
+    		atoms.p(ii3+2)  = tmp(iTmp).pz;
     	}
     }
 

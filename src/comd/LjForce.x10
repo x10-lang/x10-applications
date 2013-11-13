@@ -64,19 +64,20 @@ import x10.io.Printer;
 
 public class LjForce {
     static val POT_SHIFT = 1.0 as MyTypes.real_t;
+    static val MAXATOMS = 64n; 
 
     /// Derived struct for a Lennard Jones potential.
     /// Polymorphic with BasePotential.
     /// \see BasePotential
     val lc:LinkCells;
-    val my:MyTypes;
-    val nbrBoxes:Rail[Int];
-    val dr:Rail[MyTypes.real_t];
+    //val my:MyTypes; //OPT: Replace field var with local var (my)
+    //val nbrBoxes:Rail[Int]; //OPT: Replace field var with local var (nbrBoxes)
+    //val dr:Rail[MyTypes.real_t]; //OPT: Replace field var with local var (dr)
     def this (lc:LinkCells) {
     	this.lc = lc;
-        this.my = new MyTypes();
-        this.nbrBoxes = new Rail[Int](27);
-        this.dr = new Rail[MyTypes.real_t](3);
+        //this.my = new MyTypes(); //OPT: Replace field var with local var (my)
+        //this.nbrBoxes = new Rail[Int](27); //OPT: Replace field var with local var (nbrBoxes)
+        //this.dr = new Rail[MyTypes.real_t](3); //OPT: Replace field var with local var (dr)
     }
     /// Initialize an Lennard Jones potential for Copper.
     public def initLjPot(): CoMDTypes.BasePotential
@@ -123,27 +124,42 @@ public class LjForce {
     	val rCut:MyTypes.real_t = pot.cutoff;
     	val rCut2:MyTypes.real_t = rCut*rCut;
 
+	    // OPT: loop invariant references
+	    val atoms:InitAtoms.Atoms = s.atoms;
+	    val boxes:LinkCells.LinkCell = s.boxes;
+	    val nLocalBoxes = boxes.nLocalBoxes;
+	    val nAtoms = boxes.nAtoms;
+	    val r = atoms.r;
+	    val f = atoms.f;
+	    val U = atoms.U;
+	    val gid = atoms.gid;
+	    val my:MyTypes = new MyTypes();
+	    val nbrBoxes:Rail[Int] = new Rail[Int](27);
+    
     	// zero forces and energy
     	var ePot:MyTypes.real_t = MyTypes.real_t0;
     	s.ePotential = MyTypes.real_t0;
-    	val fSize = s.boxes.nTotalBoxes*LinkCells.MAXATOMS;
+    	val fSize = boxes.nTotalBoxes*LinkCells.MAXATOMS;
     	for (var ii:Int=0n; ii<fSize; ++ii)
     	{
-    		my.zeroReal3(s.atoms.f(ii));
-    		s.atoms.U(ii) = MyTypes.real_t0;
+//OPT: Array flattening (atoms.f)
+//    		my.zeroReal3(s.atoms.f(ii));
+	    	f(ii*3) = MyTypes.real_t0;
+  		  	f(ii*3+1) = MyTypes.real_t0;
+  		  	f(ii*3+2) = MyTypes.real_t0;
+    		U(ii) = MyTypes.real_t0;
     	}
-    
     	val s6:MyTypes.real_t = sigma*sigma*sigma*sigma*sigma*sigma;
 
     	val rCut6:MyTypes.real_t = s6 / (rCut2*rCut2*rCut2);
     	val eShift:MyTypes.real_t = (POT_SHIFT * rCut6 * (rCut6 - 1.0)) as MyTypes.real_t;
 
     	// loop over local boxes
-    	for (var iBox:Int=0n; iBox<s.boxes.nLocalBoxes; iBox++)
+    	for (var iBox:Int=0n; iBox<nLocalBoxes; iBox++)
     	{
-    		val nIBox = s.boxes.nAtoms(iBox);
+    		val nIBox = nAtoms(iBox);
     		if ( nIBox == 0n ) continue;
-    		val nNbrBoxes = lc.getNeighborBoxes(s.boxes, iBox, nbrBoxes);
+    		val nNbrBoxes = lc.getNeighborBoxes(boxes, iBox, nbrBoxes);
     		// loop over neighbors of iBox
     		for (var jTmp:Int=0n; jTmp<nNbrBoxes; jTmp++)
     		{
@@ -151,25 +167,41 @@ public class LjForce {
     
     			assert jBox>=0;
     
-    			val nJBox = s.boxes.nAtoms(jBox);
+    			val nJBox = nAtoms(jBox);
     			if ( nJBox == 0n ) continue;
     
     			// loop over atoms in iBox
-    			for (var iOff:Int=iBox*LinkCells.MAXATOMS,ii:Int=0n; ii<nIBox; ii++,iOff++)
+				var ii:Int=0n; //OPT: ???
+    			for (var iOff:Int=iBox*LinkCells.MAXATOMS; ii<nIBox; ii++,iOff++)
+//    			for (var iOff:Int=iBox*LinkCells.MAXATOMS,ii:Int=0n; ii<nIBox; ii++,iOff++)
     			{
-    				val iId = s.atoms.gid(iOff);
+					val iOff3 = iOff*3; //OPT: Array flattening
+    				val iId = gid(iOff);
     				// loop over atoms in jBox
-    				for (var jOff:Int=LinkCells.MAXATOMS*jBox,ij:Int=0n; ij<nJBox; ij++,jOff++)
+					var ij:Int=0n; //OPT: ???
+    				for (var jOff:Int=MAXATOMS*jBox; ij<nJBox; ij++,jOff++)
+//    				for (var jOff:Int=MAXATOMS*jBox,ij:Int=0n; ij<nJBox; ij++,jOff++)
     				{
-    					val jId:Int = s.atoms.gid(jOff);  
-    					if (jBox < s.boxes.nLocalBoxes && jId <= iId )
+						val jOff3 = jOff*3; //OPT: Array flattening
+    					val jId:Int = gid(jOff);
+
+    					if (jBox < nLocalBoxes && jId <= iId )
     						continue; // don't double count local-local pairs.
     					var r2:MyTypes.real_t = MyTypes.real_t0;
-    					for (var m:Int=0n; m<3; m++)
-    					{
-    						dr(m) = s.atoms.r(iOff)(m)-s.atoms.r(jOff)(m);
-    						r2+=dr(m)*dr(m);
-    					}
+
+//OPT: Loop unrolling
+//    					for (var m:Int=0n; m<3; m++)
+//    					{
+//    						dr(m) = s.atoms.r(iOff3+m)-s.atoms.r(jOff3+m);
+//    						r2+=dr(m)*dr(m);
+//    					}
+						val dr0 = r(iOff3)-r(jOff3); 
+    					r2+=dr0*dr0;
+						val dr1 = r(iOff3+1)-r(jOff3+1); 
+    					r2+=dr1*dr1;
+						val dr2 = r(iOff3+2)-r(jOff3+2); 
+    					r2+=dr2*dr2;
+//End of OPT: Loop unrolling
     
     					if ( r2 > rCut2) continue;
 
@@ -178,23 +210,33 @@ public class LjForce {
     					r2 = (1.0/r2) as MyTypes.real_t;
     					val r6:MyTypes.real_t = s6 * (r2*r2*r2);
     					val eLocal:MyTypes.real_t = (r6 * (r6 - 1.0) - eShift) as MyTypes.real_t;
-    					s.atoms.U(iOff) += (0.5*eLocal) as MyTypes.real_t;
-    					s.atoms.U(jOff) += (0.5*eLocal) as MyTypes.real_t;
+						val cal:MyTypes.real_t = 0.5*eLocal as MyTypes.real_t; //OPT: CSE (0.5*eLocal with cal)
+    					U(iOff) += cal; //OPT: CSE (0.5*eLocal with cal)
+    					U(jOff) += cal; //OPT: CSE (0.5*eLocal with cal)
 
     					// calculate energy contribution based on whether
     					// the neighbor box is local or remote
-    					if (jBox < s.boxes.nLocalBoxes)
+    					if (jBox < nLocalBoxes)
     						ePot += eLocal;
     					else
-    						ePot += 0.5 * eLocal;
+    						ePot += cal; //OPT: CSE (0.5*eLocal with cal)
 
     					// different formulation to avoid sqrt computation
     					var fr:MyTypes.real_t = (-4.0*epsilon*r6*r2*(12.0*r6 - 6.0)) as MyTypes.real_t;
-    					for (var m:Int=0n; m<3; m++)
-    					{
-    						s.atoms.f(iOff)(m) -= dr(m)*fr;
-    						s.atoms.f(jOff)(m) += dr(m)*fr;
-    					}
+//OPT: Loop unrolling
+//    					for (var m:Int=0n; m<3; m++)
+//    					{
+//							val cal2 = dr(m)*fr;
+//    						s.atoms.f(iOff3+m) -= cal2;
+//    						s.atoms.f(jOff3+m) += cal2;
+//    					}
+  						f(iOff3) -= dr0*fr;
+  						f(iOff3+1) -= dr1*fr;
+  						f(iOff3+2) -= dr2*fr;
+  						f(jOff3) += dr0*fr;
+  						f(jOff3+1) += dr1*fr;
+  						f(jOff3+2) += dr2*fr;
+//End of OPT: Loop unrolling
     				} // loop over atoms in jBox
     			} // loop over atoms in iBox
     		} // loop over neighbor boxes
