@@ -149,14 +149,24 @@ int ljForce(SimFlat* s)
    real_t rCut = pot->cutoff;
    real_t rCut2 = rCut*rCut;
 
+   // OPT: loop invariant references
+   Atoms* atoms = s->atoms;
+   LinkCell* boxes = s->boxes;
+   int nLocalBoxes = boxes->nLocalBoxes;
+   int* nAtoms = boxes->nAtoms;
+   real3* r = atoms->r;
+   real3* f = atoms->f;
+   real_t* U = atoms->U;
+   int* gid = atoms->gid;
+
    // zero forces and energy
    real_t ePot = 0.0;
    s->ePotential = 0.0;
    int fSize = s->boxes->nTotalBoxes*MAXATOMS;
    for (int ii=0; ii<fSize; ++ii)
    {
-      zeroReal3(s->atoms->f[ii]);
-      s->atoms->U[ii] = 0.;
+      zeroReal3(f[ii]);
+      U[ii] = 0.;
    }
    
    real_t s6 = sigma*sigma*sigma*sigma*sigma*sigma;
@@ -166,11 +176,11 @@ int ljForce(SimFlat* s)
 
    int nbrBoxes[27];
    // loop over local boxes
-   for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++)
+   for (int iBox=0; iBox<nLocalBoxes; iBox++)
    {
-      int nIBox = s->boxes->nAtoms[iBox];
+      int nIBox = nAtoms[iBox];
       if ( nIBox == 0 ) continue;
-      int nNbrBoxes = getNeighborBoxes(s->boxes, iBox, nbrBoxes);
+      int nNbrBoxes = getNeighborBoxes(boxes, iBox, nbrBoxes);
       // loop over neighbors of iBox
       for (int jTmp=0; jTmp<nNbrBoxes; jTmp++)
       {
@@ -178,26 +188,34 @@ int ljForce(SimFlat* s)
          
          assert(jBox>=0);
          
-         int nJBox = s->boxes->nAtoms[jBox];
+         int nJBox = nAtoms[jBox];
          if ( nJBox == 0 ) continue;
          
          // loop over atoms in iBox
          for (int iOff=iBox*MAXATOMS,ii=0; ii<nIBox; ii++,iOff++)
          {
-            int iId = s->atoms->gid[iOff];
+            int iId = gid[iOff];
             // loop over atoms in jBox
             for (int jOff=MAXATOMS*jBox,ij=0; ij<nJBox; ij++,jOff++)
             {
-               real_t dr[3];
-               int jId = s->atoms->gid[jOff];
-               if (jBox < s->boxes->nLocalBoxes && jId <= iId )
+//               real_t dr[3];
+               int jId = gid[jOff];
+               if (jBox < nLocalBoxes && jId <= iId )
                   continue; // don't double count local-local pairs.
                real_t r2 = 0.0;
-               for (int m=0; m<3; m++)
-               {
-                  dr[m] = s->atoms->r[iOff][m]-s->atoms->r[jOff][m];
-                  r2+=dr[m]*dr[m];
-               }
+//OPT: loop unrolling
+//               for (int m=0; m<3; m++)
+//               {
+//                  dr[m] = r[iOff][m]-r[jOff][m];
+//                  r2+=dr[m]*dr[m];
+//               }
+               real_t dr0 = r[iOff][0]-r[jOff][0];
+               r2+=dr0*dr0;
+               real_t dr1 = r[iOff][1]-r[jOff][1];
+               r2+=dr1*dr1;
+               real_t dr2 = r[iOff][2]-r[jOff][2];
+               r2+=dr2*dr2;
+//End of OPT: loop unrolling
 
                if ( r2 > rCut2) continue;
 
@@ -206,23 +224,31 @@ int ljForce(SimFlat* s)
                r2 = 1.0/r2;
                real_t r6 = s6 * (r2*r2*r2);
                real_t eLocal = r6 * (r6 - 1.0) - eShift;
-               s->atoms->U[iOff] += 0.5*eLocal;
-               s->atoms->U[jOff] += 0.5*eLocal;
+               U[iOff] += 0.5*eLocal;
+               U[jOff] += 0.5*eLocal;
 
                // calculate energy contribution based on whether
                // the neighbor box is local or remote
-               if (jBox < s->boxes->nLocalBoxes)
+               if (jBox < nLocalBoxes)
                   ePot += eLocal;
                else
                   ePot += 0.5 * eLocal;
 
                // different formulation to avoid sqrt computation
                real_t fr = - 4.0*epsilon*r6*r2*(12.0*r6 - 6.0);
-               for (int m=0; m<3; m++)
-               {
-                  s->atoms->f[iOff][m] -= dr[m]*fr;
-                  s->atoms->f[jOff][m] += dr[m]*fr;
-               }
+//OPT: loop unrolling
+//               for (int m=0; m<3; m++)
+//               {
+//                  f[iOff][m] -= dr[m]*fr;
+//                  f[jOff][m] += dr[m]*fr;
+//               }
+               f[iOff][0] -= dr0*fr;
+               f[iOff][1] -= dr1*fr;
+               f[iOff][2] -= dr2*fr;
+               f[jOff][0] += dr0*fr;
+               f[jOff][1] += dr1*fr;
+               f[jOff][2] += dr2*fr;
+//End of OPT: loop unrolling
             } // loop over atoms in jBox
          } // loop over atoms in iBox
       } // loop over neighbor boxes
