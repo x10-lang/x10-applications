@@ -895,7 +895,7 @@ public final class SolveWilson {
 
     // val vcp_local = vcp1();
     val gref_vcp1 = GlobalRail(vcp1());
-    at(Place.place(dst)) {
+    at(Place.place(dst)) async {
       // for (i in range) {
       // 	vcp2()(i) = vcp_local(i);
       // } 
