@@ -36,6 +36,10 @@ public final class SolveWilson {
   // static val Lszy = 16;
   // static val Lszz = 16;
   // static val Ltime = 32;
+  // static val Lszx = 32;
+  // static val Lszy = 32;
+  // static val Lszz = 32;
+  // static val Ltime = 64;
   static val Lx = Lszx;
   static val Ly = Lszy;
   static val Lz = Lszz;
@@ -90,19 +94,19 @@ public final class SolveWilson {
   static val St = (It * Lt) / Npt;
   static val Et = ((It + 1) * Lt) / Npt;
 
-  static val Ixp = (Ex == Lx) ? here.id + 1 - Npx : here.id + 1;
-  static val Iyp = (Ey == Ly) ? here.id + Npx - (Npx * Npy) : here.id + Npx;
-  static val Izp = (Ez == Lz) ? here.id + (Npx * Npy) - (Npx * Npy * Npz) 
-			      : here.id + (Npx * Npy);
-  static val Itp = (Et == Lt) ? here.id + (Npx * Npy * Npz) - (Npx * Npy * Npz * Npt)
-			      : here.id + (Npx * Npy * Npz);  
-
-  static val Ixm = (Sx == 0) ? here.id - 1 + Npx : here.id - 1;
-  static val Iym = (Sy == 0) ? here.id - Npx + (Npx * Npy) : here.id - Npx;
-  static val Izm = (Sz == 0) ? here.id - (Npx * Npy) + (Npx * Npy * Npz) 
+  static val Ixp = (Sx == 0) ? here.id - 1 + Npx : here.id - 1;
+  static val Iyp = (Sy == 0) ? here.id - Npx + (Npx * Npy) : here.id - Npx;
+  static val Izp = (Sz == 0) ? here.id - (Npx * Npy) + (Npx * Npy * Npz) 
 			     : here.id - (Npx * Npy);
-  static val Itm = (St == 0) ? here.id - (Npx * Npy * Npz) + (Npx * Npy * Npz * Npt)
+  static val Itp = (St == 0) ? here.id - (Npx * Npy * Npz) + (Npx * Npy * Npz * Npt)
 			     : here.id - (Npx * Npy * Npz);
+
+  static val Ixm = (Ex == Lx) ? here.id + 1 - Npx : here.id + 1;
+  static val Iym = (Ey == Ly) ? here.id + Npx - (Npx * Npy) : here.id + Npx;
+  static val Izm = (Ez == Lz) ? here.id + (Npx * Npy) - (Npx * Npy * Npz) 
+			      : here.id + (Npx * Npy);
+  static val Itm = (Et == Lt) ? here.id + (Npx * Npy * Npz) - (Npx * Npy * Npz * Npt)
+			      : here.id + (Npx * Npy * Npz);  
 
   static val CKs = 0.150;	
 
@@ -223,10 +227,10 @@ public final class SolveWilson {
       var send_meanTime:Long = 0;
 
       
-      // for(ic in 0..(Ncol-1)) {
-      // 	for(id in 0..(ND-1)) {
-      for (ic in 0..0) {
-      	for (id in 0..0) {
+      for(ic in 0..(Ncol-1)) {
+      	for(id in 0..(ND-1)) {
+      // for (ic in 0..0) {
+      // 	for (id in 0..0) {
 	  
       	  qcd.set_src(ic,id,0,0,0,0,bq);
 
@@ -266,11 +270,11 @@ public final class SolveWilson {
       }
       
       //timer
-      // meanTime /= Ncol * ND;
-      Console.OUT.println("SolveWilson: " + meanTime + " ms");
+      meanTime /= Ncol * ND;
+      // Console.OUT.println("SolveWilson: " + meanTime + " ms");
 
-      // send_meanTime /= Ncol * ND;
-      Console.OUT.println("send: " + send_meanTime + " ms");
+      send_meanTime /= Ncol * ND;
+      // Console.OUT.println("send: " + send_meanTime + " ms");
       
 
     } catch (e:FileNotFoundException) {
@@ -333,14 +337,14 @@ public final class SolveWilson {
     //timer
     Console.OUT.println("step: " + step_meanTime);
     Console.OUT.println("mult: " + mult_meanTime);
-    Console.OUT.println("mult_x: " + mult_x_meanTime);
-    Console.OUT.println("mult_y: " + mult_y_meanTime);
-    Console.OUT.println("mult_z: " + mult_z_meanTime);
-    Console.OUT.println("mult_t: " + mult_t_meanTime);
-    Console.OUT.println("send_x: " + send_x_meanTime);
-    Console.OUT.println("send_y: " + send_y_meanTime);
-    Console.OUT.println("send_z: " + send_z_meanTime);
-    Console.OUT.println("send_t: " + send_t_meanTime);
+    // Console.OUT.println("mult_x: " + mult_x_meanTime);
+    // Console.OUT.println("mult_y: " + mult_y_meanTime);
+    // Console.OUT.println("mult_z: " + mult_z_meanTime);
+    // Console.OUT.println("mult_t: " + mult_t_meanTime);
+    // Console.OUT.println("send_x: " + send_x_meanTime);
+    // Console.OUT.println("send_y: " + send_y_meanTime);
+    // Console.OUT.println("send_z: " + send_z_meanTime);
+    // Console.OUT.println("send_t: " + send_t_meanTime);
 
     val send_time = send_x_meanTime + send_y_meanTime 
     + send_z_meanTime + send_t_meanTime;
@@ -360,9 +364,6 @@ public final class SolveWilson {
 
   }
   /* ****************************************************** */
-  // def solve_CG_init(rrp:Cell[Double], rr:Cell[Double], 
-  // 		    u:Rail[Double], x:Rail[Double], r:Rail[Double], 
-  // 		    s:Rail[Double], p:Rail[Double], v:Rail[Double]){
   def solve_CG_init(rrp:Cell[Double], rr:Cell[Double], u:PlaceLocalHandle[Rail[Double]], 
 		    x:PlaceLocalHandle[Rail[Double]], r:PlaceLocalHandle[Rail[Double]], 
 		    s:PlaceLocalHandle[Rail[Double]], p:PlaceLocalHandle[Rail[Double]], 
@@ -440,21 +441,52 @@ public final class SolveWilson {
 
     // timers
     val mult_startTime = System.currentTimeMillis();
-    mult_xp(v,u,w);
-    mult_xm(v,u,w);
-    mult_x_meanTime += System.currentTimeMillis() - mult_startTime;
-    val mult_y_startTime = System.currentTimeMillis();
-    mult_yp(v,u,w);
-    mult_ym(v,u,w);
-    mult_y_meanTime += System.currentTimeMillis() - mult_y_startTime;
-    val mult_z_startTime = System.currentTimeMillis();
-    mult_zp(v,u,w);
-    mult_zm(v,u,w);
-    mult_z_meanTime += System.currentTimeMillis() - mult_z_startTime;
-    val mult_t_startTime = System.currentTimeMillis();
-    mult_tp(v,u,w);
-    mult_tm(v,u,w);
-    mult_t_meanTime += System.currentTimeMillis() - mult_t_startTime;
+
+    finish for (p in places) at(p) async {
+
+      // make and send boundary data
+      make_tp_bnd(vcp1_tp, w);
+      send(vcp1_tp, vcp2_tp, Itp, 0..(Nvc*2*Nx*Ny*Nz-1));
+      make_tm_bnd(vcp1_tm, u, w);
+      send(vcp1_tm, vcp2_tm, Itm, 0..(Nvc*2*Nx*Ny*Nz-1));
+      make_xp_bnd(vcp1_xp, w);
+      send(vcp1_xp, vcp2_xp, Ixp, 0..(Nvc*2*Ny*Nz*Nt-1));
+      make_xm_bnd(vcp1_xm, u, w);
+      send(vcp1_xm, vcp2_xm, Ixm, 0..(Nvc*2*Ny*Nz*Nt-1));
+      make_yp_bnd(vcp1_yp, w);
+      send(vcp1_yp, vcp2_yp, Iyp, 0..(Nvc*2*Nx*Nz*Nt-1));
+      make_ym_bnd(vcp1_ym, u, w);
+      send(vcp1_ym, vcp2_ym, Iym, 0..(Nvc*2*Nx*Nz*Nt-1));
+      make_zp_bnd(vcp1_zp, w);
+      send(vcp1_zp, vcp2_zp, Izp, 0..(Nvc*2*Nx*Ny*Nt-1));
+      make_zm_bnd(vcp1_zm, u, w);
+      send(vcp1_zm, vcp2_zm, Izm, 0..(Nvc*2*Nx*Ny*Nt-1));
+
+      // calculate bulk part in local 
+      mult_tp_bulk(v, u, w);
+      mult_tm_bulk(v, u, w);
+      mult_xp_bulk(v, u, w);
+      mult_xm_bulk(v, u, w);
+      mult_yp_bulk(v, u, w);
+      mult_ym_bulk(v, u, w);
+      mult_zp_bulk(v, u, w);
+      mult_zm_bulk(v, u, w);
+
+    }
+
+    finish for (p in places) at(p) async {
+
+      // set boundary part
+      set_tp_bnd(vcp2_tp, u, v);
+      set_tm_bnd(vcp2_tm, v);
+      set_xp_bnd(vcp2_xp, u, v);
+      set_xm_bnd(vcp2_xm, v);
+      set_yp_bnd(vcp2_yp, u, v);
+      set_ym_bnd(vcp2_ym, v);
+      set_zp_bnd(vcp2_zp, u, v);
+      set_zm_bnd(vcp2_zm, v);
+    }
+
     mult_meanTime += System.currentTimeMillis() - mult_startTime;
 
     finish for (p in places) at(p) async {
@@ -475,231 +507,6 @@ public final class SolveWilson {
 
   }
   /* ****************************************************** */
-  def mult_xp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_xp_bnd(vcp1_xp, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to plus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_xp, vcp2_xp, Ixp, 0..(Nvc*2*Ny*Nz*Nt-1));
-    }
-    
-    send_x_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_xp_bnd(vcp2_xp, u, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_xp_bulk(v2, u, v1);
-    } 
-
-  }
-
-  /* ****************************************************** */
-  def mult_xm(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_xm_bnd(vcp1_xm, u, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to minus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_xm, vcp2_xm, Ixm, 0..(Nvc*2*Ny*Nz*Nt-1));
-    }
-    
-    send_x_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_xm_bnd(vcp2_xm, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) {
-      mult_xm_bulk(v2, u, v1);
-    }
-
-  }
-
-  /* ****************************************************** */
-  def mult_yp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_yp_bnd(vcp1_yp, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to plus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_yp, vcp2_yp, Iyp, 0..(Nvc*2*Nx*Nz*Nt-1));
-    }
-
-    send_y_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_yp_bnd(vcp2_yp, u, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_yp_bulk(v2, u, v1);
-    }
-  }
-
-  /* ****************************************************** */
-  def mult_ym(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_ym_bnd(vcp1_ym, u, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to minus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_ym, vcp2_ym, Iym, 0..(Nvc*2*Nx*Nz*Nt-1));
-    }
-
-    send_y_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_ym_bnd(vcp2_ym, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_ym_bulk(v2, u, v1);
-    }
-
-  }
-  /* ****************************************************** */
-  def mult_zp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_zp_bnd(vcp1_zp, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to plus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_zp, vcp2_zp, Izp, 0..(Nvc*2*Nx*Ny*Nt-1));
-    }
-
-    send_z_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_zp_bnd(vcp2_zp, u, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_zp_bulk(v2, u, v1);
-    }
-
-  }
-  /* ****************************************************** */
-  def mult_zm(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-  	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_zm_bnd(vcp1_zm, u, v1);
-    }
-    
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to minus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_zm, vcp2_zm, Izm, 0..(Nvc*2*Nx*Ny*Nt-1));
-    }
-
-    send_z_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_zm_bnd(vcp2_zm, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_zm_bulk(v2, u, v1);
-    }
-  }
-
-  /* ****************************************************** */
-  def mult_tp(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_tp_bnd(vcp1_tp, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    finish for (p in places) at(p) async {
-      send(vcp1_tp, vcp2_tp, Itp, 0..(Nvc*2*Nx*Ny*Nz-1));
-    }
-
-    send_t_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_tp_bnd(vcp2_tp, u, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_tp_bulk(v2, u, v1);
-    }
-
-  }
-
-  /* ****************************************************** */
-  def mult_tm(v2:PlaceLocalHandle[Rail[Double]], u:PlaceLocalHandle[Rail[Double]], 
-	      v1:PlaceLocalHandle[Rail[Double]]){
-
-    // boundary part
-    finish for (p in places) at(p) async {
-      make_tm_bnd(vcp1_tm, u, v1);
-    }
-
-    val send_startTime = System.currentTimeMillis();
-
-    // Send boundary to minus neighbor
-    finish for (p in places) at(p) async {
-      send(vcp1_tm, vcp2_tm, Itm, 0..(Nvc*2*Nx*Ny*Nz-1));
-    }
-
-    send_t_meanTime += System.currentTimeMillis() - send_startTime;
-
-    finish for (p in places) at(p) async {
-      set_tm_bnd(vcp2_tm, v2);
-    }
-
-    // bulk part 
-    finish for (p in places) at(p) async {
-      mult_tm_bulk(v2, u, v1);
-    }
-  }
-
   static @Inline def mult_uv_r(u:Rail[Double], v:Rail[Double], ic2:Long, ig:Long, ix:Long) {
     val u_0 = u(ic2 + ig   );
     val u_1 = u(ic2 + ig + 1);
@@ -736,59 +543,6 @@ public final class SolveWilson {
     return u_0 * v_1 + u_1 * v_0
          + u_2 * v_3 + u_3 * v_2
          + u_4 * v_5 + u_5 * v_4;
-  }
-
-  /* ****************************************************** */
-  static @Inline def mult_p(wt1r:Cell[Double], wt1i:Cell[Double], 
-			    wt2r:Cell[Double], wt2i:Cell[Double], u:Rail[Double], 
-			    vt1_0:Double, vt1_1:Double, vt1_2:Double, 
-			    vt1_3:Double, vt1_4:Double, vt1_5:Double, 
-			    vt2_0:Double, vt2_1:Double, vt2_2:Double, 
-			    vt2_3:Double, vt2_4:Double, vt2_5:Double, 
-			    ic:Long, ig:Long) { 	
-
-    val ic2 = ic*Nvc;
-
-    wt1r() = u(0+ic2+ig)*vt1_0 - u(1+ic2+ig)*vt1_1
-    + u(2+ic2+ig)*vt1_2 - u(3+ic2+ig)*vt1_3
-    + u(4+ic2+ig)*vt1_4 - u(5+ic2+ig)*vt1_5;
-    wt1i() = u(0+ic2+ig)*vt1_1 + u(1+ic2+ig)*vt1_0
-    + u(2+ic2+ig)*vt1_3 + u(3+ic2+ig)*vt1_2
-    + u(4+ic2+ig)*vt1_5 + u(5+ic2+ig)*vt1_4;
-    
-    wt2r() = u(0+ic2+ig)*vt2_0 - u(1+ic2+ig)*vt2_1
-    + u(2+ic2+ig)*vt2_2 - u(3+ic2+ig)*vt2_3
-    + u(4+ic2+ig)*vt2_4 - u(5+ic2+ig)*vt2_5;
-    wt2i() = u(0+ic2+ig)*vt2_1 + u(1+ic2+ig)*vt2_0
-    + u(2+ic2+ig)*vt2_3 + u(3+ic2+ig)*vt2_2
-    + u(4+ic2+ig)*vt2_5 + u(5+ic2+ig)*vt2_4;
-  }
-
-  /* ****************************************************** */
-  static @Inline def mult_m(wt1r:Cell[Double], wt1i:Cell[Double], 
-			    wt2r:Cell[Double], wt2i:Cell[Double], u:Rail[Double], 
-			    vt1_0:Double, vt1_1:Double, vt1_2:Double, 
-			    vt1_3:Double, vt1_4:Double, vt1_5:Double, 
-			    vt2_0:Double, vt2_1:Double, vt2_2:Double, 
-			    vt2_3:Double, vt2_4:Double, vt2_5:Double, 
-			    icr:Long, ici:Long, ig:Long) {
-    val ic1 = 0;
-    val ic2 = Nvc;
-    val ic3 = 2*Nvc;
-
-    wt1r() = u(icr+ic1+ig)*vt1_0 + u(ici+ic1+ig)*vt1_1
-    + u(icr+ic2+ig)*vt1_2 + u(ici+ic2+ig)*vt1_3
-    + u(icr+ic3+ig)*vt1_4 + u(ici+ic3+ig)*vt1_5;
-    wt1i() = u(icr+ic1+ig)*vt1_1 - u(ici+ic1+ig)*vt1_0
-    + u(icr+ic2+ig)*vt1_3 - u(ici+ic2+ig)*vt1_2
-    + u(icr+ic3+ig)*vt1_5 - u(ici+ic3+ig)*vt1_4;
-
-    wt2r() = u(icr+ic1+ig)*vt2_0 + u(ici+ic1+ig)*vt2_1
-    + u(icr+ic2+ig)*vt2_2 + u(ici+ic2+ig)*vt2_3
-    + u(icr+ic3+ig)*vt2_4 + u(ici+ic3+ig)*vt2_5;
-    wt2i() = u(icr+ic1+ig)*vt2_1 - u(ici+ic1+ig)*vt2_0
-    + u(icr+ic2+ig)*vt2_3 - u(ici+ic2+ig)*vt2_2
-    + u(icr+ic3+ig)*vt2_5 - u(ici+ic3+ig)*vt2_4;
   }
   
   /* ****************************************************** */
@@ -1489,14 +1243,14 @@ public final class SolveWilson {
 	  val wt2r = mult_uv_r(u(), vcp2_xp(), ic2, ig, ix2);
 	  val wt2i = mult_uv_i(u(), vcp2_xp(), ic2, ig, ix2);
 
-	  v2()(2*ic   +id1+iv) =  wt1r;
-	  v2()(2*ic+1 +id1+iv) =  wt1i;
-	  v2()(2*ic   +id2+iv) =  wt2r;
-	  v2()(2*ic+1 +id2+iv) =  wt2i;
-	  v2()(2*ic   +id3+iv) =  wt2i;
-	  v2()(2*ic+1 +id3+iv) = -wt2r;
-	  v2()(2*ic   +id4+iv) =  wt1i;
-	  v2()(2*ic+1 +id4+iv) = -wt1r;
+	  v2()(2*ic   +id1+iv) +=  wt1r;
+	  v2()(2*ic+1 +id1+iv) +=  wt1i;
+	  v2()(2*ic   +id2+iv) +=  wt2r;
+	  v2()(2*ic+1 +id2+iv) +=  wt2i;
+	  v2()(2*ic   +id3+iv) +=  wt2i;
+	  v2()(2*ic+1 +id3+iv) += -wt2r;
+	  v2()(2*ic   +id4+iv) +=  wt1i;
+	  v2()(2*ic+1 +id4+iv) += -wt1r;
 	}
       }
     });
@@ -1773,14 +1527,14 @@ public final class SolveWilson {
 	    + u()(2+ic2+ig)*vt2_3 + u()(3+ic2+ig)*vt2_2
 	    + u()(4+ic2+ig)*vt2_5 + u()(5+ic2+ig)*vt2_4;
 
-	    v2()(2*ic   +id1+iv) =  wt1r;
-	    v2()(2*ic+1 +id1+iv) =  wt1i;
-	    v2()(2*ic   +id2+iv) =  wt2r;
-	    v2()(2*ic+1 +id2+iv) =  wt2i;
-	    v2()(2*ic   +id3+iv) =  wt2i;
-	    v2()(2*ic+1 +id3+iv) = -wt2r;
-	    v2()(2*ic   +id4+iv) =  wt1i;
-	    v2()(2*ic+1 +id4+iv) = -wt1r;
+	    v2()(2*ic   +id1+iv) +=  wt1r;
+	    v2()(2*ic+1 +id1+iv) +=  wt1i;
+	    v2()(2*ic   +id2+iv) +=  wt2r;
+	    v2()(2*ic+1 +id2+iv) +=  wt2i;
+	    v2()(2*ic   +id3+iv) +=  wt2i;
+	    v2()(2*ic+1 +id3+iv) += -wt2r;
+	    v2()(2*ic   +id4+iv) +=  wt1i;
+	    v2()(2*ic+1 +id4+iv) += -wt1r;
 	  }
 	}
       }
