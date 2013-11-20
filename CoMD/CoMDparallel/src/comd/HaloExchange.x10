@@ -348,14 +348,10 @@ public class HaloExchange {
     	val nbrRankP = haloExchange.nbrRank(faceP);
 
     	per.startTimer(per.commHaloTimer);
-       par.iSendReceiveParallel[Int](sendBufMi, nSendM*2n, nbrRankM, recvBufPi, haloExchange.bufCapacity*2n, nbrRankP, nRecvPi);
-       par.barrierParallel();
-       par.iSendReceiveParallel[MyTypes.real_t](sendBufMr, nSendM*6n, nbrRankM, recvBufPr, haloExchange.bufCapacity*6n, nbrRankP, nRecvPr);
-       par.barrierParallel();
-       par.iSendReceiveParallel[Int](sendBufPi, nSendP*2n, nbrRankP, recvBufMi, haloExchange.bufCapacity*2n, nbrRankM, nRecvMi);
-       par.barrierParallel();
-       par.iSendReceiveParallel[MyTypes.real_t](sendBufPr, nSendP*6n, nbrRankP, recvBufMr, haloExchange.bufCapacity*6n, nbrRankM, nRecvMr);
-       par.barrierParallel();
+       par.sendReceiveParallel[Int](sendBufMi, nSendM*2n, nbrRankM, recvBufPi, haloExchange.bufCapacity*2n, nbrRankP, nRecvPi);
+       par.sendReceiveParallel[MyTypes.real_t](sendBufMr, nSendM*6n, nbrRankM, recvBufPr, haloExchange.bufCapacity*6n, nbrRankP, nRecvPr);
+       par.sendReceiveParallel[Int](sendBufPi, nSendP*2n, nbrRankP, recvBufMi, haloExchange.bufCapacity*2n, nbrRankM, nRecvMi);
+       par.sendReceiveParallel[MyTypes.real_t](sendBufPr, nSendP*6n, nbrRankP, recvBufMr, haloExchange.bufCapacity*6n, nbrRankM, nRecvMr);
        per.stopTimer(per.commHaloTimer);
        val nRecvPit = nRecvPi().value;
        val nRecvMit = nRecvMi().value;
@@ -384,10 +380,8 @@ public class HaloExchange {
     	val nbrRankP = haloExchange.nbrRank(faceP);
 
     	per.startTimer(per.commHaloTimer);
-       par.iSendReceiveParallel[MyTypes.real_t](sendBufM, nSendM, nbrRankM, recvBufP, haloExchange.bufCapacity, nbrRankP, nRecvP);
-       par.barrierParallel();
-       par.iSendReceiveParallel[MyTypes.real_t](sendBufP, nSendP, nbrRankP, recvBufM, haloExchange.bufCapacity, nbrRankM, nRecvM);
-       par.barrierParallel();
+       par.sendReceiveParallel[MyTypes.real_t](sendBufM, nSendM, nbrRankM, recvBufP, haloExchange.bufCapacity, nbrRankP, nRecvP);
+       par.sendReceiveParallel[MyTypes.real_t](sendBufP, nSendP, nbrRankP, recvBufM, haloExchange.bufCapacity, nbrRankM, nRecvM);
     	per.stopTimer(per.commHaloTimer);
     
        haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceM, nRecvM().value, recvBufM);

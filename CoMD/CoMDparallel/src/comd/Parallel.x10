@@ -10,7 +10,7 @@ package comd;
 import x10.compiler.*;
 import x10.util.Team;
 import x10.util.Timer;
-import x10.util.concurrent.Latch;
+import x10.util.concurrent.IntLatch;
 
 public class Parallel {
 
@@ -22,11 +22,14 @@ public class Parallel {
     val t:Timer;
     val team:Team;
 
-    val sync:PlaceLocalHandle[Rail[Latch]];
+    val intLatchPut:PlaceLocalHandle[Rail[Latch2]];
+    val intLatchGet:PlaceLocalHandle[Rail[Latch2]];
+    
     def this() {
         this.t = new Timer();
         this.team = new Team(PlaceGroup.WORLD);
-        this.sync = PlaceLocalHandle.make[Rail[Latch]](Place.places(), ()=>new Rail[Latch](2));
+         this.intLatchPut = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](256));
+         this.intLatchGet = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](256));
     }
     
     public def getNRanks():Long {
@@ -49,11 +52,6 @@ public class Parallel {
     public def timestampBarrier(msg:String):void {
     	barrierParallel();
     	if (!printRank()) return;
-        //TODO rewrite the following 
-    	//time_t t= time(NULL);
-    	//char* timeString = ctime(&t);
-    	//timeString[24] = '\0'; // clobber newline
-    	//val t = new Timer();
         val timeString = (t.milliTime()/1000).toString();
         Console.OUT.printf("%s: %s\n", timeString, msg);
     }
@@ -62,10 +60,11 @@ public class Parallel {
     public def initParallel(args:Rail[String], par:Parallel, hep:HaloExchangePlh, pp:(args:Rail[String], par:Parallel, hep:HaloExchangePlh)=>void):void {
         PlaceGroup.WORLD.broadcastFlat(
             ()=>{
-             for(var i:Int = 0n; i < 2n; i++) { 
-              	sync()(i) = new Latch();
+             for(var i:Int = 0n; i < 256n; i++) { 
+                  intLatchPut()(i) = new Latch2();
+                  intLatchGet()(i) = new Latch2();
                 }
-               pp(args, par, hep);});
+              pp(args, par, hep);});
     }
 
     public def destroyParallel():void {
@@ -81,21 +80,32 @@ public class Parallel {
     /// \param [out] recvBuf Received data.
     /// \param [in]  recvLen Maximum number of bytes to receive.
     /// \param [in]  source  Rank in MPI_COMM_WORLD from which to receive.
-    /// \param [out] recvdLen Number of bytes received.
-    public def iSendReceiveParallel[T](sendBuf:PlaceLocalHandle[Rail[T]], sendLen:Int, dest:Int,
+    /// \return Number of bytes received.
+    public def sendReceiveParallel[T](sendBuf:PlaceLocalHandle[Rail[T]], sendLen:Int, dest:Int,
     recvBuf:PlaceLocalHandle[Rail[T]], recvLen:Int, source:Int, recvdLen:PlaceLocalHandle[Cell[Int]]):int {
-        val sendBufferRef = GlobalRail(sendBuf());
-        val len = Math.min(sendLen, recvLen);
-        finish {
-            async at (Place.place(dest)) {
-                finish {
-                    Rail.asyncCopy[T](sendBufferRef, 0, recvBuf(), 0, len as Long);
-                    recvdLen().value = len;
-                   }
-              }
-         }
-        return len;
-
+    val len = sendLen;
+    val sendsrc = getMyRank() as Int;
+    if (sendsrc == dest && sendsrc == source) {
+    Rail.copy[T](sendBuf(), 0, recvBuf(), 0, len as Long);
+    recvdLen().value = len;
+    } else {
+    val sendBufferRef = GlobalRail(sendBuf());
+    finish {
+    at (Place.place(dest)) async {
+    finish{
+    intLatchPut()(sendsrc).sync();
+    Rail.asyncCopy[T](sendBufferRef, 0, recvBuf(), 0, len as Long);
+    recvdLen().value = len;
+    intLatchGet()(sendsrc).release();
+    }
+    }
+    finish {
+    intLatchPut()(source).release();
+    intLatchGet()(source).sync();
+    }
+    }
+    }
+    return len;
     }
 
     public def addIntParallel(sendBuf:Rail[Int], recvBuf:Rail[Int], count:Int):void {
@@ -141,6 +151,7 @@ public class Parallel {
     	}
     }
 
+    /// \param [in] count Length of buf in bytes.
     public def bcastParallel[T](sendBuf:Rail[T], recvBuf:Rail[T], count:Long, root:Long):void {
         team.bcast[T](Place(root), sendBuf, 0, recvBuf, 0, count);
     }
