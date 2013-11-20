@@ -67,8 +67,10 @@ public class HaloExchange {
     	/// \param [in] face  Specifies the face across which data is being sent.
     	/// \param [in] buf   The send buffer to be loaded
     	/// \return The number of bytes loaded into the send buffer.
-        var loadBufferForAtoms:(AtomExchangeParms,CoMDTypes.SimFlat,Int,Rail[Int],Rail[MyTypes.real_t])=>Int;
-        var loadBufferForForce:(ForceExchangeParms,Eam.ForceExchangeData,Int,Rail[MyTypes.real_t])=>Int;
+//        var loadBufferForAtoms:(AtomExchangeParms,CoMDTypes.SimFlat,Int,Rail[Int],Rail[MyTypes.real_t])=>Int;
+//        var loadBufferForForce:(ForceExchangeParms,Eam.ForceExchangeData,Int,Rail[MyTypes.real_t])=>Int;
+        var loadBufferForAtoms:(AtomExchangeParms,CoMDTypes.SimFlat,Int,PlaceLocalHandle[Rail[Int]],PlaceLocalHandle[Rail[MyTypes.real_t]])=>Int;
+        var loadBufferForForce:(ForceExchangeParms,Eam.ForceExchangeData,Int,PlaceLocalHandle[Rail[MyTypes.real_t]])=>Int;
     	/// Pointer to a sub-class specific function to unload the recv buffer.
     	/// \param [in] parms The parms member of the structure.  This is a
     	///                   pointer to a sub-class specific structure that can
@@ -82,8 +84,10 @@ public class HaloExchange {
     	/// \param [in] face  Specifies the face across which data is being sent.
     	/// \param [in] bufSize The number of bytes in the recv buffer.
     	/// \param [in] buf   The recv buffer to be unloaded.
-        var unloadBufferForAtoms:(AtomExchangeParms,CoMDTypes.SimFlat,Int,Int,Rail[Int],Rail[MyTypes.real_t])=>Int;
-        var unloadBufferForForce:(ForceExchangeParms,Eam.ForceExchangeData,Int,Int,Rail[MyTypes.real_t])=>Int;
+//        var unloadBufferForAtoms:(AtomExchangeParms,CoMDTypes.SimFlat,Int,Int,Rail[Int],Rail[MyTypes.real_t])=>Int;
+//        var unloadBufferForForce:(ForceExchangeParms,Eam.ForceExchangeData,Int,Int,Rail[MyTypes.real_t])=>Int;
+        var unloadBufferForAtoms:(AtomExchangeParms,CoMDTypes.SimFlat,Int,Int,PlaceLocalHandle[Rail[Int]],PlaceLocalHandle[Rail[MyTypes.real_t]])=>Int;
+        var unloadBufferForForce:(ForceExchangeParms,Eam.ForceExchangeData,Int,Int,PlaceLocalHandle[Rail[MyTypes.real_t]])=>Int;
     	/// Pointer to a function to deallocate any memory used by the
     	/// sub-class parms.  Essentially this is a virtual destructor.
         //var destroy:(ANY)=>void;
@@ -97,25 +101,15 @@ public class HaloExchange {
     val par:Parallel;
     val dc:Decomposition;
     val lc:LinkCells;
-    var sendBufMi0:Rail[Int];
-    var sendBufMr0:Rail[MyTypes.real_t];
-    var sendBufPi0:Rail[Int];
-    var sendBufPr0:Rail[MyTypes.real_t];
-    var recvBufMi0:Rail[Int];
-    var recvBufMr0:Rail[MyTypes.real_t];
-    var recvBufPi0:Rail[Int];
-    var recvBufPr0:Rail[MyTypes.real_t];
-    var sendBufM0:Rail[MyTypes.real_t];
-    var sendBufP0:Rail[MyTypes.real_t];
-    var recvBufM0:Rail[MyTypes.real_t];
-    var recvBufP0:Rail[MyTypes.real_t];
+    val hep:HaloExchangePlh;
     val tmp:Rail[AtomMsg];
     val shift:MyTypes.real3;
-    def this (par:Parallel, per:PerformanceTimer, dc:Decomposition, lc:LinkCells) {
+    def this (par:Parallel, per:PerformanceTimer, dc:Decomposition, lc:LinkCells, hep:HaloExchangePlh) {
         this.par = par;
     	this.per = per;
         this.dc = dc;
     	this.lc = lc;
+        this.hep = hep;
         this.tmp = new Rail[AtomMsg](LinkCells.MAXATOMS);
         for (var i:Int = 0n; i < LinkCells.MAXATOMS; i++) {
             tmp(i) = new AtomMsg();
@@ -201,41 +195,29 @@ public class HaloExchange {
     public def initAtomHaloExchange(domain:Decomposition.Domain, boxes:LinkCells.LinkCell):HaloExchangeSt
     {
     	val hh:HaloExchangeSt = initHaloExchange(domain);
-    	val loadAtomsBufferFunc = (parms:AtomExchangeParms,s:CoMDTypes.SimFlat,face:Int,bufi:Rail[Int],bufr:Rail[MyTypes.real_t])=>loadAtomsBuffer(parms,s,face,bufi,bufr);
-    	val unloadAtomsBufferFunc = (parms:AtomExchangeParms, s:CoMDTypes.SimFlat, face:Int, bufSize:Int, bufi:Rail[Int],bufr:Rail[MyTypes.real_t])=>unloadAtomsBuffer(parms,s,face,bufSize,bufi,bufr);
+    	val loadAtomsBufferFunc = (parms:AtomExchangeParms,s:CoMDTypes.SimFlat,face:Int,bufi:PlaceLocalHandle[Rail[Int]],bufr:PlaceLocalHandle[Rail[MyTypes.real_t]])=>loadAtomsBuffer(parms,s,face,bufi,bufr);
+    	val unloadAtomsBufferFunc = (parms:AtomExchangeParms, s:CoMDTypes.SimFlat, face:Int, bufSize:Int, bufi:PlaceLocalHandle[Rail[Int]],bufr:PlaceLocalHandle[Rail[MyTypes.real_t]])=>unloadAtomsBuffer(parms,s,face,bufSize,bufi,bufr);
    		val size0 = (boxes.gridSize(1)+2)*(boxes.gridSize(2)+2);
     	val size1 = (boxes.gridSize(0)+2)*(boxes.gridSize(2)+2);
     	val size2 = (boxes.gridSize(0)+2)*(boxes.gridSize(1)+2);
     	var maxSize:Int = Math.max(size0, size1) as Int;
     	maxSize = Math.max(size1, size2) as Int;
     	hh.bufCapacity = (maxSize*2*LinkCells.MAXATOMS) as Int;
-    	sendBufMi0 = new Rail[Int](hh.bufCapacity * 2);
-    	sendBufMr0 = new Rail[MyTypes.real_t](hh.bufCapacity * 6);
-    	sendBufPi0 = new Rail[Int](hh.bufCapacity * 2);
-    	sendBufPr0 = new Rail[MyTypes.real_t](hh.bufCapacity * 6);
-    	recvBufMi0 = new Rail[Int](hh.bufCapacity * 2);
-    	recvBufMr0 = new Rail[MyTypes.real_t](hh.bufCapacity * 6);
-    	recvBufPi0 = new Rail[Int](hh.bufCapacity * 2);
-    	recvBufPr0 = new Rail[MyTypes.real_t](hh.bufCapacity * 6);
-    
     	hh.loadBufferForAtoms = loadAtomsBufferFunc;
-        hh.loadBufferForForce = null;
+       hh.loadBufferForForce = null;
     	hh.unloadBufferForAtoms = unloadAtomsBufferFunc;
     	hh.unloadBufferForForce = null;
     	//hh.destroy = destroyAtomsExchange;
 
     	val parms:AtomExchangeParms = new AtomExchangeParms();
-
     	parms.nCells(HALO_X_MINUS) = (2*(boxes.gridSize(1)+2)*(boxes.gridSize(2)+2)) as Int;
     	parms.nCells(HALO_Y_MINUS) = (2*(boxes.gridSize(0)+2)*(boxes.gridSize(2)+2)) as Int;
     	parms.nCells(HALO_Z_MINUS) = (2*(boxes.gridSize(0)+2)*(boxes.gridSize(1)+2)) as Int;
     	parms.nCells(HALO_X_PLUS)  = parms.nCells(HALO_X_MINUS);
     	parms.nCells(HALO_Y_PLUS)  = parms.nCells(HALO_Y_MINUS);
     	parms.nCells(HALO_Z_PLUS)  = parms.nCells(HALO_Z_MINUS);
-
     	for (var ii:Int=0n; ii<6; ++ii)
     		parms.cellList(ii) = mkAtomCellList(boxes, ii, parms.nCells(ii));
-
     	for (var ii:Int=0n; ii<6; ++ii)
     	{
     		parms.pbcFactor(ii) = new Rail[MyTypes.real_t](3);
@@ -248,7 +230,6 @@ public class HaloExchange {
     	if (domain.procCoord(HALO_Y_AXIS) == domain.procGrid(HALO_Y_AXIS)-1) parms.pbcFactor(HALO_Y_PLUS)(HALO_Y_AXIS)  = -1.0 as MyTypes.real_t;
     	if (domain.procCoord(HALO_Z_AXIS) == 0)                       parms.pbcFactor(HALO_Z_MINUS)(HALO_Z_AXIS) = +1.0 as MyTypes.real_t;
     	if (domain.procCoord(HALO_Z_AXIS) == domain.procGrid(HALO_Z_AXIS)-1) parms.pbcFactor(HALO_Z_PLUS)(HALO_Z_AXIS)  = -1.0 as MyTypes.real_t;
-    
     	hh.parmsForAtom = parms;
     	return hh;
     }
@@ -271,8 +252,8 @@ public class HaloExchange {
     public def initForceHaloExchange(domain:Decomposition.Domain, boxes:LinkCells.LinkCell):HaloExchangeSt
     {
     	val hh:HaloExchangeSt = initHaloExchange(domain);
-    	val loadForceBufferFunc = (parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, buf:Rail[MyTypes.real_t])=>loadForceBuffer(parms,data,face,buf);
-    	val unloadForceBufferFunc = (parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, bufSize:Int, buf:Rail[MyTypes.real_t])=>unloadForceBuffer(parms,data,face,bufSize,buf);
+    	val loadForceBufferFunc = (parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, buf:PlaceLocalHandle[Rail[MyTypes.real_t]])=>loadForceBuffer(parms,data,face,buf);
+    	val unloadForceBufferFunc = (parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, bufSize:Int, buf:PlaceLocalHandle[Rail[MyTypes.real_t]])=>unloadForceBuffer(parms,data,face,bufSize,buf);
     	hh.loadBufferForAtoms = null;
     	hh.loadBufferForForce = loadForceBufferFunc;
     	hh.unloadBufferForAtoms = null;
@@ -284,10 +265,6 @@ public class HaloExchange {
     	var maxSize:Int = Math.max(size0, size1);
     	maxSize = Math.max(size1, size2);
     	hh.bufCapacity = (maxSize)*LinkCells.MAXATOMS;
-    	sendBufM0 = new Rail[MyTypes.real_t](hh.bufCapacity);
-    	sendBufP0 = new Rail[MyTypes.real_t](hh.bufCapacity);
-    	recvBufM0 = new Rail[MyTypes.real_t](hh.bufCapacity);
-    	recvBufP0 = new Rail[MyTypes.real_t](hh.bufCapacity);
 
     	val parms = new ForceExchangeParms();
 
@@ -351,32 +328,41 @@ public class HaloExchange {
     	val faceM:Int = 2n*iAxis;
     	val faceP:Int = faceM+1n;
 
-    	val sendBufMi = sendBufMi0;
-    	val sendBufMr = sendBufMr0;
-    	val sendBufPi = sendBufPi0;
-    	val sendBufPr = sendBufPr0;
-    	val recvBufMi = recvBufMi0;
-    	val recvBufMr = recvBufMr0;
-    	val recvBufPi = recvBufPi0;
-    	val recvBufPr = recvBufPr0;
+    	val sendBufMi = hep.sendBufMi0;
+    	val sendBufMr = hep.sendBufMr0;
+    	val sendBufPi = hep.sendBufPi0;
+    	val sendBufPr = hep.sendBufPr0;
+    	val recvBufMi = hep.recvBufMi0;
+    	val recvBufMr = hep.recvBufMr0;
+    	val recvBufPi = hep.recvBufPi0;
+    	val recvBufPr = hep.recvBufPr0;
+       val nRecvMi = hep.nRecvMi;
+       val nRecvMr = hep.nRecvMr;
+       val nRecvPi = hep.nRecvPi;
+       val nRecvPr = hep.nRecvPr;
         
-        val nSendM = haloExchange.loadBufferForAtoms(haloExchange.parmsForAtom, data, faceM, sendBufMi, sendBufMr);
+       val nSendM = haloExchange.loadBufferForAtoms(haloExchange.parmsForAtom, data, faceM, sendBufMi, sendBufMr);
     	val nSendP = haloExchange.loadBufferForAtoms(haloExchange.parmsForAtom, data, faceP, sendBufPi, sendBufPr);
 
     	val nbrRankM = haloExchange.nbrRank(faceM);
     	val nbrRankP = haloExchange.nbrRank(faceP);
 
-    	val nRecvMi:Int, nRecvMr:Int, nRecvPi:Int, nRecvPr:Int;
     	per.startTimer(per.commHaloTimer);
-    	nRecvPi = par.sendReceiveParallel[Int](sendBufMi, nSendM*2n, nbrRankM, recvBufPi, haloExchange.bufCapacity*2n, nbrRankP);
-    	nRecvPr = par.sendReceiveParallel[MyTypes.real_t](sendBufMr, nSendM*6n, nbrRankM, recvBufPr, haloExchange.bufCapacity*6n, nbrRankP);
-    	nRecvMi = par.sendReceiveParallel[Int](sendBufPi, nSendP*2n, nbrRankP, recvBufMi, haloExchange.bufCapacity*2n, nbrRankM);
-    	nRecvMr = par.sendReceiveParallel[MyTypes.real_t](sendBufPr, nSendP*6n, nbrRankP, recvBufMr, haloExchange.bufCapacity*6n, nbrRankM);
-    	per.stopTimer(per.commHaloTimer);
-        assert nRecvPi * 3n == nRecvPr;
-        assert nRecvMi * 3n == nRecvMr;
-    	haloExchange.unloadBufferForAtoms(haloExchange.parmsForAtom, data, faceM, nRecvMi/2n, recvBufMi, recvBufMr);
-    	haloExchange.unloadBufferForAtoms(haloExchange.parmsForAtom, data, faceP, nRecvPi/2n, recvBufPi, recvBufPr);
+       par.iSendReceiveParallel[Int](sendBufMi, nSendM*2n, nbrRankM, recvBufPi, haloExchange.bufCapacity*2n, nbrRankP, nRecvPi);
+       par.barrierParallel();
+       par.iSendReceiveParallel[MyTypes.real_t](sendBufMr, nSendM*6n, nbrRankM, recvBufPr, haloExchange.bufCapacity*6n, nbrRankP, nRecvPr);
+       par.barrierParallel();
+       par.iSendReceiveParallel[Int](sendBufPi, nSendP*2n, nbrRankP, recvBufMi, haloExchange.bufCapacity*2n, nbrRankM, nRecvMi);
+       par.barrierParallel();
+       par.iSendReceiveParallel[MyTypes.real_t](sendBufPr, nSendP*6n, nbrRankP, recvBufMr, haloExchange.bufCapacity*6n, nbrRankM, nRecvMr);
+       par.barrierParallel();
+       per.stopTimer(per.commHaloTimer);
+       val nRecvPit = nRecvPi().value;
+       val nRecvMit = nRecvMi().value;
+       assert nRecvPit * 3n == nRecvPr().value;
+       assert nRecvMit * 3n == nRecvMr().value;
+       haloExchange.unloadBufferForAtoms(haloExchange.parmsForAtom, data, faceM, nRecvMit/2n, recvBufMi, recvBufMr);
+       haloExchange.unloadBufferForAtoms(haloExchange.parmsForAtom, data, faceP, nRecvPit/2n, recvBufPi, recvBufPr);
     }
 
     public def exchangeData(haloExchange:HaloExchangeSt, data:Eam.ForceExchangeData, iAxis:Int):void 
@@ -384,10 +370,12 @@ public class HaloExchange {
     	val faceM:Int = 2n*iAxis;
     	val faceP:Int = faceM+1n;
 
-    	val sendBufM = sendBufM0;
-    	val sendBufP = sendBufP0;
-    	val recvBufM = recvBufM0;
-    	val recvBufP = recvBufP0;
+    	val sendBufM = hep.sendBufM0;
+    	val sendBufP = hep.sendBufP0;
+    	val recvBufM = hep.recvBufM0;
+    	val recvBufP = hep.recvBufP0;
+       val nRecvM = hep.nRecvM;
+       val nRecvP = hep.nRecvP;
 
     	val nSendM = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceM, sendBufM);
     	val nSendP = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceP, sendBufP);
@@ -395,14 +383,15 @@ public class HaloExchange {
     	val nbrRankM = haloExchange.nbrRank(faceM);
     	val nbrRankP = haloExchange.nbrRank(faceP);
 
-    	val nRecvM:Int, nRecvP:Int;
     	per.startTimer(per.commHaloTimer);
-    	nRecvP = par.sendReceiveParallel[MyTypes.real_t](sendBufM, nSendM, nbrRankM, recvBufP, haloExchange.bufCapacity, nbrRankP);
-    	nRecvM = par.sendReceiveParallel[MyTypes.real_t](sendBufP, nSendP, nbrRankP, recvBufM, haloExchange.bufCapacity, nbrRankM);
+       par.iSendReceiveParallel[MyTypes.real_t](sendBufM, nSendM, nbrRankM, recvBufP, haloExchange.bufCapacity, nbrRankP, nRecvP);
+       par.barrierParallel();
+       par.iSendReceiveParallel[MyTypes.real_t](sendBufP, nSendP, nbrRankP, recvBufM, haloExchange.bufCapacity, nbrRankM, nRecvM);
+       par.barrierParallel();
     	per.stopTimer(per.commHaloTimer);
     
-    	haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceM, nRecvM, recvBufM);
-    	haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceP, nRecvP, recvBufP);
+       haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceM, nRecvM().value, recvBufM);
+       haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceP, nRecvP().value, recvBufP);
     }
 
     /// Make a list of link cells that need to be sent across the specified
@@ -458,38 +447,47 @@ public class HaloExchange {
     /// \see HaloExchangeSt::loadBuffer for an explanation of the loadBuffer
     /// parameters.
     
-    public def loadAtomsBuffer(parms:AtomExchangeParms, s:CoMDTypes.SimFlat, face:Int, bufi:Rail[Int], bufr:Rail[MyTypes.real_t]):Int
+    public def loadAtomsBuffer(parms:AtomExchangeParms, s:CoMDTypes.SimFlat, face:Int, bufi:PlaceLocalHandle[Rail[Int]], bufr:PlaceLocalHandle[Rail[MyTypes.real_t]]):Int
     {
-    	val pbcFactor = parms.pbcFactor(face);
-    	shift(0) = pbcFactor(0) * s.domain.globalExtent(0);
-    	shift(1) = pbcFactor(1) * s.domain.globalExtent(1);
-    	shift(2) = pbcFactor(2) * s.domain.globalExtent(2);
+        val pbcFactor = parms.pbcFactor(face);
+        shift(0) = pbcFactor(0) * s.domain.globalExtent(0);
+        shift(1) = pbcFactor(1) * s.domain.globalExtent(1);
+        shift(2) = pbcFactor(2) * s.domain.globalExtent(2);
     
-    	val nCells:Int = parms.nCells(face);
-    	val cellList:Rail[Int] = parms.cellList(face);
-    	var nBuf:Int = 0n;
+        val nCells:Int = parms.nCells(face);
+        val cellList:Rail[Int] = parms.cellList(face);
+        var nBuf:Int = 0n;
         var nBufi:Int;
         var nBufr:Int;
-    	for (var iCell:Int=0n; iCell<nCells; ++iCell)
-    	{
-    		val iBox = cellList(iCell);
-    		val iOff = iBox*LinkCells.MAXATOMS;
-    		for (var ii:Int=iOff; ii<iOff+s.boxes.nAtoms(iBox); ++ii)
-    		{
+        for (var iCell:Int=0n; iCell<nCells; ++iCell)
+         {
+            val iBox = cellList(iCell);
+            val iOff = iBox*LinkCells.MAXATOMS;
+            for (var ii:Int=iOff; ii<iOff+s.boxes.nAtoms(iBox); ++ii)
+              {
                 nBufi = nBuf * 2n;
                 nBufr = nBuf * 6n;
-                bufi(nBufi++)	= s.atoms.gid(ii);
-                bufi(nBufi)		= s.atoms.iSpecies(ii);
-                bufr(nBufr++)	= s.atoms.r(ii)(0) + shift(0);
-                bufr(nBufr++)	= s.atoms.r(ii)(1) + shift(1);
-                bufr(nBufr++)	= s.atoms.r(ii)(2) + shift(2);
-                bufr(nBufr++)	= s.atoms.p(ii)(0);
-                bufr(nBufr++)	= s.atoms.p(ii)(1);
-                bufr(nBufr)		= s.atoms.p(ii)(2);
-    			++nBuf;
-    		}
-    	}
-    	return nBuf;
+                bufi()(nBufi++)	= s.atoms.gid(ii);
+                bufi()(nBufi)		= s.atoms.iSpecies(ii);
+/*
+                bufr()(nBufr++)	= s.atoms.r(ii)(0) + shift(0);
+                bufr()(nBufr++)	= s.atoms.r(ii)(1) + shift(1);
+                bufr()(nBufr++)	= s.atoms.r(ii)(2) + shift(2);
+                bufr()(nBufr++)	= s.atoms.p(ii)(0);
+                bufr()(nBufr++)	= s.atoms.p(ii)(1);
+                bufr()(nBufr)		= s.atoms.p(ii)(2);
+*/
+				val ii3 = ii * 3;
+                bufr()(nBufr++)	= s.atoms.r(ii3) + shift(0);
+                bufr()(nBufr++)	= s.atoms.r(ii3+1) + shift(1);
+                bufr()(nBufr++)	= s.atoms.r(ii3+2) + shift(2);
+                bufr()(nBufr++)	= s.atoms.p(ii3);
+                bufr()(nBufr++)	= s.atoms.p(ii3+1);
+                bufr()(nBufr)	= s.atoms.p(ii3+2);
+                ++nBuf;
+              }
+          }
+        return nBuf;
     }
 
     /// The unloadBuffer function for a halo exchange of atom data.
@@ -503,27 +501,27 @@ public class HaloExchange {
     /// \see HaloExchangeSt::unloadBuffer for an explanation of the
     /// unloadBuffer parameters.
     
-    public def unloadAtomsBuffer(parms:AtomExchangeParms, s:CoMDTypes.SimFlat, face:Int, bufSize:Int, bufi:Rail[Int], bufr:Rail[MyTypes.real_t]):Int
-    {
-    	val nBuf:Int = bufSize;
+    public def unloadAtomsBuffer(parms:AtomExchangeParms, s:CoMDTypes.SimFlat, face:Int, bufSize:Int, bufi:PlaceLocalHandle[Rail[Int]], bufr:PlaceLocalHandle[Rail[MyTypes.real_t]]):Int
+     {
+        val nBuf:Int = bufSize;
         var iii:Int;
         var iir:Int;
-    	for (var ii:Int=0n; ii<nBuf; ++ii)
-    	{
+        for (var ii:Int=0n; ii<nBuf; ++ii)
+         {
             iii = ii*2n;
             iir = ii*6n;
-    		val gid:Int   = bufi(iii++);
-    		val valueType:Int  = bufi(iii);
-    		val rx:MyTypes.real_t = bufr(iir++);
-    		val ry:MyTypes.real_t = bufr(iir++);
-    		val rz:MyTypes.real_t = bufr(iir++);
-    		val px:MyTypes.real_t = bufr(iir++);
-    		val py:MyTypes.real_t = bufr(iir++);
-    		val pz:MyTypes.real_t = bufr(iir++);
-    		lc.putAtomInBox(s.boxes, s.atoms, gid, valueType, rx, ry, rz, px, py, pz);
-    	}
-    	return nBuf;
-    }
+            val gid:Int   = bufi()(iii++);
+            val valueType:Int  = bufi()(iii);
+            val rx:MyTypes.real_t = bufr()(iir++);
+            val ry:MyTypes.real_t = bufr()(iir++);
+            val rz:MyTypes.real_t = bufr()(iir++);
+            val px:MyTypes.real_t = bufr()(iir++);
+            val py:MyTypes.real_t = bufr()(iir++);
+            val pz:MyTypes.real_t = bufr()(iir++);
+            lc.putAtomInBox(s.boxes, s.atoms, gid, valueType, rx, ry, rz, px, py, pz);
+         }
+        return nBuf;
+     }
 
     /*void destroyAtomsExchange(void* vparms)
     {
@@ -641,22 +639,21 @@ public class HaloExchange {
     /// \see HaloExchangeSt::loadBuffer for an explanation of the loadBuffer
     /// parameters.
     
-    // remove ANY
-    public def loadForceBuffer(parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, buf:Rail[MyTypes.real_t]):Int
-    {
-    	val nCells = parms.nCells(face);
-    	val cellList = parms.sendCells(face);
-    	var nBuf:Int = 0n;
-    	for (var iCell:Int=0n; iCell<nCells; ++iCell)
-    	{
-    		val iBox = cellList(iCell);
-    		val iOff = iBox*LinkCells.MAXATOMS;
-    		for (var ii:Int=iOff; ii<iOff+data.boxes.nAtoms(iBox); ++ii)
-    		{
-    			buf(nBuf) = data.dfEmbed(ii);
-    			++nBuf;
-    		}
-    	}
+    public def loadForceBuffer(parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, buf:PlaceLocalHandle[Rail[MyTypes.real_t]]):Int
+     {
+        val nCells = parms.nCells(face);
+        val cellList = parms.sendCells(face);
+        var nBuf:Int = 0n;
+        for (var iCell:Int=0n; iCell<nCells; ++iCell)
+         {
+            val iBox = cellList(iCell);
+            val iOff = iBox*LinkCells.MAXATOMS;
+            for (var ii:Int=iOff; ii<iOff+data.boxes.nAtoms(iBox); ++ii)
+              {
+                buf()(nBuf) = data.dfEmbed(ii);
+                ++nBuf;
+              }
+         }
         return nBuf;
     }
 
@@ -667,23 +664,23 @@ public class HaloExchange {
     /// \see HaloExchangeSt::unloadBuffer for an explanation of the
     /// unloadBuffer parameters.
     
-    public def unloadForceBuffer(parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, bufSize:Int, buf:Rail[MyTypes.real_t]):Int
-    {
-    	val nCells = parms.nCells(face);
-    	val cellList = parms.recvCells(face);
-    	var iBuf:Int = 0n;
-    	for (var iCell:Int=0n; iCell<nCells; ++iCell)
-    	{
-    		val iBox = cellList(iCell);
-    		val iOff = iBox*LinkCells.MAXATOMS;
-    		for (var ii:Int=iOff; ii<iOff+data.boxes.nAtoms(iBox); ++ii)
-    		{
-    			data.dfEmbed(ii) = buf(iBuf);
-    			++iBuf;
-    		}
-    	}
-    	return iBuf;
-    }
+    public def unloadForceBuffer(parms:ForceExchangeParms, data:Eam.ForceExchangeData, face:Int, bufSize:Int, buf:PlaceLocalHandle[Rail[MyTypes.real_t]]):Int
+     {
+        val nCells = parms.nCells(face);
+        val cellList = parms.recvCells(face);
+        var iBuf:Int = 0n;
+        for (var iCell:Int=0n; iCell<nCells; ++iCell)
+         {
+            val iBox = cellList(iCell);
+            val iOff = iBox*LinkCells.MAXATOMS;
+            for (var ii:Int=iOff; ii<iOff+data.boxes.nAtoms(iBox); ++ii)
+              {
+                data.dfEmbed(ii) = buf()(iBuf);
+                ++iBuf;
+              }
+         }
+        return iBuf;
+     }
 
     /// \details
     /// The force exchange assumes that the atoms are in the same order in
@@ -703,12 +700,18 @@ public class HaloExchange {
     	{
     		tmp(iTmp).gid  = atoms.gid(ii);
     		tmp(iTmp).valueType = atoms.iSpecies(ii);
+/*
     		tmp(iTmp).rx =   atoms.r(ii)(0);
     		tmp(iTmp).ry =   atoms.r(ii)(1);
     		tmp(iTmp).rz =   atoms.r(ii)(2);
-    		tmp(iTmp).px =   atoms.p(ii)(0);
-    		tmp(iTmp).py =   atoms.p(ii)(1);
-    		tmp(iTmp).pz =   atoms.p(ii)(2);
+*/
+			val ii3 = ii * 3;
+    		tmp(iTmp).rx =   atoms.r(ii3);
+    		tmp(iTmp).ry =   atoms.r(ii3+1);
+    		tmp(iTmp).rz =   atoms.r(ii3+2);
+    		tmp(iTmp).px =   atoms.p(ii3);
+    		tmp(iTmp).py =   atoms.p(ii3+1);
+    		tmp(iTmp).pz =   atoms.p(ii3+2);
     	}
         qsort(tmp, 0l, nAtoms - 1);
     	iTmp = 0n;
@@ -716,12 +719,18 @@ public class HaloExchange {
     	{
     		atoms.gid(ii)   = tmp(iTmp).gid;
     		atoms.iSpecies(ii) = tmp(iTmp).valueType;
+/*
     		atoms.r(ii)(0)  = tmp(iTmp).rx;
     		atoms.r(ii)(1)  = tmp(iTmp).ry;
     		atoms.r(ii)(2)  = tmp(iTmp).rz;
-    		atoms.p(ii)(0)  = tmp(iTmp).px;
-    		atoms.p(ii)(1)  = tmp(iTmp).py;
-    		atoms.p(ii)(2)  = tmp(iTmp).pz;
+*/
+			val ii3 = ii * 3;
+    		atoms.r(ii3)  = tmp(iTmp).rx;
+    		atoms.r(ii3+1)  = tmp(iTmp).ry;
+    		atoms.r(ii3+2)  = tmp(iTmp).rz;
+    		atoms.p(ii3)  = tmp(iTmp).px;
+    		atoms.p(ii3+1)  = tmp(iTmp).py;
+    		atoms.p(ii3+2)  = tmp(iTmp).pz;
     	}
     }
 

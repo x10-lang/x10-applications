@@ -48,9 +48,11 @@ import x10.io.Printer;
 public class CoMD {
     public static def main(args:Rail[String]):void {
     	// Prolog
+    	val hep = new HaloExchangePlh();
+    	hep.initHaloExchangePlh(args);
     	val par = new Parallel();
     	//par.initParallel(args);
-    	par.initParallel(args, par, (args:Rail[String], par:Parallel)=>{
+    	par.initParallel(args, par, hep, (args:Rail[String], par:Parallel, hep:HaloExchangePlh)=>{
     	val per = new PerformanceTimer(par);
     	per.profileStart(per.totalTimer);
     	val yaml = new YamlOutput(par);
@@ -69,7 +71,7 @@ public class CoMD {
     		val dc = new Decomposition(par);
     		val lc = new LinkCells(par, per);
     		val rnd = new Random();
-    		val he = new HaloExchange(par, per, dc, lc);
+    		val he = new HaloExchange(par, per, dc, lc, hep);
     		val ts = new TimeStep(par, per, lc, he);
     		val ia = new InitAtoms(par, per, lc, rnd, ts);
     		val ptv = new PrintThingsVar();
@@ -89,7 +91,7 @@ public class CoMD {
     			val printRate:Int = sim.printRate;
     			var iStep:Int = 0n;
     			per.profileStart(per.loopTimer);
-    			for (; iStep<nSteps;)
+   			for (; iStep<nSteps;)
     			{
     				per.startTimer(per.commReduceTimer);
     				sumAtoms(sim, per, par);
@@ -152,7 +154,7 @@ public class CoMD {
     	sim.atomExchange = null;
     	sim.pot = initPotential(cmd.doeam.i, cmd.potDir.s, cmd.potName.s, cmd.potType.s, par, per, he, lc);
     	var latticeConstant:MyTypes.real_t = cmd.lat.d as MyTypes.real_t;
-    	if (cmd.lat.d < MyTypes.real_t0)
+       if (cmd.lat.d < MyTypes.real_t0)
     		latticeConstant = sim.pot.lat;
 
     	// ensure input parameters make sense.
@@ -423,7 +425,7 @@ public class CoMD {
     	}
     	val checkCode = new Rail[Int](1), castedCheckCode = new Rail[Int](1);
     	checkCode(0) = failCode;
-    	par.bcastParallel[Int](checkCode, castedCheckCode, checkCode.size, 0);
+       par.bcastParallel[Int](checkCode, castedCheckCode, checkCode.size, 0);
     	// This assertion can only fail if different tasks failed different
     	// sanity checks.  That should not be possible.
     	assert castedCheckCode(0) == failCode;

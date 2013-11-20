@@ -147,7 +147,7 @@ public class PerformanceTimer {
     /// information over all ranks.
     public def printPerformanceResults(nGlobalAtoms:int):void {
     	// Collect timer statistics overall and across ranks
-    	timerStats();
+       timerStats();
     	if (!p.printRank())
     	return;
 
@@ -251,7 +251,7 @@ public class PerformanceTimer {
 
     /// Collect timer statistics across ranks.
     def timerStats():void {
-    	val sendBuf = new Rail[double](numberOfTimers);
+       val sendBuf = new Rail[double](numberOfTimers);
     	val recvBuf = new Rail[double](numberOfTimers);
     	// Determine average of each timer across ranks
     	for (ii in 0..(numberOfTimers-1))
@@ -266,6 +266,7 @@ public class PerformanceTimer {
     	val reduceRecvBuf = new Rail[Parallel.RankReduceData](numberOfTimers);
     	for (ii in 0..(numberOfTimers-1)) {
             reduceSendBuf(ii) = new Parallel.RankReduceData();
+            reduceRecvBuf(ii) = new Parallel.RankReduceData();
     		reduceSendBuf(ii).value = (perfTimer(ii).total as double);
     		reduceSendBuf(ii).rank = p.getMyRank();
     	}

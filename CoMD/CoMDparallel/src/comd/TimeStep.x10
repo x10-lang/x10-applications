@@ -39,7 +39,6 @@ public class TimeStep {
     {
     	for (var ii:Int=0n; ii<nSteps; ++ii)
     	{
-    
     		per.startTimer(per.velocityTimer);
     		advanceVelocity(s, s.boxes.nLocalBoxes, (0.5*dt) as MyTypes.real_t); 
     		per.stopTimer(per.velocityTimer);
@@ -78,9 +77,11 @@ public class TimeStep {
     	{
     		for (var iOff:Int=lc.MAXATOMS*iBox,ii:Int=0n; ii<s.boxes.nAtoms(iBox); ii++,iOff++)
     		{
-    			s.atoms.p(iOff)(0) += dt*s.atoms.f(iOff)(0);
-    			s.atoms.p(iOff)(1) += dt*s.atoms.f(iOff)(1);
-    			s.atoms.p(iOff)(2) += dt*s.atoms.f(iOff)(2);
+				//OPT: Array flattening
+				val iOff3 = iOff * 3;
+    			s.atoms.p(iOff3) += dt*s.atoms.f(iOff3);
+    			s.atoms.p(iOff3+1) += dt*s.atoms.f(iOff3+1);
+    			s.atoms.p(iOff3+2) += dt*s.atoms.f(iOff3+2);
     		}
     	}
     }
@@ -92,10 +93,18 @@ public class TimeStep {
     		for (var iOff:Int=lc.MAXATOMS*iBox,ii:Int=0n; ii<s.boxes.nAtoms(iBox); ii++,iOff++)
     		{
     			val iSpecies = s.atoms.iSpecies(iOff);
-    			val invMass:MyTypes.real_t = (1.0/s.species(iSpecies).mass) as MyTypes.real_t;
-    			s.atoms.r(iOff)(0) += dt*s.atoms.p(iOff)(0)*invMass;
-    			s.atoms.r(iOff)(1) += dt*s.atoms.p(iOff)(1)*invMass;
-    			s.atoms.r(iOff)(2) += dt*s.atoms.p(iOff)(2)*invMass;
+	// OPT: MH-20131010
+//    			val invMass:MyTypes.real_t = (1.0/s.species(iSpecies).mass) as MyTypes.real_t;
+    			val invMass = (1.0/s.species(iSpecies).mass) as MyTypes.real_t;
+//    			s.atoms.r(iOff)(0) += dt*s.atoms.p(iOff)(0)*invMass;
+//    			s.atoms.r(iOff)(1) += dt*s.atoms.p(iOff)(1)*invMass;
+//    			s.atoms.r(iOff)(2) += dt*s.atoms.p(iOff)(2)*invMass;
+				val tmp = dt*invMass; //OPT: CSE
+				//OPT: Array flattening (s.atoms.r and s.atoms.p)
+				val iOff3 = iOff*3;
+    			s.atoms.r(iOff3) += s.atoms.p(iOff3)*tmp;
+    			s.atoms.r(iOff3+1) += s.atoms.p(iOff3+1)*tmp;
+    			s.atoms.r(iOff3+2) += s.atoms.p(iOff3+2)*tmp;
     		}
     	}
     }
@@ -112,9 +121,11 @@ public class TimeStep {
     		{
     			val iSpecies = s.atoms.iSpecies(iOff);
     			val invMass:MyTypes.real_t = (0.5/s.species(iSpecies).mass) as MyTypes.real_t;
-    			eLocal(1) += ( s.atoms.p(iOff)(0) * s.atoms.p(iOff)(0) +
-    			s.atoms.p(iOff)(1) * s.atoms.p(iOff)(1) +
-    			s.atoms.p(iOff)(2) * s.atoms.p(iOff)(2) )*invMass;
+    			//OPT: Array flattening (s.atoms.p)
+				val iOff3 = iOff * 3;
+    			eLocal(1) += ( s.atoms.p(iOff3) * s.atoms.p(iOff3) +
+    			s.atoms.p(iOff3+1) * s.atoms.p(iOff3+1) +
+    			s.atoms.p(iOff3+2) * s.atoms.p(iOff3+2) )*invMass;
     		}
     	}
 
@@ -142,9 +153,9 @@ public class TimeStep {
     public def redistributeAtoms(sim:CoMDTypes.SimFlat):void
     {
     	lc.updateLinkCells(sim.boxes, sim.atoms);
-
     	per.startTimer(per.atomHaloTimer);
-    	he.haloExchange(sim.atomExchange, sim);
+
+       he.haloExchange(sim.atomExchange, sim);
 
     	per.stopTimer(per.atomHaloTimer);
 

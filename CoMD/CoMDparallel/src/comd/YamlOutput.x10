@@ -19,8 +19,8 @@ import x10.util.Timer;
 public class YamlOutput {
 	var yamlFile:Printer;
 	static val CoMDVersion = "1.1";
-	static val CoMDVariant = "CoMD-serial";
-	//static val CoMDVariant = "CoMD-mpi";
+	//static val CoMDVariant = "CoMD-serial";
+	static val CoMDVariant = "CoMD-parallel";
     val par:Parallel;
     def this(par:Parallel) {
         this.par = par;
