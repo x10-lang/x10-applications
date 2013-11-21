@@ -69,7 +69,8 @@ Additional BSD Notice
 #include <ctime>
 #include <sys/time.h>
 
-#define LULESH_SHOW_PROGRESS 1
+#define LULESH_SHOW_PROGRESS 0
+#define LULESH_OUTPUT_FILE 0
 
 enum { VolumeError = -1, QStopError = -2 } ;
 
@@ -1391,21 +1392,21 @@ void CalcVolumeForceForElems()
       /* Sum contributions to total stress tensor */
       struct timeval start;
       struct timeval end;
-      gettimeofday(&start, NULL);
-      double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//      gettimeofday(&start, NULL);
+//      double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
       InitStressTermsForElems(numElem, sigxx, sigyy, sigzz);
-      gettimeofday(&end, NULL);
-      double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-      printf("        InitStressTerm time = %f\n", t2 - t1);
+//      gettimeofday(&end, NULL);
+//      double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//      printf("        InitStressTerm time = %f\n", t2 - t1);
 
       // call elemlib stress integration loop to produce nodal forces from
       // material stresses.
-      gettimeofday(&start, NULL);
-      t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//      gettimeofday(&start, NULL);
+//      t1 = start.tv_sec+(double(start.tv_usec)/1000000);
       IntegrateStressForElems( numElem, sigxx, sigyy, sigzz, determ) ;
-      gettimeofday(&end, NULL);
-      t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-      printf("        IntegrateStress time = %f\n", t2 - t1);
+//      gettimeofday(&end, NULL);
+//      t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//      printf("        IntegrateStress time = %f\n", t2 - t1);
       
       // check for negative element volume
       for ( Index_t k=0 ; k<numElem ; ++k ) {
@@ -1414,12 +1415,12 @@ void CalcVolumeForceForElems()
          }
       }
 
-      gettimeofday(&start, NULL);
-      t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//      gettimeofday(&start, NULL);
+//      t1 = start.tv_sec+(double(start.tv_usec)/1000000);
       CalcHourglassControlForElems(determ, hgcoef) ;
-      gettimeofday(&end, NULL);
-      t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-      printf("        HourglassControlCalc time = %f\n", t2 - t1);
+//      gettimeofday(&end, NULL);
+//      t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//      printf("        HourglassControlCalc time = %f\n", t2 - t1);
 
       Release(&determ) ;
       Release(&sigzz) ;
@@ -1440,12 +1441,12 @@ static inline void CalcForceForNodes()
   /* Calcforce calls partial, force, hourq */
   struct timeval start;
   struct timeval end;
-  gettimeofday(&start, NULL);
-  double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//  gettimeofday(&start, NULL);
+//  double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
   CalcVolumeForceForElems() ;
-  gettimeofday(&end, NULL);
-  double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-  printf("      VolumeForceCalc time = %f\n", t2 - t1);
+//  gettimeofday(&end, NULL);
+//  double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//  printf("      VolumeForceCalc time = %f\n", t2 - t1);
 
   /* Calculate Nodal Forces at domain boundaries */
   /* problem->commSBN->Transfer(CommSBN::forces); */
@@ -1523,40 +1524,40 @@ void LagrangeNodal()
    * acceleration boundary conditions. */
   struct timeval start;
   struct timeval end;
-  gettimeofday(&start, NULL);
-  double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//  gettimeofday(&start, NULL);
+//  double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
   CalcForceForNodes();
-  gettimeofday(&end, NULL);
-  double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-  printf("    ForceCalc time = %f\n", t2 - t1);
+//  gettimeofday(&end, NULL);
+//  double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//  printf("    ForceCalc time = %f\n", t2 - t1);
   
-  gettimeofday(&start, NULL);
-  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//  gettimeofday(&start, NULL);
+//  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
   CalcAccelerationForNodes();
-  gettimeofday(&end, NULL);
-  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-  printf("    AccelCalc time = %f\n", t2 - t1);
+//  gettimeofday(&end, NULL);
+//  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//  printf("    AccelCalc time = %f\n", t2 - t1);
 
-  gettimeofday(&start, NULL);
-  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//  gettimeofday(&start, NULL);
+//  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
   ApplyAccelerationBoundaryConditionsForNodes();
-  gettimeofday(&end, NULL);
-  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-  printf("    AccelBC time = %f\n", t2 - t1);
+//  gettimeofday(&end, NULL);
+//  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//  printf("    AccelBC time = %f\n", t2 - t1);
 
-  gettimeofday(&start, NULL);
-  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//  gettimeofday(&start, NULL);
+//  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
   CalcVelocityForNodes( delt, u_cut ) ;
-  gettimeofday(&end, NULL);
-  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-  printf("    VelocityCalc time = %f\n", t2 - t1);
+//  gettimeofday(&end, NULL);
+//  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//  printf("    VelocityCalc time = %f\n", t2 - t1);
 
-  gettimeofday(&start, NULL);
-  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//  gettimeofday(&start, NULL);
+//  t1 = start.tv_sec+(double(start.tv_usec)/1000000);
   CalcPositionForNodes( delt );
-  gettimeofday(&end, NULL);
-  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-  printf("    PositionCalc time = %f\n", t2 - t1);
+//  gettimeofday(&end, NULL);
+//  t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//  printf("    PositionCalc time = %f\n", t2 - t1);
 
   return;
 }
@@ -2699,28 +2700,28 @@ void LagrangeLeapFrog()
     * applied boundary conditions and slide surface considerations */
    struct timeval start;
    struct timeval end;
-   gettimeofday(&start, NULL);
-   double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//   gettimeofday(&start, NULL);
+//   double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
    LagrangeNodal();
-   gettimeofday(&end, NULL);
-   double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-   printf("  LagrangeNodal time = %f\n", t2 - t1);
+//   gettimeofday(&end, NULL);
+//   double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//   printf("  LagrangeNodal time = %f\n", t2 - t1);
 
    /* calculate element quantities (i.e. velocity gradient & q), and update
     * material states */
-   gettimeofday(&start, NULL);
-   t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//   gettimeofday(&start, NULL);
+//   t1 = start.tv_sec+(double(start.tv_usec)/1000000);
    LagrangeElements();
-   gettimeofday(&end, NULL);
-   t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-   printf("  LagrangeElements time = %f\n", t2 - t1);
+//   gettimeofday(&end, NULL);
+//   t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//   printf("  LagrangeElements time = %f\n", t2 - t1);
 
-   gettimeofday(&start, NULL);
-   t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//   gettimeofday(&start, NULL);
+//   t1 = start.tv_sec+(double(start.tv_usec)/1000000);
    CalcTimeConstraintsForElems();
-   gettimeofday(&end, NULL);
-   t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-   printf("  TimeConstraints time = %f\n", t2 - t1);
+//   gettimeofday(&end, NULL);
+//   t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//   printf("  TimeConstraints time = %f\n", t2 - t1);
 
    // LagrangeRelease() ;  Creation/destruction of temps may be important to capture 
 }
@@ -2937,40 +2938,51 @@ int main(int argc, char *argv[])
       }
    }
 
+struct timeval mainStart;
+struct timeval mainEnd;
+gettimeofday(&mainStart, NULL);
+double mainStartTime = mainStart.tv_sec+(double(mainStart.tv_usec)/1000000);
+
    /* timestep to solution */
    int iter = 0;
    while(domain.time() < domain.stoptime() ) {
       struct timeval start;
       struct timeval end;
-      gettimeofday(&start, NULL);
-      double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//      gettimeofday(&start, NULL);
+//      double t1 = start.tv_sec+(double(start.tv_usec)/1000000);
       TimeIncrement() ;
-      gettimeofday(&end, NULL);
-      double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-      printf("TI time = %f\n", t2 - t1);
+//      gettimeofday(&end, NULL);
+//      double t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//      printf("TI time = %f\n", t2 - t1);
 
-      gettimeofday(&start, NULL);
-      t1 = start.tv_sec+(double(start.tv_usec)/1000000);
+//      gettimeofday(&start, NULL);
+//      t1 = start.tv_sec+(double(start.tv_usec)/1000000);
       LagrangeLeapFrog() ;
-      gettimeofday(&end, NULL);
-      t2 = end.tv_sec+(double(end.tv_usec)/1000000);
-      printf("LagrangeLeapfrog time = %f\n", t2 - t1);
+//      gettimeofday(&end, NULL);
+//      t2 = end.tv_sec+(double(end.tv_usec)/1000000);
+//      printf("LagrangeLeapfrog time = %f\n", t2 - t1);
       /* problem->commNodes->Transfer(CommNodes::syncposvel) ; */
 
-      #if LULESH_SHOW_PROGRESS
+#if LULESH_SHOW_PROGRESS
       printf("time = %e, dt=%e\n",
              double(domain.time()), double(domain.deltatime()) ) ;
 
 #endif
       iter++;
+#if LULESH_OUTPUT_FILE
       FILE* outputFile;
-      outputFile = fopen("/Users/daperlmu/Desktop/luleshCCoutput", "a");
+      outputFile = fopen("/tmp/luleshCCoutput", "a");
       fprintf(outputFile, "Iteration %d\n", iter);
       for (int index = 0; index < domain.numElem(); index++) {
         fprintf(outputFile, "x=%f, y=%f, z=%f, fx=%f, fy=%f,fz=%f\n", domain.x(index), domain.y(index), domain.z(index), domain.fx(index), domain.fy(index), domain.fz(index)) ;
       }
-      fclose(outputFile); 
+      fclose(outputFile);
+#endif
    }
+
+gettimeofday(&mainEnd, NULL);
+double mainEndTime = mainEnd.tv_sec+(double(mainEnd.tv_usec)/1000000);
+printf("total time = %f\n", mainEndTime - mainStartTime);
 
    return 0 ;
 }

@@ -1,9 +1,9 @@
 TARGET = lulesh
 
-CXX = g++
+CXX = g++44
 
 $(TARGET): $(TARGET).cc
-	$(CXX) -O3 $< -lm -o $@
+	$(CXX) -O2 -finline-functions $< -lm -o $@
 
 clean:
 	rm -f *~ $(TARGET)
