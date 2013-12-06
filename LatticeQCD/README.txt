@@ -3,7 +3,7 @@ How to run Lattice QCD
 Koichi Shirahata
 Intern at IBM Research - Tokyo
 
-2013.11.1
+2013.12.6
 
 
 source code of LatticeQCD run on
@@ -21,6 +21,8 @@ Index
 6.  X10 version with Native X10 in parallel on single place (in LatticeQCDparallel/src/)
 7.  X10 version with Managed X10 on multiple places (in LatticeQCDdist/src/)
 8.  X10 version with Native X10 on multiple places (in LatticeQCDdist/src/)
+
+9.  latest X10 with Native X10 on multiple places (in LatticeQCDdist-latest)
 
 
 
