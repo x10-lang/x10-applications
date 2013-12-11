@@ -22,14 +22,14 @@ public class Parallel {
     val t:Timer;
     val team:Team;
 
-    val intLatchPut:PlaceLocalHandle[Rail[Latch2]];
-    val intLatchGet:PlaceLocalHandle[Rail[Latch2]];
+    val startLatch:PlaceLocalHandle[Rail[Latch2]];
+    val finishLatch:PlaceLocalHandle[Rail[Latch2]];
     
     def this() {
-        this.t = new Timer();
+    	this.t = new Timer();
         this.team = new Team(PlaceGroup.WORLD);
-         this.intLatchPut = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](256));
-         this.intLatchGet = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](256));
+        this.startLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.MAX_PLACES));
+        this.finishLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.MAX_PLACES));
     }
     
     public def getNRanks():Long {
@@ -60,9 +60,9 @@ public class Parallel {
     public def initParallel(args:Rail[String], par:Parallel, hep:HaloExchangePlh, pp:(args:Rail[String], par:Parallel, hep:HaloExchangePlh)=>void):void {
         PlaceGroup.WORLD.broadcastFlat(
             ()=>{
-             for(var i:Int = 0n; i < 256n; i++) { 
-                  intLatchPut()(i) = new Latch2();
-                  intLatchGet()(i) = new Latch2();
+             for(var i:Int = 0n; i < Place.MAX_PLACES as Int; i++) { 
+                  startLatch()(i) = new Latch2();
+                  finishLatch()(i) = new Latch2();
                 }
               pp(args, par, hep);});
     }
@@ -82,31 +82,39 @@ public class Parallel {
     /// \param [in]  source  Rank in MPI_COMM_WORLD from which to receive.
     /// \return Number of bytes received.
     public def sendReceiveParallel[T](sendBuf:PlaceLocalHandle[Rail[T]], sendLen:Int, dest:Int,
-    recvBuf:PlaceLocalHandle[Rail[T]], recvLen:Int, source:Int, recvdLen:PlaceLocalHandle[Cell[Int]]):int {
-    val len = sendLen;
-    val sendsrc = getMyRank() as Int;
-    if (sendsrc == dest && sendsrc == source) {
-    Rail.copy[T](sendBuf(), 0, recvBuf(), 0, len as Long);
-    recvdLen().value = len;
-    } else {
-    val sendBufferRef = GlobalRail(sendBuf());
-    finish {
-    at (Place.place(dest)) async {
-    finish{
-    intLatchPut()(sendsrc).sync();
-    Rail.asyncCopy[T](sendBufferRef, 0, recvBuf(), 0, len as Long);
-    recvdLen().value = len;
-    intLatchGet()(sendsrc).release();
-    }
-    }
-    finish {
-    intLatchPut()(source).release();
-    intLatchGet()(source).sync();
-    }
-    }
-    }
-    return len;
-    }
+    		recvBuf:PlaceLocalHandle[Rail[T]], recvLen:Int, source:Int, recvdLen:PlaceLocalHandle[Cell[Int]]):int 
+    {
+    	val len:Int = sendLen;
+    	val me = here.id() as Int;
+
+    	if (me == dest && me == source) {
+    		Rail.copy[T](sendBuf(), 0, recvBuf(), 0, len as Long);
+    		recvdLen().value = len;
+    	} else {
+    		finish {
+    			//1. Trigger asyncCopy(source -> me)
+    			at (Place.place(source)) {
+    				startLatch()(me).release(); //Notify the "source" that "me" is ready to receive
+    			}
+
+    			//2.1. Wait for the "dest" ready to receive
+    			val sendBufferRef = GlobalRail(sendBuf());
+    			startLatch()(dest).sync(); //Wait for a notification from the "dest"
+    			// Now both sendBuf at "me" and recvBuf at the "dest" are ready for asyncCopy
+
+    			//2.2. Perform asyncCopy(me -> dest)
+    			at (Place.place(dest)) async {
+    				finish { Rail.asyncCopy[T](sendBufferRef, 0, recvBuf(), 0, len as Long); }
+    				recvdLen().value = len;
+    				finishLatch()(me).release(); //Notify the "dest" of the completion of asyncCopy(me -> dest)
+    			}
+    
+    			//3. Wait for a notification of the completion of asyncCopy(source -> me) 
+    			finishLatch()(source).sync();
+    		}
+    	}
+    	return len;
+   	}
 
     public def addIntParallel(sendBuf:Rail[Int], recvBuf:Rail[Int], count:Int):void {
         team.allreduce[Int](sendBuf, 0, recvBuf, 0, count as Long, Team.ADD);
