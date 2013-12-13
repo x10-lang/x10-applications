@@ -35,58 +35,61 @@ public class MC_Comm {
        
    	for (var i:Int = 1n; i < numProcs; ++i)
    	  	sdispl(i) = sdispl(i - 1n) + mySendCount(i - 1n);
-		
+
+		val particlesRef = mc.particles;
+		val particles:Rail[Particle] = particlesRef();
+
+		val numRecvs = new Rail[Long](6);
+		val grefPs = new Rail[GlobalRail[Double]](6);
+		val pls = new Rail[Place](6);
+
+		for (var i:Long = 0; i < 6; ++i) {
+			val id = mc.grid.nabes(i);
+			if (id < 0)
+				continue;
+			numRecvs(i) = myRecvCount(id) as Long; 
+			grefPs(i) = GlobalRail(new Rail[Double](3*numRecvs(i)));
+			pls(i) = Place.place(id);
+		}
+
  		finish async {
 			val h = here;
    		val hid = here.id;
 			
 			async for (var j:Int = 0n; j < 6n; ++j) {
 				val id = mc.grid.nabes(j);
-				if (id < 0)
+				if (id < 0 || numRecvs(j) == 0)
 					continue;
 
-				val pl:Place = Place.place(id);
+				val numRecv2 = numRecvs(j) * 2;
+				val numRecv3 = numRecvs(j) * 3;
 
-   			np = mc.nparticles;
-				val numRecv = myRecvCount(pl.id) as Long;
-				
-				if (numRecv == 0)
-					continue;
-
-				val numRecv2 = numRecv * 2;
-				val numRecv3 = numRecv * 3;
-
-            val tempP = new Rail[Double](numRecv3);
-            val grefP= GlobalRail(tempP);
-
-				val particlesRef = mc.particles;
-				val particles:Rail[Particle] = particlesRef();
-
-				async at (pl) {
+				val k = j;
+				async at (pls(k)) {
 					val from = sdispl(hid);
                val fromP = new Rail[Double](numRecv3);
 
-					for (var i:Int = 0n; i < numRecv; ++i) {
+					for (var i:Int = 0n; i < numRecvs(k); ++i) {
 						val particle:Particle = particlesRef()(from + i);
 						fromP(i) = particle.x;
-						fromP(numRecv + i) = particle.y;
+						fromP(numRecvs(k) + i) = particle.y;
 						fromP(numRecv2 + i) = particle.z;
 					}
 
-               Rail.asyncCopy[Double](fromP, 0, grefP, 0, numRecv3);
-				}
-				val to = displ(pl.id);
-				val end = to + numRecv;
-
-				/** Currently, Particle object is initialized with the copied 
-				 *  arguments because Rail.asyncCopy does not support the copy 
-				 *  of user-defined types.
-				 */
-  	   	   for (var i:Int = to; i < end; ++i) {
-					particles(i) = new Particle(grefP(i), grefP(numRecv + i), grefP(numRecv2 + i), 0d, 0d, 0n, mype);
+               Rail.asyncCopy[Double](fromP, 0l, grefPs(k), 0l, numRecv3);
 				}
   	      }
       }
+		for (var j:Long = 0; j < 6; ++j) {
+			val to = displ(pls(j).id);
+			val end = to + numRecvs(j);
+
+			val numRecv2 = numRecvs(j) << 2;
+  		   for (var i:Int = to; i < end; ++i) {
+				particles(i) = new Particle(grefPs(j)(i), grefPs(j)(numRecvs(j) + i), grefPs(j)(numRecv2 + i), 0d, 0d, 0n, mype);
+			}
+		}
+		
  	  	mc.nparticles += MC_Cycle.isum(myRecvCount, mc.nprocs);
     };
     
