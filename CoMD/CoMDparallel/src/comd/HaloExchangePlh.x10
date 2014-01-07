@@ -14,13 +14,20 @@ public class HaloExchangePlh {
     var recvBufM0:PlaceLocalHandle[Rail[MyTypes.real_t]];
     var recvBufP0:PlaceLocalHandle[Rail[MyTypes.real_t]];
     
-    var nRecvMi:PlaceLocalHandle[Cell[Int]];
-    var nRecvMr:PlaceLocalHandle[Cell[Int]];
-    var nRecvPi:PlaceLocalHandle[Cell[Int]];
-    var nRecvPr:PlaceLocalHandle[Cell[Int]];
-    var nRecvM:PlaceLocalHandle[Cell[Int]];
-    var nRecvP:PlaceLocalHandle[Cell[Int]];
+    var nRecvMi:PlaceLocalHandle[Rail[Int]];
+    var nRecvMr:PlaceLocalHandle[Rail[Int]];
+    var nRecvPi:PlaceLocalHandle[Rail[Int]];
+    var nRecvPr:PlaceLocalHandle[Rail[Int]];
+    var nRecvM:PlaceLocalHandle[Rail[Int]];
+    var nRecvP:PlaceLocalHandle[Rail[Int]];
     
+    var nSendMi:PlaceLocalHandle[Rail[Int]];
+    var nSendMr:PlaceLocalHandle[Rail[Int]];
+    var nSendPi:PlaceLocalHandle[Rail[Int]];
+    var nSendPr:PlaceLocalHandle[Rail[Int]];
+    var nSendM:PlaceLocalHandle[Rail[Int]];
+    var nSendP:PlaceLocalHandle[Rail[Int]];
+
     public def initHaloExchangePlh (args:Rail[String]): Int {
     	val par = new Parallel();
     	val per = new PerformanceTimer(par);
@@ -69,12 +76,19 @@ public class HaloExchangePlh {
         	recvBufM0 = PlaceLocalHandle.make[Rail[MyTypes.real_t]](Place.places(), ()=>new Rail[MyTypes.real_t](bufForceCapacity));
         	recvBufP0 = PlaceLocalHandle.make[Rail[MyTypes.real_t]](Place.places(), ()=>new Rail[MyTypes.real_t](bufForceCapacity));
         
-           nRecvMi = PlaceLocalHandle.make[Cell[Int]](Place.places(), ()=>new Cell[Int](0n));
-           nRecvMr = PlaceLocalHandle.make[Cell[Int]](Place.places(), ()=>new Cell[Int](0n));
-           nRecvPi = PlaceLocalHandle.make[Cell[Int]](Place.places(), ()=>new Cell[Int](0n));
-           nRecvPr = PlaceLocalHandle.make[Cell[Int]](Place.places(), ()=>new Cell[Int](0n));
-           nRecvM = PlaceLocalHandle.make[Cell[Int]](Place.places(), ()=>new Cell[Int](0n));
-           nRecvP = PlaceLocalHandle.make[Cell[Int]](Place.places(), ()=>new Cell[Int](0n));
+           nRecvMi = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nRecvMr = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nRecvPi = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nRecvPr = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nRecvM = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nRecvP = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+
+           nSendMi = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nSendMr = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nSendPi = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nSendPr = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nSendM = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
+           nSendP = PlaceLocalHandle.make[Rail[Int]](Place.places(), ()=>new Rail[Int](1n));
 
            return 0n;
     	}

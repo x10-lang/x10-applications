@@ -104,6 +104,12 @@ public class HaloExchange {
     val hep:HaloExchangePlh;
     val tmp:Rail[AtomMsg];
     val shift:MyTypes.real3;
+    val nRecvMi:Cell[Int];
+    val nRecvMr:Cell[Int];
+    val nRecvPi:Cell[Int];
+    val nRecvPr:Cell[Int];
+    val nRecvM:Cell[Int];
+    val nRecvP:Cell[Int];
     def this (par:Parallel, per:PerformanceTimer, dc:Decomposition, lc:LinkCells, hep:HaloExchangePlh) {
         this.par = par;
     	this.per = per;
@@ -115,6 +121,12 @@ public class HaloExchange {
             tmp(i) = new AtomMsg();
         }
         this.shift = new MyTypes.real3(3);
+        this.nRecvMi = new Cell[Int](0n);
+        this.nRecvMr = new Cell[Int](0n);
+        this.nRecvPi = new Cell[Int](0n);
+        this.nRecvPr = new Cell[Int](0n);
+        this.nRecvM = new Cell[Int](0n);
+        this.nRecvP = new Cell[Int](0n);
     }
     /// Don't change the order of the faces in this enum.
     val HALO_X_MINUS = 0n, HALO_X_PLUS = 1n,
@@ -340,23 +352,30 @@ public class HaloExchange {
        val nRecvMr = hep.nRecvMr;
        val nRecvPi = hep.nRecvPi;
        val nRecvPr = hep.nRecvPr;
+       val nSendMi = hep.nSendMi;
+       val nSendMr = hep.nSendMr;
+       val nSendPi = hep.nSendPi;
+       val nSendPr = hep.nSendPr;
         
        val nSendM = haloExchange.loadBufferForAtoms(haloExchange.parmsForAtom, data, faceM, sendBufMi, sendBufMr);
     	val nSendP = haloExchange.loadBufferForAtoms(haloExchange.parmsForAtom, data, faceP, sendBufPi, sendBufPr);
-
+        nSendMi()(0) = nSendM*2n;
+        nSendMr()(0) = nSendM*6n;
+        nSendPi()(0) = nSendP*2n;
+        nSendPr()(0) = nSendP*6n;
     	val nbrRankM = haloExchange.nbrRank(faceM);
     	val nbrRankP = haloExchange.nbrRank(faceP);
 
     	per.startTimer(per.commHaloTimer);
-       par.sendReceiveParallel[Int](sendBufMi, nSendM*2n, nbrRankM, recvBufPi, haloExchange.bufCapacity*2n, nbrRankP, nRecvPi);
-       par.sendReceiveParallel[MyTypes.real_t](sendBufMr, nSendM*6n, nbrRankM, recvBufPr, haloExchange.bufCapacity*6n, nbrRankP, nRecvPr);
-       par.sendReceiveParallel[Int](sendBufPi, nSendP*2n, nbrRankP, recvBufMi, haloExchange.bufCapacity*2n, nbrRankM, nRecvMi);
-       par.sendReceiveParallel[MyTypes.real_t](sendBufPr, nSendP*6n, nbrRankP, recvBufMr, haloExchange.bufCapacity*6n, nbrRankM, nRecvMr);
+       par.sendReceiveParallel[Int](sendBufMi, nSendMi, nbrRankM, recvBufPi, haloExchange.bufCapacity*2n, nbrRankP, nRecvPi);
+       par.sendReceiveParallel[MyTypes.real_t](sendBufMr, nSendMr, nbrRankM, recvBufPr, haloExchange.bufCapacity*6n, nbrRankP, nRecvPr);
+       par.sendReceiveParallel[Int](sendBufPi, nSendPi, nbrRankP, recvBufMi, haloExchange.bufCapacity*2n, nbrRankM, nRecvMi);
+       par.sendReceiveParallel[MyTypes.real_t](sendBufPr, nSendPr, nbrRankP, recvBufMr, haloExchange.bufCapacity*6n, nbrRankM, nRecvMr);
        per.stopTimer(per.commHaloTimer);
-       val nRecvPit = nRecvPi().value;
-       val nRecvMit = nRecvMi().value;
-       assert nRecvPit * 3n == nRecvPr().value;
-       assert nRecvMit * 3n == nRecvMr().value;
+       val nRecvPit = nRecvPi()(0);
+       val nRecvMit = nRecvMi()(0);
+       assert nRecvPit * 3n == nRecvPr()(0);
+       assert nRecvMit * 3n == nRecvMr()(0);
        haloExchange.unloadBufferForAtoms(haloExchange.parmsForAtom, data, faceM, nRecvMit/2n, recvBufMi, recvBufMr);
        haloExchange.unloadBufferForAtoms(haloExchange.parmsForAtom, data, faceP, nRecvPit/2n, recvBufPi, recvBufPr);
     }
@@ -372,9 +391,13 @@ public class HaloExchange {
     	val recvBufP = hep.recvBufP0;
        val nRecvM = hep.nRecvM;
        val nRecvP = hep.nRecvP;
+       val nSendM = hep.nSendM;
+       val nSendP = hep.nSendP;
 
-    	val nSendM = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceM, sendBufM);
-    	val nSendP = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceP, sendBufP);
+//    	val nSendM = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceM, sendBufM);
+//    	val nSendP = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceP, sendBufP);
+       nSendM()(0) = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceM, sendBufM);
+       nSendP()(0) = haloExchange.loadBufferForForce(haloExchange.parmsForForce, data, faceP, sendBufP);
 
     	val nbrRankM = haloExchange.nbrRank(faceM);
     	val nbrRankP = haloExchange.nbrRank(faceP);
@@ -384,8 +407,8 @@ public class HaloExchange {
        par.sendReceiveParallel[MyTypes.real_t](sendBufP, nSendP, nbrRankP, recvBufM, haloExchange.bufCapacity, nbrRankM, nRecvM);
     	per.stopTimer(per.commHaloTimer);
     
-       haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceM, nRecvM().value, recvBufM);
-       haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceP, nRecvP().value, recvBufP);
+       haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceM, nRecvM()(0), recvBufM);
+       haloExchange.unloadBufferForForce(haloExchange.parmsForForce, data, faceP, nRecvP()(0), recvBufP);
     }
 
     /// Make a list of link cells that need to be sent across the specified

@@ -24,12 +24,14 @@ public class Parallel {
 
     val startLatch:PlaceLocalHandle[Rail[Latch2]];
     val finishLatch:PlaceLocalHandle[Rail[Latch2]];
+    val perPLH:PlaceLocalHandle[Rail[PerformanceTimer]];
     
     def this() {
     	this.t = new Timer();
         this.team = new Team(PlaceGroup.WORLD);
         this.startLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.MAX_PLACES));
         this.finishLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.MAX_PLACES));
+        this.perPLH = PlaceLocalHandle.make[Rail[PerformanceTimer]](Place.places(), ()=>new Rail[PerformanceTimer](1));
     }
     
     public def getNRanks():Long {
@@ -81,36 +83,40 @@ public class Parallel {
     /// \param [in]  recvLen Maximum number of bytes to receive.
     /// \param [in]  source  Rank in MPI_COMM_WORLD from which to receive.
     /// \return Number of bytes received.
-    public def sendReceiveParallel[T](sendBuf:PlaceLocalHandle[Rail[T]], sendLen:Int, dest:Int,
-    		recvBuf:PlaceLocalHandle[Rail[T]], recvLen:Int, source:Int, recvdLen:PlaceLocalHandle[Cell[Int]]):int 
+    public def sendReceiveParallel[T](sendBuf:PlaceLocalHandle[Rail[T]], sendLen:PlaceLocalHandle[Rail[Int]], dest:Int,
+    		recvBuf:PlaceLocalHandle[Rail[T]], recvLen:Int, source:Int, recvdLen:PlaceLocalHandle[Rail[Int]]):int 
     {
-    	val len:Int = sendLen;
+    	val len:Int = sendLen()(0);
     	val me = here.id() as Int;
-
     	if (me == dest && me == source) {
     		Rail.copy[T](sendBuf(), 0, recvBuf(), 0, len as Long);
-    		recvdLen().value = len;
+    		recvdLen()(0) = len;
     	} else {
     		finish {
-    			//1. Trigger asyncCopy(source -> me)
-    			at (Place.place(source)) {
-    				startLatch()(me).release(); //Notify the "source" that "me" is ready to receive
+    			//1. Trigger asyncCopy(me -> dest)
+    			at (Place.place(dest)) async {
+    				startLatch()(me).release(); //Notify the "dest" that "me" is ready to send
     			}
 
-    			//2.1. Wait for the "dest" ready to receive
-    			val sendBufferRef = GlobalRail(sendBuf());
-    			startLatch()(dest).sync(); //Wait for a notification from the "dest"
-    			// Now both sendBuf at "me" and recvBuf at the "dest" are ready for asyncCopy
+    			//2.1. Wait for the "source" ready to send
+    			val recvBufferRef = GlobalRail(recvBuf());
+              val recvdLenRef = GlobalRail(recvdLen());
+    			startLatch()(source).sync(); //Wait for a notification from the "source"
+    			// Now both recvBuf at "me" and sendBuf at the "source" are ready for asyncCopy
 
-    			//2.2. Perform asyncCopy(me -> dest)
-    			at (Place.place(dest)) async {
-    				finish { Rail.asyncCopy[T](sendBufferRef, 0, recvBuf(), 0, len as Long); }
-    				recvdLen().value = len;
+              //2.2. Perform asyncCopy(source -> me)
+    			at (Place.place(source)) async {
+                  val len2 = sendLen()(0);
+    				finish {
+                     Rail.asyncCopy[T](sendBuf(), 0, recvBufferRef, 0, len2 as Long);
+    					Rail.asyncCopy[Int](sendLen(), 0, recvdLenRef, 0, 1);
+                    }
+    				//recvdLen.value = len2;
     				finishLatch()(me).release(); //Notify the "dest" of the completion of asyncCopy(me -> dest)
     			}
     
     			//3. Wait for a notification of the completion of asyncCopy(source -> me) 
-    			finishLatch()(source).sync();
+    			finishLatch()(dest).sync();
     		}
     	}
     	return len;
