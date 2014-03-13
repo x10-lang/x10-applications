@@ -2,7 +2,6 @@
 
 import WilsonVectorField;
 import SU3MatrixField;
-import HalfWilsonVectorField;
 
 
 import x10.compiler.Inline;
