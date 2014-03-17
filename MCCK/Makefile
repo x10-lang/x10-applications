@@ -1,4 +1,5 @@
-X10FLAG = -O -NO_CHECKS -x10rt pami -report postcompile=1
+X10RT = pami
+X10FLAG = -O -NO_CHECKS -VERBOSE_CHECKS -x10rt ${X10RT} -report postcompile=1
 
 ManagedX10BIN = MCCK.jar
 NativeX10BIN = MCCK
@@ -14,10 +15,10 @@ build:	build-cpp build-java
 run:	run-cpp run-java 
 
 build-java:
-	x10c ${X10FLAG} -o ${ManagedX10BIN} src/*.x10
+	x10c ${X10FLAG} -o ${ManagedX10BIN} src/Main.x10
 
 build-cpp:
-	x10c++ ${X10FLAG} -o ${NativeX10BINDIR}/${NativeX10BIN} -d ${NativeX10BINDIR} src/*.x10
+	x10c++ ${X10FLAG} -o ${NativeX10BINDIR}/${NativeX10BIN} -d ${NativeX10BINDIR} src/Main.x10
 
 run-java:
 	x10 -cp ${ManagedX10BIN} src.Main ${APPFLAG}
