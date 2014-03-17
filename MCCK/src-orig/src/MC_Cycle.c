@@ -198,7 +198,7 @@ static void update_particles_strict(){
   for (i=0,j=0;i<npl;++i,j=i%6){
     particles[npa+i].absorbed = 0;
     nabe = mc->grid.nabes[j];
-    if (nabe == -1){
+    if (nabe == MPI_PROC_NULL){
       particles[npa+i].proc = mc->mype; /* bounce back boundary condition */
     }
     else{
@@ -228,7 +228,7 @@ static void update_particles(){
 	random_nabe_index = (int)(rand() / (((double)RAND_MAX + 1)/ 6));
 	random_nabe = mc->grid.nabes[random_nabe_index];
 	particles[i].absorbed = 0;
-	if (random_nabe != -1)
+	if (random_nabe != MPI_PROC_NULL)
 	  particles[i].proc = random_nabe; 
 	else 	/* Enforce Boundary Condition */
 	  particles[i].proc = mc->mype; /* bounce back boundary condition */  
@@ -245,7 +245,7 @@ static void update_particles(){
 	random_nabe_index = (int)(rand() / (((double)RAND_MAX + 1)/ 6));
 	random_nabe = mc->grid.nabes[random_nabe_index];
 	particles[i].absorbed = 0;
-	if (random_nabe != -1)
+	if (random_nabe != MPI_PROC_NULL)
 	  particles[i].proc = random_nabe; 
 	else { 	/* Enforce Boundary Condition */
 	  r = rand()/((double)RAND_MAX + 1);
