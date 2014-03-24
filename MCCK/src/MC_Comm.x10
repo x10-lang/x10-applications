@@ -27,7 +27,7 @@ public class MC_Comm {
 		val mype = mc.mype;
 		var np:Int = mc.nparticles;
 
-		displ(0) = np;	
+		displ(0) = 0n;	
       
    	/** now set the recv pointers locally on each proc. */
    	for (var i:Int = 1n; i < numProcs; ++i)
@@ -61,7 +61,6 @@ public class MC_Comm {
 				if (id < 0 || numRecvs(j) == 0)
 					continue;
 
-				val numRecv2 = numRecvs(j) * 2;
 				val numRecv3 = numRecvs(j) * 3;
 
 				val k = j;
@@ -72,8 +71,8 @@ public class MC_Comm {
 					for (var i:Int = 0n; i < numRecvs(k); ++i) {
 						val particle:Particle = particlesRef()(from + i);
 						fromP(i) = particle.x;
-						fromP(numRecvs(k) + i) = particle.y;
-						fromP(numRecv2 + i) = particle.z;
+						fromP(i + 1) = particle.y;
+						fromP(i + 2) = particle.z;
 					}
 
                Rail.asyncCopy[Double](fromP, 0l, grefPs(k), 0l, numRecv3);
@@ -84,9 +83,8 @@ public class MC_Comm {
 			val to = displ(pls(j).id);
 			val end = to + numRecvs(j);
 
-			val numRecv2 = numRecvs(j) << 2;
   		   for (var i:Int = to; i < end; ++i) {
-				particles(i) = new Particle(grefPs(j)(i), grefPs(j)(numRecvs(j) + i), grefPs(j)(numRecv2 + i), 0d, 0d, 0n, mype);
+				particles(i) = new Particle(grefPs(j)(i), grefPs(j)(i + 1), grefPs(j)(i + 2), 0d, 0d, 0n, mype);
 			}
 		}
 		
