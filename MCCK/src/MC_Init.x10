@@ -1,12 +1,8 @@
-import x10.io.FileReader;
-import x10.io.File;
-import x10.io.IOException;
-import x10.regionarray.Array;
+/*
+ */
+
 import x10.regionarray.Region;
-import x10.regionarray.DistArray;
-import x10.regionarray.Dist;
 import x10.util.Random;
-import x10.util.Team;
 import x10.compiler.Native;
 import x10.compiler.NativeCPPInclude;
 
@@ -120,9 +116,6 @@ public class MC_Init {
        var yh:Int = -1n;
        var zh:Int = -1n;
        
-//       mc.mype = here.id as Int;
-       
-//Console.OUT.println(dim(0) + ", " + dim(1) + ", " + dim(2));
        /**
         * every places has to know the relation of matrix <=> place
         */
@@ -133,7 +126,6 @@ public class MC_Init {
                    p = Place.FIRST_PLACE;
                 
                 mc.matrix(i,j,k) = p.id() as Int;
-//Console.OUT.println("(" + i + ", " + j + ", " + k + "): " + mc.matrix(i,j,k));
                 
                 if (p.id() == here.id) {
                    xh = i;
@@ -158,8 +150,6 @@ public class MC_Init {
          	mc.grid.nabes(1n) = -1n;
 			else	
          	mc.grid.nabes(1n) = mc.matrix(xh + 1n, yh, zh);
-
-//Console.OUT.println("xh=" + xh + ", yh=" + yh + ", zh=" + zh + ", " + mc.grid.nabes(1n));
       }
       else if (xh == dim(0n) - 1n) {
       	 mc.grid.nabes(0n) = mc.matrix(xh - 1n, yh, zh);
@@ -227,114 +217,5 @@ public class MC_Init {
        mc.grid.coords(4n) = mc.grid.proc_coords(2n) * dz;
        mc.grid.coords(5n) = mc.grid.coords(4n) + dz;
 	}
-	
-	
-// 	private def getParameters(args:Rail[String], mc:MC):void {
-//     	var read_flag:Int = 0n;
-// 
-// 		if (args.size == 0L) {
-// 			Console.OUT.println("Usage:\nIn native X10, mpirun [-np NUM_PROC] <executable> NPARTICLES GLOBAL_LEAKAGE [-f INPUT FILE] [-r] [-b BOUNDARY CONDITION] [-m STRICT]\n");
-// 			Console.OUT.println("In managed X10, X10_NPLACES=NUM_PROC $X10_PATH/bin/x10 -x10rt mpi <Main> NPARTICLES GLOBAL_LEAKAGE [-f INPUT FILE] [-r] [-b BOUNDARY CONDITION] [-m STRICT]\n");
-// 			System.setExitCode(1n);
-// 			return;
-// 		}
-// 
-// 		var i:Int;
-// 		for (i = 0n; i < args.size - 2; ++i) {
-// 			if (  args(i).indexOf("-m") >= 0n
-// 				|| args(i).indexOf("-M") >= 0n) {
-// 				var mode:String;
-// 				if (args(i).length() == 2n)
-// 					mode = args(++i);
-// 				else
-// 					mode = args(i).substring(2n);
-// 				
-// 				if (mode.equals("strict"))
-// 					mc.strict = 1n;
-// 				else if (mode.equals("nostrict"))
-// 					mc.strict = 0n;
-// 				
-// 				continue;
-// 			}
-// 			if (  args(i).indexOf("-b") >= 0n
-// 				|| args(i).indexOf("-B") >= 0n) {
-// 				var bndry_string:String;
-// 				if (args(i).length() == 2n)
-// 					bndry_string = args(++i);
-// 				else
-// 					bndry_string = args(i).substring(2n);
-// 				
-// 				if (bndry_string.equals("reflect"))
-// 					mc.boundary_flag = mc.BNDRY_REFLECT;
-// 				else if (bndry_string.equals("leak"))
-// 					mc.boundary_flag = mc.BNDRY_LEAK;
-// 				else if (bndry_string.equals("periodic"))
-// 					mc.boundary_flag = mc.BNDRY_PERIODIC;
-// 				
-// 				continue;
-// 			}
-// 			if (  args(i).equals("-r") 
-// 				|| args(i).equals("-R")) {
-// 				mc.seed = 3333;
-// 				continue;
-// 			}
-// 			if (  args(i).indexOf("-f") >= 0n
-// 				|| args(i).indexOf("-F") >= 0n) {
-// 				var ifile:String;
-// 				if (args(i).length() == 2n)
-// 					ifile = args(++i);
-// 				else
-// 					ifile = args(i).substring(2n);
-// 				
-// 				val file:File;
-// 				try {
-// 					file = new File(ifile);
-// 				} catch (IOException) {
-// 					Runtime.println("Could not open file\n");
-// 					System.setExitCode(1n);
-// 					return;
-// 				}
-// 				Console.OUT.println("reading input file: " + ifile + "\n");
-// 
-// 				try {
-// 					val input = file.lines();
-// 					if (Int.parse(input.next()) != mc.nprocs) {
-// 						Console.OUT.println("Error reading input file: "
-// 											+ ifile
-// 											+ ". header value != nprocs\n");
-// 						System.setExitCode(1n);
-// 						return;
-// 					}
-// 					for (var j:Int= 0n; j < mc.nprocs; ++j) {
-// 						if (!input.hasNext()) {
-// 							Console.OUT.println("Error reading input file: "
-// 												+ ifile
-// 												+ ". unexpected EOF encountered\n");
-// 							System.setExitCode(1n);
-// 							return;
-// 						}
-// 						var line:String = input.next();
-// 						val token = line.split(" ");
-// 						for (pl in Place.places()) {
-// 							at (pl) { 
-// 								mc.np_array(here.id) = Int.parse(token(0n));
-// 								mc.leakage_array(here.id) = Double.parse(token(1n));
-// 							}
-// 						}
-//                         read_flag = 1n;
-// 					}
-// 					 
-// 				} catch (IOException) { 
-// 					System.setExitCode(1n);
-// 					Runtime.println("Exception at " + here);
-// 					return;
-// 				} 
-// 			}
-// 		}
-// 		
-// 		if (read_flag == 0n) {
-// 			mc.nparticles = Int.parse(args(i));
-// 			mc.leakage = Double.parse(args(i+1n));
-// 		}
-// 	}
+
 }

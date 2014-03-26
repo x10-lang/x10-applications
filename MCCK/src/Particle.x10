@@ -20,7 +20,17 @@ public class Particle {
 		this.proc = proc;
 	}
 
- 	static def compare(val p1:Particle, val p2:Particle):Int {
+    def this(packed:PackedRepresentation) {
+        this.x = packed.x;
+        this.y = packed.y;
+        this.z = packed.z;
+        this.energy = packed.energy;
+        this.angle = packed.angle;
+        this.absorbed = packed.absorbed;
+        this.proc = packed.proc;
+    }
+
+ 	static def compare(p1:Particle, p2:Particle):Int {
  		if (p1.absorbed == 1n && p2.absorbed == 0n) 
  			return 1n;
  		else if (p1.absorbed == 0n && p2.absorbed == 1n) 
@@ -33,6 +43,21 @@ public class Particle {
  		else
  			return 0n;
  	}
+
+    /**
+     * A packed representation of an Particle, for use in
+     * transferring bulk particle data between places.
+     * This would be unnecessary if X10 allowed variable struct fields.
+     */
+    public static struct PackedRepresentation(x:Double, y:Double, z:Double, energy:Double, angle:Double, absorbed:Int, proc:Int) { 
+        public def this(x:Double, y:Double, z:Double, energy:Double, angle:Double, absorbed:Int, proc:Int) {
+            property(x, y, z, energy, angle, absorbed, proc);
+        }
+    }
+
+    public def getPackedRepresentation() {
+        return PackedRepresentation(x, y, z, energy, angle, absorbed, proc);
+    }
 	
 	/**
 	 * Does nothing. 

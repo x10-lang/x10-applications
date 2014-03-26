@@ -1,19 +1,11 @@
-import x10.regionarray.Array;
-import x10.regionarray.Region;
-import x10.io.FileSystem;
+/*
+ */
+
 import x10.io.File;
 import x10.io.IOException;
 
 public class Main {
-
    public static def main(args:Rail[String]) {
-		var count:Int = 0n;
-  	  	while(count++ < 1n) {
-			main2(args);
-		}
-	}
-	
-	static def main2(args:Rail[String]) {		
       val domain:Rail[Double] = new Rail[Double](2);
       for (var i:Int = 0n; i < 2n; ++i)
          domain(i) = 1.0;
@@ -32,9 +24,9 @@ public class Main {
       var read_flag:Int = 0n;
       var nparticles:Int = 0n;
 
-      if (args.size == 0L) {
-         Console.OUT.println("Usage:\nIn native X10, mpirun [-np NUM_PROC] <executable> NPARTICLES GLOBAL_LEAKAGE [-f INPUT FILE] [-r] [-b BOUNDARY CONDITION] [-m STRICT]\n");
-         Console.OUT.println("In managed X10, X10_NPLACES=NUM_PROC $X10_PATH/bin/x10 -x10rt mpi <Main> NPARTICLES GLOBAL_LEAKAGE [-f INPUT FILE] [-r] [-b BOUNDARY CONDITION] [-m STRICT]\n");
+      if (args.size < 2) {
+         Console.ERR.println("Usage:\nIn native X10, mpirun [-np NUM_PROC] <executable> NPARTICLES GLOBAL_LEAKAGE [-f INPUT FILE] [-r] [-b BOUNDARY CONDITION] [-m STRICT]\n");
+         Console.ERR.println("In managed X10, X10_NPLACES=NUM_PROC $X10_PATH/bin/x10 -x10rt mpi <Main> NPARTICLES GLOBAL_LEAKAGE [-f INPUT FILE] [-r] [-b BOUNDARY CONDITION] [-m STRICT]\n");
       	 System.setExitCode(1n);
       	 return;
       }
@@ -90,28 +82,22 @@ public class Main {
 				try {
 					file = new File(ifile);
 				} catch (IOException) {
-					Runtime.println("Could not open file\n");
-					System.setExitCode(1n);
-					return;
+					throw new Exception("Could not open file " + ifile);
 				}
 				Console.OUT.println("reading input file: " + ifile + "\n");
 
 				try {
 					val input = file.lines();
 					if (Int.parse(input.next()) != nprocs) {
-						Console.OUT.println("Error reading input file: "
+						throw new Exception("Error reading input file: "
 											+ ifile
-											+ ". header value != nprocs\n");
-						System.setExitCode(1n);
-						return;
+											+ ". header value != nprocs");
 					}
 					for (var j:Int= 0n; j < nprocs; ++j) {
 						if (!input.hasNext()) {
-							Console.OUT.println("Error reading input file: "
+							throw new Exception("Error reading input file: "
 												+ ifile
 												+ ". unexpected EOF encountered\n");
-							System.setExitCode(1n);
-							return;
 						}
 						var line:String = input.next();
 						val token = line.split(" ");
@@ -123,11 +109,8 @@ public class Main {
 					}
 					 
 				} catch (IOException) { 
-					System.setExitCode(1n);
-					Runtime.println("Exception at " + here);
-					return;
-
-			}
+					throw new Exception("Exception reading input file: " + ifile);
+				}
 		}
 	  }
 

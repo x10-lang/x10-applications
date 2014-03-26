@@ -27,4 +27,4 @@ run-cpp:
 	poe ${NativeX10BINDIR}/${NativeX10BIN} ${APPFLAG}
 
 clean:
-	rm -rf ${ManagedX10BIN} ${NativeX10BIN} ${NativeX10BIN}
+	rm -rf ${ManagedX10BIN} ${NativeX10BIN} ${NativeX10BINDIR}/*

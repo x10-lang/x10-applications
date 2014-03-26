@@ -1,15 +1,10 @@
+/*
+ */
 
-import x10.io.FileReader;
-import x10.io.File;
-import x10.io.IOException;
-import x10.util.Random;
-import x10.util.Team;
 import x10.regionarray.Array;
 import x10.regionarray.Region;
 
-
 public class MC {
-
    public static val MC_NONBLOCK:int = -1n;
    public static val MC_MADRE:Int = -2n;
    public static val MC_BLOCK:Int = -3n;

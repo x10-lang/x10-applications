@@ -1,45 +1,38 @@
+/*
+*/
+
 import x10.util.Random;
 import x10.util.RailUtils;
 import x10.util.Team;
-import x10.regionarray.Array;
 import x10.compiler.Native;
 
 public class MC_Cycle {
+    public static val BNDRY_REFLECT:Int = -1n;
+    public static val BNDRY_PERIODIC:Int = -2n;
+    public static val BNDRY_LEAK:Int = -3n;
 
-   public static val BNDRY_REFLECT:Int = -1n;
-   public static val BNDRY_PERIODIC:Int = -2n;
-   public static val BNDRY_LEAK:Int = -3n;
+    private val mc:MC; 
 
-   private var mc:MC; 
-
-   private static val RAND_MAX:Int = 2147483647n;
-   
-//   var random:Random;
-	static val random =  new Random();
+    private static val RAND_MAX:Int = 2147483647n;
+    private static val random = new Random();
   
-   var comm_choice:Int;      
+    private val comm_choice:Int;      
    
-   /** how many particles sent to proc i at a stage */
-   var mySendCount:Rail[Int] = new Rail[Int](Place.MAX_PLACES);
+    /** how many particles sent to proc i at a stage */
+    public static val mySendCount = new Rail[Int](Place.MAX_PLACES);
    
-   /** how many particles recv from proc i at a stage */
-   var myRecvCount:Rail[Int] = new Rail[Int](Place.MAX_PLACES);
+    /** how many particles recv from proc i at a stage */
+    public static val myRecvCount = new Rail[Int](Place.MAX_PLACES);
 
-   def this(mcobj:MC, comm_choice:Int) {
-      mc = mcobj;      
-//		random =  new Random();
+    def this(mcobj:MC, comm_choice:Int) {
+        mc = mcobj;      
     	random.setSeed(mc.seed as Long);
-//      MC_Init.srand(mc.seed);
-      this.comm_choice = comm_choice;
-   }
+        this.comm_choice = comm_choice;
+    }
 
-	@Native("c++", "printf(\"stage %3d, %8lld total np ([min:%6d max:%6d mean:%6.2f  delta:%2.2f])\\n\", (#1), (#2), (#3), (#4), (#5), (#6))")
-//	@Native("Java", "System.out.printf(\"stage %3d, %8lld total np ([min:%6d max:%6d mean:%6.2f  delta:%2.2f])\\n\", (#1), (#2), (#3), (#4), (#5), (#6))")
-	static native def print(iter:Int,npg:Int,np_min:Int,np_max:Int,np_mean:Float,delta:Float):void;
-   
    def cycle():void {
       var i:Int;
-      var p:Rail[Particle] = mc.particles();
+      val p = mc.particles();
 
       /** minimum/maximum number of particles on a proc */
       var np_min:Int = -1n;
@@ -56,13 +49,13 @@ public class MC_Cycle {
       
       myRecvCount(mc.mype) = 0n;
       
-      var team:Team = Team.WORLD;
+      val team = Team.WORLD;
 
       val exchange: (MC, Rail[Int], Rail[Int])=>void 
 									= new MC_Comm().init(mc, comm_choice);
 		
 		var start:Long = 0l;
-		team.barrier();
+        team.barrier();
 		if (here.id == 0)
 	 		start = System.nanoTime();
 
@@ -76,27 +69,19 @@ public class MC_Cycle {
          npg = team.allreduce(npl, Team.ADD);
          np_min = team.allreduce(npl, Team.MIN);
          np_max = team.allreduce(npl, Team.MAX);
-/*
-         np_min = team.allreduce(mc.nparticles, Team.MIN);
-         np_max = team.allreduce(mc.nparticles, Team.MAX);
-*/
-			
-         val np_mean:Float;
-         val delta:Float;
 			
          npg_before = npg;
-         np_mean = npg / mc.nprocs;
-         delta = np_max - np_mean;
+         val np_mean = npg as Float / mc.nprocs;
+         val delta = np_max - np_mean;
 			
          if (here.id == 0)
 				Console.OUT.printf("stage %3d, %8lld total np ([min:%6d max:%6d mean:%6.2f  delta:%2.2f])\n", iter, npg, np_min, np_max, np_mean, delta);
-//				Console.OUT.printf("stage %d, %d total np ([min:%d max:%d mean:%6.2f  delta:%2.2f])\n", iter, npg, np_min, np_max, np_mean, delta);
+
 
          if (mc.strict == 1n) 
             update_particles_strict();
          else 
          	update_particles();
-//         	update_particles(mc);
 
          /** now that we have updated list of particles, we want
           * to remove all of the absorbed particles from the list
@@ -105,29 +90,20 @@ public class MC_Cycle {
       	npl = mc.nparticles = pack();
     		 
          /** check if any particles left. if none then we break main loop */
-//         np_max = team.allreduce(mc.nparticles, Team.MAX);
          np_max = team.allreduce(npl, Team.MAX);
 			
          if (np_max <= 1n)
             break; 
          
 
-//         for (i = 0n; i < mc.nparticles; ++i) {
          for (i = 0n; i < npl; ++i) {
-//            if (mc.particles()(i) == null)
             if (p(i) == null)
                continue;
 			
-//         	++mySendCount(mc.particles()(i).proc);
          	++mySendCount(p(i).proc);
          }
 			
          team.alltoall(mySendCount, 0L, myRecvCount, 0L, 1L);
-
-/*
-      for (place in Place.places())
-         Console.OUT.println("*" + here.id + ":mySendCount[" + place.id  + "]=" + mySendCount(place.id));
-*/
 			
          check_array_size(comm_choice, myRecvCount);
          
@@ -135,25 +111,11 @@ public class MC_Cycle {
          myRecvCount(mc.mype) = 0n;
          
          team.barrier();
-
-/*
-         for (i = 0n; i < mc.nparticles; ++i) {
-				Console.OUT.print("(" + mc.particles()(i).proc + "," + mc.particles()(i).absorbed + "), ");
-			}
-			Console.OUT.println();
-*/
  
          exchange(mc, myRecvCount, mySendCount);
-			
+		
          if (comm_choice == mc.MC_NONBLOCK || comm_choice == mc.MC_BLOCK)
             mc.nparticles = elim_sent();
-			
-/*
-         for (i = 0n; i < mc.nparticles; ++i) {
-				Console.OUT.print(here.id + ":[" + mc.particles()(i).proc + "," + mc.particles()(i).absorbed + "], ");
-			}
-			Console.OUT.println();
-*/
 
          for (i = 0n; i < mc.nprocs; ++i)
             mySendCount(i) = 0n;
@@ -173,18 +135,17 @@ public class MC_Cycle {
 	/*  absorbed]                            */
 	/*---------------------------------------*/
    private def pack(): Int {
-      val np:Long = mc.nparticles as Long;
-      var count:Int;
-      val p:Rail[Particle] = mc.particles();
+        val np:Long = mc.nparticles as Long;
+        val p = mc.particles();
 
 //    RailUtils.qsort[Particle](p, 0, np - 1, (x:Particle,y:Particle) => Particle.compare(x,y));
-//		qsort2(p, 0, np-1);
 		qsort3(p, 0, np-1);
 		
-      for (count = 0n; count < np; ++count) {
-         if (p(count).absorbed == 1n)
-            break;
-      }
+        var count:Int = 0n;
+        for (count = 0n; count < np; count++) {
+            if (p(count).absorbed == 1n)
+                break;
+        }
 
       return count; 
    }
@@ -250,22 +211,16 @@ public class MC_Cycle {
      else if (mc.boundary_flag == BNDRY_LEAK) {
    	  	  for (var i:Int = 0n; i < np; ++i) {
   	  		  	r = Math.abs(random.random()) / (RAND_MAX + 1d);
-//	  		  	r = random.nextInt(RAND_MAX) / (RAND_MAX + 1d);
-//   	  		r = MC_Init.rand() / (RAND_MAX + 1d);
    	  		if (r > mc.leakage) 
    	  			mc.particles()(i).absorbed = 1n;
    	  		else {
    	  			random_nabe_index = (Math.abs(random.random()) / ((RAND_MAX + 1d) / 6)) as Int;
-//   	  			random_nabe_index = (Math.abs(random.nextInt(RAND_MAX)) / ((RAND_MAX + 1d) / 6)) as Int;
-//   	         random_nabe_index = (Math.abs(MC_Init.rand()) / ((RAND_MAX + 1d) / 6)) as Int;
    	  			random_nabe = mc.grid.nabes(random_nabe_index);
    	  			mc.particles()(i).absorbed = 0n;
    	  			if (random_nabe != -1n) 
    	  				mc.particles()(i).proc = random_nabe;
    	  			else {
    	  				r = Math.abs(random.random()) / (RAND_MAX + 1d);
-//   	  				r = random.nextInt(RAND_MAX) / (RAND_MAX + 1d);
-//   	  				r = MC_Init.rand() / (RAND_MAX + 1d);
    	  				if (r > mc.leakage) 
    	  					mc.particles()(i).absorbed = 1n;
    	  				else
@@ -277,14 +232,10 @@ public class MC_Cycle {
    	  else if (mc.boundary_flag == BNDRY_PERIODIC) {
    	  	for (var i:Int = 0n; i < np; ++i) {
    	  		r = Math.abs(random.random()) / (RAND_MAX + 1d);
-//   	  		r = random.nextInt(RAND_MAX) / (RAND_MAX + 1d);
-//   	  		r = MC_Init.rand() / (RAND_MAX + 1d);
    	  		if (r > mc.leakage) 
    	  			mc.particles()(i).absorbed = 1n;
    	  		else {
    	  			random_nabe_index = (Math.abs(random.random()) / ((RAND_MAX + 1d) / 6)) as Int;
-//   	  			random_nabe_index = (Math.abs(random.nextInt(RAND_MAX)) / ((RAND_MAX + 1d) / 6)) as Int;
-//   	  			random_nabe_index = (Math.abs(MC_Init.rand()) / ((RAND_MAX + 1n) / 6)) as Int;
    	  			random_nabe = mc.grid.nabes(random_nabe_index);
    	  			mc.particles()(i).absorbed = 0n;
    	  			mc.particles()(i).proc = random_nabe;
@@ -308,7 +259,6 @@ public class MC_Cycle {
          val tmp:Rail[Particle] = mc.particles();
 			val total = total_np;
 			val plh = PlaceLocalHandle.make[Rail[Particle]](Place.places(), ()=>new Rail[Particle](total + 1n));
-         // mc.particles = plh;
          
          mc.sizep = total_np + 1n;
          for (var i:Int = 0n; i < mc.sizep; ++i)
@@ -328,47 +278,40 @@ public class MC_Cycle {
     * After exchanges, eliminate the sent particles and 
     * update the nparticles count 
     */
-   private def elim_sent():Int {
-      val p:Rail[Particle] = mc.particles();
-      val np:Int = mc.nparticles;
-      val mype:Int = mc.mype;
-      var count:Int = 0n;
-      
-  	   qsort(mype, p, 0n, np - 1n);
+    private def elim_sent():Int {
+        val p:Rail[Particle] = mc.particles();
+        val np:Int = mc.nparticles;
+        val mype:Int = mc.mype;
+        var count:Int = 0n;
 
-      for (var i:Int = 0n; i < np; ++i) {
-         if (p(i).proc == mype && p(i).absorbed == 0n)
-            ++count;
-      }
+        qsort(mype, p, 0n, np - 1n);
 
-      return count;
-   }
+        for (var i:Int = 0n; i < np; ++i) {
+            if (p(i).proc == mype && p(i).absorbed == 0n)
+                ++count;
+        }
 
-	static def qsort(val mype:Int, val a:Rail[Particle], val lo:Long, val hi:Long):void {
-  		if (hi <= lo) 
-			return;
+        return count;
+    }
 
-      var l:Long = lo - 1;
-      var h:Long = hi;
-		var temp:Particle;
-
-      while (true) {
-         while (compare_sent(mype, a(++l), a(hi))<0);
-         while (compare_sent(mype, a(hi), a(--h))<0 && h>lo);
-         if (l >= h) 
-				break;
-
-    		temp = a(l);
-    		a(l) = a(h);
-    		a(h) = temp;
-      }
-    	temp = a(l);
-    	a(l) = a(hi);
-    	a(hi) = temp;
-
-		qsort(mype, a, lo, h-1n);
-		qsort(mype, a, l+1n, hi);
-	}
+    /** 
+     * TODO copied quicksort from RailUtils until we can successfully
+     * inline compare_sent as a closure
+     */
+    static def qsort(val mype:Int, val a:Rail[Particle], val lo:Long, val hi:Long):void {
+        if (hi <= lo) return;
+        var l:Long = lo - 1;
+        var h:Long = hi;
+        while (true) {
+            while (compare_sent(mype, a(++l), a(hi))<0);
+            while (compare_sent(mype, a(hi), a(--h))<0 && h>lo);
+            if (l >= h) break;
+            exch(a, l, h);
+        }
+        exch(a, l, hi);
+        qsort(mype, a, lo, l-1);
+        qsort(mype, a, l+1, hi);
+    }
 
    static def compare_sent(val mype:Int, val p1:Particle, val p2:Particle):Int {
       var p1_proc_match:Int = 2n;
@@ -388,31 +331,24 @@ public class MC_Cycle {
          return 0n;
    }
 
+    static def qsort3(a:Rail[Particle], lo:Long, hi:Long):void {
+        if (hi <= lo) return;
+        var l:Long = lo - 1;
+        var h:Long = hi;
+        while (true) {
+            while (Particle.compare(a(++l), a(hi))<0);
+            while (Particle.compare(a(hi), a(--h))<0 && h>lo);
+            if (l >= h) break;
+            exch(a, l, h);
+        }
+        exch(a, l, hi);
+        qsort3(a, lo, l-1);
+        qsort3(a, l+1, hi);
+    }
 
-   static def qsort3(a:Rail[Particle], lo:Long, hi:Long):void {
-  		if (hi <= lo) 
-			return;
-
-      var l:Long = lo - 1;
-   	var h:Long = hi;
-		var temp:Particle;
-
-		while (true) {
-      	while (Particle.compare(a(++l), a(hi))<0);
-         while (Particle.compare(a(hi), a(--h))<0 && h>lo);
-
-         if (l >= h) 
-				break;
-
-  			temp = a(l);
-  			a(l) = a(h);
-  			a(h) = temp;
-      }
-  		temp = a(l);
-  		a(l) = a(hi);
- 		a(hi) = temp;
-
-		qsort3(a, lo, h-1n);
-		qsort3(a, l+1n, hi);
-	}
+    private static def exch(a:Rail[Particle], i:Long, j:Long):void {
+        val temp = a(i);
+        a(i) = a(j);
+        a(j) = temp;
+    }
 }
