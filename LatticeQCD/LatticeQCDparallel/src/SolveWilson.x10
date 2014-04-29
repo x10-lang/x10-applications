@@ -72,11 +72,12 @@ public final class SolveWilson {
     
     Console.OUT.println("Simple Wilson solver\n");
     
-    Console.OUT.println("Nx = " + Nx + ", Ny = " + Ny + ", Nz = " + Nz + ", Nt = " + Nt);
-    Console.OUT.println("CKs = " + CKs);
+    Console.OUT.printf("Nx = %3d, Ny = %3d, Nz = %3d, Nt = %3d\n",
+                                       Nx, Ny, Nz, Nt);
+    Console.OUT.printf("CKs = %10.6f\n", CKs);
     
     val enorm = 1.E-16;
-    Console.OUT.println("enorm = " + enorm);
+    Console.OUT.printf("enorm = %12.4e\n", enorm);
     
     val nconv = new Cell[Long](0);
     val diff = new Cell[Double](0);
@@ -101,7 +102,7 @@ public final class SolveWilson {
       
       val Nvt = Nvc*ND*Nx*Ny*Nz;
       
-      Console.OUT.println("\tic\tid\tnconv\tdiff");
+      Console.OUT.println("  ic  id   nconv      diff");
       
       var meanTime:Long = 0;
       
@@ -113,11 +114,11 @@ public final class SolveWilson {
 
 	  val startTime = System.currentTimeMillis();
 	  qcd.solve_CG(enorm,nconv,diff,xq,u,bq);
-	  meanTime += System.currentTimeMillis() - startTime;
+      val cgTime = System.currentTimeMillis() - startTime;
+      Console.OUT.printf("cg: %f sec.\n", cgTime/1000.0);
+	  meanTime += cgTime;
 
-	  //timer
-	  Console.OUT.println("cg: " + (System.currentTimeMillis() - startTime));
-	  Console.OUT.println("\t" + ic + "\t" + id + "\t" + nconv() + "\t" + diff());
+	  Console.OUT.printf(" %3d %3d  %6d %12.4e\n", ic, id, nconv(), diff());
 	  
 	  for(it in 0..(Nt-1)){
 	    val corrF:Double;
@@ -130,7 +131,7 @@ public final class SolveWilson {
       
       Console.OUT.println("Ps meson correlator:");
       for(it in 0..(Nt-1)){
-	Console.OUT.println("\t" + it + "\t" + corr(it));
+        Console.OUT.printf(" %6d   %16.8e\n", it, corr(it));
       }
       
       //timer
