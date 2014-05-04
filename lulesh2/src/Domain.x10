@@ -172,7 +172,7 @@ public class Domain {
     public var regElemList:Rail[Rail[Long]];
 
     /** elemToNode connectivity */
-    public var nodelist:Rail[Long];
+    public var nodeList:Rail[Long];
 
     /* element connectivity across each face */
     public var lxim:Rail[Long];
@@ -271,7 +271,7 @@ public class Domain {
             val z_local = new Rail[Double](8);
             val elemStart = 8*i;
             for(lnode in 0..7) {
-                val gnode = nodelist(elemStart+lnode);
+                val gnode = nodeList(elemStart+lnode);
                 x_local(lnode) = x(gnode);
                 y_local(lnode) = y(gnode);
                 z_local(lnode) = z(gnode);
@@ -282,7 +282,7 @@ public class Domain {
             volo(i) = volume;
             elemMass(i) = volume;
             for (j in 0..7) {
-                val idx = nodelist(elemStart+j);
+                val idx = nodeList(elemStart+j);
                 nodalMass(idx) += volume / 8.0;
             }
         }
@@ -303,7 +303,8 @@ public class Domain {
     }
 
     private @NonEscaping def buildMesh(nx:Long, edgeNodes:Long, edgeElems:Long) {
-        nodelist = new Rail[Long](8*numElem);
+        // TODO use Array_2
+        nodeList = new Rail[Long](8*numElem);
 
         val meshEdgeElems = tp*nx;
 
@@ -336,14 +337,14 @@ public class Domain {
         for (plane in 0..(edgeElems-1)) {
             for (row in 0..(edgeElems-1)) {
                 for (col in 0..(edgeElems-1)) {
-	                nodelist(zidx*8+0) = nidx                                      ;
-	                nodelist(zidx*8+1) = nidx                                   + 1;
-	                nodelist(zidx*8+2) = nidx                       + edgeNodes + 1;
-	                nodelist(zidx*8+3) = nidx                       + edgeNodes    ;
-	                nodelist(zidx*8+4) = nidx + edgeNodes*edgeNodes                ;
-	                nodelist(zidx*8+5) = nidx + edgeNodes*edgeNodes             + 1;
-	                nodelist(zidx*8+6) = nidx + edgeNodes*edgeNodes + edgeNodes + 1;
-	                nodelist(zidx*8+7) = nidx + edgeNodes*edgeNodes + edgeNodes    ;
+	                nodeList(zidx*8+0) = nidx                                      ;
+	                nodeList(zidx*8+1) = nidx                                   + 1;
+	                nodeList(zidx*8+2) = nidx                       + edgeNodes + 1;
+	                nodeList(zidx*8+3) = nidx                       + edgeNodes    ;
+	                nodeList(zidx*8+4) = nidx + edgeNodes*edgeNodes                ;
+	                nodeList(zidx*8+5) = nidx + edgeNodes*edgeNodes             + 1;
+	                nodeList(zidx*8+6) = nidx + edgeNodes*edgeNodes + edgeNodes + 1;
+	                nodeList(zidx*8+7) = nidx + edgeNodes*edgeNodes + edgeNodes    ;
 	                ++zidx;
 	                ++nidx;
                 }

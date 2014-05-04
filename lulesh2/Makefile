@@ -6,7 +6,7 @@ X10RT ?= mpi
 # SEDOV_SYNC_POS_VEL_LATE
 SYNCFLAG = -define SEDOV_SYNC_POS_VEL_EARLY
 
-X10FLAG = -g -x10rt ${X10RT} -VERBOSE_CHECKS ${SYNCFLAG} # -O -NO_CHECKS -report postcompile=1
+X10FLAG = -g -x10rt ${X10RT} -VERBOSE_CHECKS ${SYNCFLAG} #-O -NO_CHECKS -report postcompile=1
 
 BINDIR = bin
 ManagedX10BIN = ${BINDIR}/Lulesh2.0.jar
@@ -15,7 +15,7 @@ NativeX10BIN = ${BINDIR}/lulesh2.0
 SRCPATH = src
 DOCPATH = doc
 
-APPFLAG = -i 100 # current version runs all cycles
+APPFLAG = -i 10 # current version runs all cycles
 
 default:	run-cpp
 
