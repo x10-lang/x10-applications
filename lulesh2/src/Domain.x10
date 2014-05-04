@@ -245,6 +245,8 @@ public class Domain {
 
         setupBoundaryNodesets(edgeNodes);
 
+        buildMesh(nx, edgeNodes, edgeElems);
+
         createRegionIndexSets(nr, balance);
 
         setupSymmetryPlanes(edgeNodes);
@@ -300,10 +302,59 @@ public class Domain {
         deltatime = (0.5 * Math.cbrt(volo(0))) / Math.sqrt(2.0) * einit;
     }
 
-    /** Allocate element-centered quantities */
-    private @NonEscaping def allocateElemPersistent(numElem:Long):void {
+    private @NonEscaping def buildMesh(nx:Long, edgeNodes:Long, edgeElems:Long) {
         nodelist = new Rail[Long](8*numElem);
 
+        val meshEdgeElems = tp*nx;
+
+        // initialize nodal coordinates 
+        var nidx:Long = 0;
+        var tz:Double = 1.125 * (planeLoc * nx) / meshEdgeElems;
+        for (plane in 0..(edgeNodes-1)) {
+            var ty:Double = 1.125 * (rowLoc * nx) / meshEdgeElems;
+            for (row in 0..(edgeNodes-1)) {
+                var tx:Double = 1.125 * (colLoc * nx) / meshEdgeElems;
+                for (col in 0..(edgeNodes-1)) {
+	                x(nidx) = tx;
+	                y(nidx) = ty;
+	                z(nidx) = tz;
+	                ++nidx;
+	                // tx += ds; // may accumulate roundoff... 
+	                tx = 1.125 * (colLoc*nx + col + 1) / meshEdgeElems;
+                }
+                // ty += ds;  // may accumulate roundoff... 
+                ty = 1.125 * (rowLoc*nx + row + 1) / meshEdgeElems;
+            }
+            // tz += ds;  // may accumulate roundoff... 
+            tz = 1.125 * (planeLoc*nx + plane + 1) / meshEdgeElems;
+        }
+
+
+        // embed hexehedral elements in nodal point lattice 
+        var zidx:Long = 0;
+        nidx = 0;
+        for (plane in 0..(edgeElems-1)) {
+            for (row in 0..(edgeElems-1)) {
+                for (col in 0..(edgeElems-1)) {
+	                nodelist(zidx*8+0) = nidx                                      ;
+	                nodelist(zidx*8+1) = nidx                                   + 1;
+	                nodelist(zidx*8+2) = nidx                       + edgeNodes + 1;
+	                nodelist(zidx*8+3) = nidx                       + edgeNodes    ;
+	                nodelist(zidx*8+4) = nidx + edgeNodes*edgeNodes                ;
+	                nodelist(zidx*8+5) = nidx + edgeNodes*edgeNodes             + 1;
+	                nodelist(zidx*8+6) = nidx + edgeNodes*edgeNodes + edgeNodes + 1;
+	                nodelist(zidx*8+7) = nidx + edgeNodes*edgeNodes + edgeNodes    ;
+	                ++zidx;
+	                ++nidx;
+                }
+                ++nidx;
+            }
+            nidx += edgeNodes;
+        }
+    }
+
+    /** Allocate element-centered quantities */
+    private @NonEscaping def allocateElemPersistent(numElem:Long):void {
         // elem connectivities through face
         lxim = new Rail[Long](numElem);
         lxip = new Rail[Long](numElem);
@@ -319,7 +370,8 @@ public class Domain {
         ql = new Rail[Double](numElem);
         qq = new Rail[Double](numElem);
 
-        v = new Rail[Double](numElem);
+        // Note - v initializes to 1.0, not 0.0!
+        v = new Rail[Double](numElem, 1.0);
 
         volo = new Rail[Double](numElem);
         delv = new Rail[Double](numElem);
