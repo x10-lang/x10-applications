@@ -58,7 +58,7 @@ public class Domain {
     /** maximum allowable volume change */
     public val dvovmax = 0.1;
     /** reference density */
-    public val m_refdens = 1.0;
+    public val refdens = 1.0;
 
     // These can be changed (requires recompile) if you want to run
     // with a fixed timestep, or to a different end time, but it's
@@ -67,6 +67,8 @@ public class Domain {
 
     /** fixed time increment */
     public val dtfixed = -1.0e-6; // Negative means use courant condition
+    /** maximum allowable time increment */
+    public val dtmax = 1.0e-2;
     /** end time for simulation */
     public val stoptime = 1.0e-2; // *Real_t(edgeElems*tp/45.0);
 
@@ -78,8 +80,6 @@ public class Domain {
     public var deltatimemultlb:Double;
     /** variable time increment upper bound */
     public var deltatimemultub:Double;
-    /** maximum allowable time increment */
-    public var dtmax:Double;
 
     /** Energy */
     public var e:Rail[Double];
@@ -152,9 +152,9 @@ public class Domain {
     /** mass */
     public var nodalMass:Rail[Double];
     // symmetry plane nodesets
-    public var symmX:Rail[Double];
-    public var symmY:Rail[Double];
-    public var symmZ:Rail[Double];
+    public var symmX:Rail[Long];
+    public var symmY:Rail[Long];
+    public var symmZ:Rail[Long];
 
     // Element-centered
 
@@ -184,6 +184,21 @@ public class Domain {
 
     /** symmetry/free-surface flags for each element face */
     public var elemBC:Rail[Int];
+
+    /* Principal strains -- temporary */
+    public var dxx:Rail[Double];
+    public var dyy:Rail[Double];
+    public var dzz:Rail[Double];
+
+    /* coordinate gradient -- temporary */
+    public var delv_xi:Rail[Double];
+    public var delv_eta:Rail[Double];
+    public var delv_zeta:Rail[Double];
+
+    /* coordinate gradient -- temporary */
+    public var delx_xi:Rail[Double];
+    public var delx_eta:Rail[Double];
+    public var delx_zeta:Rail[Double];
 
     // Stuff needed for boundary conditions
     // 2 BCs on each of 6 hexahedral faces (12 bits)
@@ -216,6 +231,10 @@ public class Domain {
     static val ZETA_P_SYMM :Int = 0x08000n;
     static val ZETA_P_FREE :Int = 0x10000n;
     static val ZETA_P_COMM :Int = 0x20000n;
+
+    public def symmXempty():Boolean = (symmX == null);
+    public def symmYempty():Boolean = (symmY == null);
+    public def symmZempty():Boolean = (symmZ == null);
 
     public def this(nx:Long, nr:Int, balance:Int, cost:Int) {
         this.nx = nx;
@@ -260,7 +279,6 @@ public class Domain {
         deltatimemultub = 1.2;
         dtcourant = 1.0e+20;
         dthydro   = 1.0e+20;
-        dtmax     = 1.0e-2;
         time  = 0.0;
         cycle = 0n;
 
@@ -299,7 +317,7 @@ public class Domain {
             e(0) = einit;
         }
         //set initial deltatime base on analytic CFL calculation
-        deltatime = (0.5 * Math.cbrt(volo(0))) / Math.sqrt(2.0) * einit;
+        deltatime = (0.5 * Math.cbrt(volo(0))) / Math.sqrt(2.0 * einit);
     }
 
     private @NonEscaping def buildMesh(nx:Long, edgeNodes:Long, edgeElems:Long) {
@@ -316,12 +334,12 @@ public class Domain {
             for (row in 0..(edgeNodes-1)) {
                 var tx:Double = 1.125 * (colLoc * nx) / meshEdgeElems;
                 for (col in 0..(edgeNodes-1)) {
-	                x(nidx) = tx;
-	                y(nidx) = ty;
-	                z(nidx) = tz;
-	                ++nidx;
-	                // tx += ds; // may accumulate roundoff... 
-	                tx = 1.125 * (colLoc*nx + col + 1) / meshEdgeElems;
+                    x(nidx) = tx;
+                    y(nidx) = ty;
+                    z(nidx) = tz;
+                    ++nidx;
+                    // tx += ds; // may accumulate roundoff... 
+                    tx = 1.125 * (colLoc*nx + col + 1) / meshEdgeElems;
                 }
                 // ty += ds;  // may accumulate roundoff... 
                 ty = 1.125 * (rowLoc*nx + row + 1) / meshEdgeElems;
@@ -337,16 +355,16 @@ public class Domain {
         for (plane in 0..(edgeElems-1)) {
             for (row in 0..(edgeElems-1)) {
                 for (col in 0..(edgeElems-1)) {
-	                nodeList(zidx*8+0) = nidx                                      ;
-	                nodeList(zidx*8+1) = nidx                                   + 1;
-	                nodeList(zidx*8+2) = nidx                       + edgeNodes + 1;
-	                nodeList(zidx*8+3) = nidx                       + edgeNodes    ;
-	                nodeList(zidx*8+4) = nidx + edgeNodes*edgeNodes                ;
-	                nodeList(zidx*8+5) = nidx + edgeNodes*edgeNodes             + 1;
-	                nodeList(zidx*8+6) = nidx + edgeNodes*edgeNodes + edgeNodes + 1;
-	                nodeList(zidx*8+7) = nidx + edgeNodes*edgeNodes + edgeNodes    ;
-	                ++zidx;
-	                ++nidx;
+                    nodeList(zidx*8+0) = nidx                                      ;
+                    nodeList(zidx*8+1) = nidx                                   + 1;
+                    nodeList(zidx*8+2) = nidx                       + edgeNodes + 1;
+                    nodeList(zidx*8+3) = nidx                       + edgeNodes    ;
+                    nodeList(zidx*8+4) = nidx + edgeNodes*edgeNodes                ;
+                    nodeList(zidx*8+5) = nidx + edgeNodes*edgeNodes             + 1;
+                    nodeList(zidx*8+6) = nidx + edgeNodes*edgeNodes + edgeNodes + 1;
+                    nodeList(zidx*8+7) = nidx + edgeNodes*edgeNodes + edgeNodes    ;
+                    ++zidx;
+                    ++nidx;
                 }
                 ++nidx;
             }
@@ -509,11 +527,11 @@ public class Domain {
 
     private @NonEscaping def setupBoundaryNodesets(edgeNodes:Long) {
         if (colLoc == 0)
-            symmX = new Rail[Double](edgeNodes*edgeNodes);
+            symmX = new Rail[Long](edgeNodes*edgeNodes);
         if (rowLoc == 0)
-            symmY = new Rail[Double](edgeNodes*edgeNodes);
+            symmY = new Rail[Long](edgeNodes*edgeNodes);
         if (planeLoc == 0)
-            symmZ = new Rail[Double](edgeNodes*edgeNodes);
+            symmZ = new Rail[Long](edgeNodes*edgeNodes);
     }
 
     /** Setup symmetry nodesets */
@@ -663,6 +681,40 @@ public class Domain {
                 }
             }
         }
+    }
+
+    public def allocateGradients(allElem:Long) {
+        // Position gradients
+        delx_xi = new Rail[Double](numElem);
+        delx_eta = new Rail[Double](numElem);
+        delx_zeta = new Rail[Double](numElem);
+
+        // Velocity gradients
+        delv_xi = new Rail[Double](allElem);
+        delv_eta = new Rail[Double](allElem);
+        delv_zeta = new Rail[Double](allElem);
+    }
+
+    public def deallocateGradients() {
+        delx_zeta = null;
+        delx_eta = null;
+        delx_xi = null;
+
+        delv_zeta = null;
+        delv_eta = null;
+        delv_xi = null;
+    }
+
+    public def allocateStrains() {
+        dxx = new Rail[Double](numElem);
+        dyy = new Rail[Double](numElem);
+        dzz = new Rail[Double](numElem);
+    }
+
+    public def deallocateStrains() {
+      dzz = null;
+      dyy = null;
+      dxx = null;
     }
 }
 // vim:tabstop=4:shiftwidth=4:expandtab
