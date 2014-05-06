@@ -432,14 +432,14 @@ public class Lulesh {
         val fx_local = new Rail[Double](8);
         val fy_local = new Rail[Double](8);
         val fz_local = new Rail[Double](8);
+        // TODO these should be stack-allocated inside the loop over k
+        val B = new Array_2[Double](3, 8); // shape function derivatives
+        val x_local = new Rail[Double](8);
+        val y_local = new Rail[Double](8);
+        val z_local = new Rail[Double](8);
 
         // TODO parallel loop
         for (k in 0..(numElem-1)) {
-            val B = new Array_2[Double](3, 8); // shape function derivatives
-            @StackAllocate val x_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val y_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val z_local = @StackAllocate new Rail[Double](8);
-
             collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
 
             determ(k) = calcElemShapeFunctionDerivatives(x_local, y_local, 
@@ -601,15 +601,16 @@ public class Lulesh {
         val x8n  = new Rail[Double](numElem8);
         val y8n  = new Rail[Double](numElem8);
         val z8n  = new Rail[Double](numElem8);
+        // TODO these should be stack-allocated inside the loop over i
+        val x1 = new Rail[Double](8);
+        val y1 = new Rail[Double](8);
+        val z1 = new Rail[Double](8);
+        val pfx = new Rail[Double](8);
+        val pfy = new Rail[Double](8);
+        val pfz = new Rail[Double](8);
 
         // TODO parallel loop
         for (i in 0..(numElem-1)) {
-            @StackAllocate val x1 = @StackAllocate new Rail[Double](8);
-            @StackAllocate val y1 = @StackAllocate new Rail[Double](8);
-            @StackAllocate val z1 = @StackAllocate new Rail[Double](8);
-            @StackAllocate val pfx = @StackAllocate new Rail[Double](8);
-            @StackAllocate val pfy = @StackAllocate new Rail[Double](8);
-            @StackAllocate val pfz = @StackAllocate new Rail[Double](8);
 
             collectDomainNodesToElemNodes(domain, i, x1, y1, z1);
 
@@ -1001,17 +1002,17 @@ public class Lulesh {
     }
 
     def calcKinematicsForElems(domain:Domain, vnew:Rail[Double], deltaTime:Double) {
+        // TODO these should be stack-allocated inside the loop over k
+        val B = new Array_2[Double](3,8); /** shape function derivatives */
+        val D = new Rail[Double](6);
+        val x_local = new Rail[Double](8);
+        val y_local = new Rail[Double](8);
+        val z_local = new Rail[Double](8);
+        val xd_local = new Rail[Double](8);
+        val yd_local = new Rail[Double](8);
+        val zd_local = new Rail[Double](8);
         // TODO parallel loop
         for (k in 0..(domain.numElem-1)) {
-            val B = new Array_2[Double](3,8); /** shape function derivatives */
-            val D = new Rail[Double](6);
-            val x_local = new Rail[Double](8);
-            val y_local = new Rail[Double](8);
-            val z_local = new Rail[Double](8);
-            val xd_local = new Rail[Double](8);
-            val yd_local = new Rail[Double](8);
-            val zd_local = new Rail[Double](8);
-
             collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
 
             // volume calculations
