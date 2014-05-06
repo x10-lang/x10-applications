@@ -323,7 +323,7 @@ public class Lulesh {
 
     /**
      * Calculate element quantities (i.e. velocity gradient & q), and update
-     * material states 
+     * material states.
      */
     protected def lagrangeElements(domain:Domain) {
         val vnew = new Rail[Double](domain.numElem); // new relative vol -- temp
@@ -380,7 +380,7 @@ public class Lulesh {
 */
     }
 
-    /** Calcforce calls partial, force, hourq */
+    /** Calculate the volume force contribution for each mesh element. */
     protected def calcVolumeForceForElems(domain:Domain) {
         val numElem = domain.numElem;
         if (numElem != 0) {
@@ -591,7 +591,11 @@ public class Lulesh {
         }
     }
 
-    private def calcHourglassControlForElems(domain:Domain,
+    /**
+     * Compute a stiffness force for each element to damp spurious "hourglass"
+     * energy modes.
+     */
+    protected def calcHourglassControlForElems(domain:Domain,
                                      determ:Rail[Double], hgcoef:Double) {
         val numElem = domain.numElem;
         val numElem8 = numElem * 8;
@@ -643,7 +647,7 @@ public class Lulesh {
         }
     }
 
-    def calcElemVolumeDerivative(dvdx:Rail[Double],
+    @Inline def calcElemVolumeDerivative(dvdx:Rail[Double],
                                  dvdy:Rail[Double],
                                  dvdz:Rail[Double],
                                  x:Rail[Double],
@@ -659,7 +663,7 @@ public class Lulesh {
         voluDer(x, y, z, 6, 5, 4, 3, 2, 0, dvdx, dvdy, dvdz, 7);
     }
 
-    def voluDer(x:Rail[Double], y:Rail[Double], z:Rail[Double],
+    @Inline def voluDer(x:Rail[Double], y:Rail[Double], z:Rail[Double],
         i:Long, j:Long, k:Long, l:Long, m:Long, n:Long,
         dvdx:Rail[Double], dvdy:Rail[Double], dvdz:Rail[Double], ii:Long) {
 
@@ -681,8 +685,13 @@ public class Lulesh {
         dvdz(ii) *= twelfth;
     }
 
-    /** Calculates the Flanagan-Belytschko anti-hourglass force. */
-    def calcFBHourglassForceForElems(domain:Domain,
+    /** 
+      * Calculates the Flanagan-Belytschko anti-hourglass force. 
+      * @see "D. P. Flanagan and T. Belytschko. A uniform strain hexahedron 
+      * and quadrilateral with orthogonal hourglass control. Int. J. Num. 
+      * Methods in Engineering, pages 679–706, March 1981."
+      */
+    protected def calcFBHourglassForceForElems(domain:Domain,
            determ:Rail[Double],
            x8n:Rail[Double], y8n:Rail[Double], z8n:Rail[Double],
            dvdx:Rail[Double], dvdy:Rail[Double], dvdz:Rail[Double],
@@ -944,6 +953,10 @@ public class Lulesh {
         }
     }
 
+    /** 
+     * Advance velocity vector at each node. Applies a cutoff to
+     * avoid spurious mesh motion due to floating point roundoff error.
+     */
     def calcVelocityForNodes(domain:Domain, dt:Double, u_cut:Double) {
         // TODO parallel for
         for (i in 0..(domain.numNode-1)) {
@@ -1136,11 +1149,14 @@ public class Lulesh {
         d(3) = 0.5 * (dzddy + dyddz);
     }
 
-    /** Calculate Q.  (Monotonic q option requires communication) */
-    def calcQForElems(domain:Domain, vnew:Rail[Double]) {
-        //
-        // MONOTONIC Q option
-        //
+    /** 
+     * Calculate artificial viscosity q for each element.
+     * (Monotonic q option requires communication)
+     * @see "R. B. Christensen. Godunov methods on a staggered mesh: An 
+     * improved artificial viscosity. Lawrence Livermore National Laboratory 
+     * Report, UCRL-JC-105-269, 1991. https://e-reports-ext.llnl.gov/pdf/219547.pdf"
+     */
+    protected def calcQForElems(domain:Domain, vnew:Rail[Double]) {
         val numElem = domain.numElem;
 
         if (numElem != 0) {
@@ -1511,7 +1527,8 @@ public class Lulesh {
         }
     }
 
-    def applyMaterialPropertiesForElems(domain:Domain, vnew:Rail[Double]) {
+    /** Update pressure and internal energy variables for the new timestep. */
+    protected def applyMaterialPropertiesForElems(domain:Domain, vnew:Rail[Double]) {
         val numElem = domain.numElem;
 
         if (numElem != 0) {
@@ -1570,7 +1587,11 @@ public class Lulesh {
         }
     }
 
-    def evalEOSForElems(domain:Domain, vnewc:Rail[Double],
+    /**
+     * Update equation of state variables (pressure, energy, artificial
+     * viscosity) for each element.
+     */
+    protected def evalEOSForElems(domain:Domain, vnewc:Rail[Double],
                         numElemReg:Long, regElemList:Rail[Long], rep:Int) {
         val e_cut = domain.e_cut;
         val p_cut = domain.p_cut;
@@ -1853,6 +1874,7 @@ public class Lulesh {
             // TODO parallel for
             for (i in 0..(length-1)) {
                 var tmpV:Double = vnew(i);
+                // cutoff to avoid spurious volume change due to rounding error
                 if (Math.abs(tmpV - 1.0) < v_cut) tmpV = 1.0;
                 domain.v(i) = tmpV;
             }

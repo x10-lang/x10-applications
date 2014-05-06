@@ -72,45 +72,20 @@ public class Domain {
     /** end time for simulation */
     public val stoptime = 1.0e-2; // *Real_t(edgeElems*tp/45.0);
 
-    /** courant constraint */
-    public var dtcourant:Double;
-    /** volume change constraint */
-    public var dthydro:Double;
-    /** variable time increment lower bound */
-    public var deltatimemultlb:Double;
-    /** variable time increment upper bound */
-    public var deltatimemultub:Double;
-
-    /** Energy */
-    public var e:Rail[Double];
-    /** Pressure */
-    public var p:Rail[Double];
-    /** Artificial viscosity */
-    public var q:Rail[Double];
-    /** Linear term for q */
-    public var ql:Rail[Double];
-    /** Quadratic term for q */
-    public var qq:Rail[Double];
-
-    /** reference volume */
-    public var volo:Rail[Double];
-    /** Relative volume */
-    public var v:Rail[Double];
-    public var delv:Rail[Double];
-    /** volume derivative over volume */
-    public var vdov:Rail[Double];
-    /** Element characteristic length */
-    public var arealg:Rail[Double];
-    /** "sound speed" */
-    public var ss:Rail[Double];
-    /** Element mass */
-    public var elemMass:Rail[Double];
-
     public val sizeX:Long;
     public val sizeY:Long;
     public val sizeZ:Long;
     public val numElem:Long;
     public val numNode:Long;
+
+    /** Courant time constraint */
+    public var dtcourant:Double;
+    /** volume change time constraint */
+    public var dthydro:Double;
+    /** variable time increment lower bound */
+    public var deltatimemultlb:Double;
+    /** variable time increment upper bound */
+    public var deltatimemultub:Double;
 
     /** iteration count for simulation */
     public var cycle:Int;
@@ -132,8 +107,8 @@ public class Domain {
     public val rowLoc:Long;
     public val planeLoc:Long;
 
-    // Node-centered
-    // coordinates
+    // Node-centered kinematic variables
+    // positions
     public var x:Rail[Double];
     public var y:Rail[Double];
     public var z:Rail[Double];
@@ -156,7 +131,32 @@ public class Domain {
     public var symmY:Rail[Long];
     public var symmZ:Rail[Long];
 
-    // Element-centered
+    // Element-centered thermodynamic variables
+    /** Energy */
+    public var e:Rail[Double];
+    /** Pressure */
+    public var p:Rail[Double];
+    /** Artificial viscosity */
+    public var q:Rail[Double];
+    /** Linear term for q */
+    public var ql:Rail[Double];
+    /** Quadratic term for q */
+    public var qq:Rail[Double];
+    /** reference volume */
+    public var volo:Rail[Double];
+    /** Relative volume */
+    public var v:Rail[Double];
+    /** Relative volume change */
+    public var delv:Rail[Double];
+    /** volume derivative over volume */
+    public var vdov:Rail[Double];
+    /** Element characteristic length */
+    public var arealg:Rail[Double];
+    /** "sound speed" */
+    public var ss:Rail[Double];
+    /** Element mass */
+    public var elemMass:Rail[Double];
+
 
     // Region information
 
@@ -185,17 +185,17 @@ public class Domain {
     /** symmetry/free-surface flags for each element face */
     public var elemBC:Rail[Int];
 
-    /* Principal strains -- temporary */
+    /* Diagonal terms of deviatoric strain -- temporary */
     public var dxx:Rail[Double];
     public var dyy:Rail[Double];
     public var dzz:Rail[Double];
 
-    /* coordinate gradient -- temporary */
+    /* Position gradient -- temporary */
     public var delv_xi:Rail[Double];
     public var delv_eta:Rail[Double];
     public var delv_zeta:Rail[Double];
 
-    /* coordinate gradient -- temporary */
+    /* Velocity gradient -- temporary */
     public var delx_xi:Rail[Double];
     public var delx_eta:Rail[Double];
     public var delx_zeta:Rail[Double];
