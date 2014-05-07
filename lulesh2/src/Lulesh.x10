@@ -118,7 +118,7 @@ public class Lulesh {
         verifyAndWriteFinalOutput(elapsedTime, domainPlh(), opts.nx);
     }
 
-    public static @Inline def calcElemVolume(x:Rail[Double], y:Rail[Double], z:Rail[Double]):Double {
+    public static @Inline final def calcElemVolume(x:Rail[Double], y:Rail[Double], z:Rail[Double]):Double {
         val dx61 = x(6) - x(1);
         val dy61 = y(6) - y(1);
         val dz61 = z(6) - z(1);
@@ -615,7 +615,6 @@ public class Lulesh {
 
         // TODO parallel loop
         for (i in 0..(numElem-1)) {
-
             collectDomainNodesToElemNodes(domain, i, x1, y1, z1);
 
             calcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
@@ -647,7 +646,7 @@ public class Lulesh {
         }
     }
 
-    @Inline def calcElemVolumeDerivative(dvdx:Rail[Double],
+    private @Inline final def calcElemVolumeDerivative(dvdx:Rail[Double],
                                  dvdy:Rail[Double],
                                  dvdz:Rail[Double],
                                  x:Rail[Double],
@@ -663,7 +662,7 @@ public class Lulesh {
         voluDer(x, y, z, 6, 5, 4, 3, 2, 0, dvdx, dvdy, dvdz, 7);
     }
 
-    @Inline def voluDer(x:Rail[Double], y:Rail[Double], z:Rail[Double],
+    private @Inline final def voluDer(x:Rail[Double], y:Rail[Double], z:Rail[Double],
         i:Long, j:Long, k:Long, l:Long, m:Long, n:Long,
         dvdx:Rail[Double], dvdy:Rail[Double], dvdz:Rail[Double], ii:Long) {
 
@@ -744,60 +743,40 @@ public class Lulesh {
         val hgfx = new Rail[Double](8);
         val hgfy = new Rail[Double](8);
         val hgfz = new Rail[Double](8);
+
         // TODO parallel loop
         for (i2 in 0..(numElem-1)) {
             val i3 = 8*i2;
             val volinv = 1.0 / determ(i2);
             for (i1 in 0..3) {
-                val hourmodx =
-                    x8n(i3)   * gamma(i1,0) + x8n(i3+1) * gamma(i1,1) +
-                    x8n(i3+2) * gamma(i1,2) + x8n(i3+3) * gamma(i1,3) +
-                    x8n(i3+4) * gamma(i1,4) + x8n(i3+5) * gamma(i1,5) +
-                    x8n(i3+6) * gamma(i1,6) + x8n(i3+7) * gamma(i1,7);
 
-                val hourmody =
-                    y8n(i3)   * gamma(i1,0) + y8n(i3+1) * gamma(i1,1) +
-                    y8n(i3+2) * gamma(i1,2) + y8n(i3+3) * gamma(i1,3) +
-                    y8n(i3+4) * gamma(i1,4) + y8n(i3+5) * gamma(i1,5) +
-                    y8n(i3+6) * gamma(i1,6) + y8n(i3+7) * gamma(i1,7);
+                val hourmod = (a8n:Rail[Double]) => {
+                    a8n(i3)   * gamma(i1,0) + a8n(i3+1) * gamma(i1,1) +
+                    a8n(i3+2) * gamma(i1,2) + a8n(i3+3) * gamma(i1,3) +
+                    a8n(i3+4) * gamma(i1,4) + a8n(i3+5) * gamma(i1,5) +
+                    a8n(i3+6) * gamma(i1,6) + a8n(i3+7) * gamma(i1,7)
+                };
 
-                val hourmodz =
-                    z8n(i3)   * gamma(i1,0) + z8n(i3+1) * gamma(i1,1) +
-                    z8n(i3+2) * gamma(i1,2) + z8n(i3+3) * gamma(i1,3) +
-                    z8n(i3+4) * gamma(i1,4) + z8n(i3+5) * gamma(i1,5) +
-                    z8n(i3+6) * gamma(i1,6) + z8n(i3+7) * gamma(i1,7);
+                val hourmodx = hourmod(x8n);
+                val hourmody = hourmod(y8n);
+                val hourmodz = hourmod(z8n);
 
-                hourgam(0,i1) = gamma(i1,0) - volinv*(dvdx(i3  ) * hourmodx +
-                                                      dvdy(i3  ) * hourmody +
-                                                      dvdz(i3  ) * hourmodz );
+                val setHourgam = (idx:Long) => {
+                    hourgam(idx,i1) = gamma(i1,idx) 
+                        - volinv * (dvdx(i3+idx) * hourmodx
+                                  + dvdy(i3+idx) * hourmody
+                                  + dvdz(i3+idx) * hourmodz);
+                };
 
-                hourgam(1,i1) = gamma(i1,1) - volinv*(dvdx(i3+1) * hourmodx +
-                                                      dvdy(i3+1) * hourmody +
-                                                      dvdz(i3+1) * hourmodz );
-
-                hourgam(2,i1) = gamma(i1,2) - volinv*(dvdx(i3+2) * hourmodx +
-                                                      dvdy(i3+2) * hourmody +
-                                                      dvdz(i3+2) * hourmodz );
-
-                hourgam(3,i1) = gamma(i1,3) - volinv*(dvdx(i3+3) * hourmodx +
-                                                      dvdy(i3+3) * hourmody +
-                                                      dvdz(i3+3) * hourmodz );
-
-                hourgam(4,i1) = gamma(i1,4) - volinv*(dvdx(i3+4) * hourmodx +
-                                                      dvdy(i3+4) * hourmody +
-                                                      dvdz(i3+4) * hourmodz );
-
-                hourgam(5,i1) = gamma(i1,5) - volinv*(dvdx(i3+5) * hourmodx +
-                                                      dvdy(i3+5) * hourmody +
-                                                      dvdz(i3+5) * hourmodz );
-
-                hourgam(6,i1) = gamma(i1,6) - volinv*(dvdx(i3+6) * hourmodx +
-                                                      dvdy(i3+6) * hourmody +
-                                                      dvdz(i3+6) * hourmodz );
-
-                hourgam(7,i1) = gamma(i1,7) - volinv*(dvdx(i3+7) * hourmodx +
-                                                      dvdy(i3+7) * hourmody +
-                                                      dvdz(i3+7) * hourmodz );
+                // TODO can re-roll this loop?
+                setHourgam(0);
+                setHourgam(1);
+                setHourgam(2);
+                setHourgam(3);
+                setHourgam(4);
+                setHourgam(5);
+                setHourgam(6);
+                setHourgam(7);
             }
 
             /* compute forces */
@@ -881,44 +860,29 @@ public class Lulesh {
         }
     }
 
-    private @Inline def calcElemFBHourglassForce(
+    private @Inline final def calcElemFBHourglassForce(
                        xd:Rail[Double], yd:Rail[Double], zd:Rail[Double],
                        hourgam:Array_2[Double], coefficient:Double,
                        hgfx:Rail[Double], hgfy:Rail[Double], hgfz:Rail[Double]) {
         @StackAllocate val hxx = @StackAllocate new Rail[Double](4);
-        for (i in 0..3) {
-            hxx(i) = hourgam(0,i) * xd(0) + hourgam(1,i) * xd(1) +
-                     hourgam(2,i) * xd(2) + hourgam(3,i) * xd(3) +
-                     hourgam(4,i) * xd(4) + hourgam(5,i) * xd(5) +
-                     hourgam(6,i) * xd(6) + hourgam(7,i) * xd(7);
-        }
-        for (i in 0..7) {
-            hgfx(i) = coefficient *
-                    (hourgam(i,0) * hxx(0) + hourgam(i,1) * hxx(1) +
-                     hourgam(i,2) * hxx(2) + hourgam(i,3) * hxx(3));
-        }
-        for (i in 0..3) {
-            hxx(i) = hourgam(0,i) * yd(0) + hourgam(1,i) * yd(1) +
-                     hourgam(2,i) * yd(2) + hourgam(3,i) * yd(3) +
-                     hourgam(4,i) * yd(4) + hourgam(5,i) * yd(5) +
-                     hourgam(6,i) * yd(6) + hourgam(7,i) * yd(7);
-        }
-        for (i in 0..7) {
-            hgfy(i) = coefficient *
-                    (hourgam(i,0) * hxx(0) + hourgam(i,1) * hxx(1) +
-                     hourgam(i,2) * hxx(2) + hourgam(i,3) * hxx(3));
-        }
-        for (i in 0..3) {
-            hxx(i) = hourgam(0,i) * zd(0) + hourgam(1,i) * zd(1) +
-                     hourgam(2,i) * zd(2) + hourgam(3,i) * zd(3) +
-                     hourgam(4,i) * zd(4) + hourgam(5,i) * zd(5) +
-                     hourgam(6,i) * zd(6) + hourgam(7,i) * zd(7);
-        }
-        for (i in 0..7) {
-            hgfz(i) = coefficient *
-                    (hourgam(i,0) * hxx(0) + hourgam(i,1) * hxx(1) +
-                     hourgam(i,2) * hxx(2) + hourgam(i,3) * hxx(3));
-        }
+        
+        val calcForce = (v:Rail[Double], force:Rail[Double]) => {
+            for (i in 0..3) {
+                hxx(i) = hourgam(0,i) * v(0) + hourgam(1,i) * v(1) +
+                         hourgam(2,i) * v(2) + hourgam(3,i) * v(3) +
+                         hourgam(4,i) * v(4) + hourgam(5,i) * v(5) +
+                         hourgam(6,i) * v(6) + hourgam(7,i) * v(7);
+            }
+            for (i in 0..7) {
+                force(i) = coefficient *
+                        (hourgam(i,0) * hxx(0) + hourgam(i,1) * hxx(1) +
+                         hourgam(i,2) * hxx(2) + hourgam(i,3) * hxx(3));
+            }
+        };
+
+        calcForce(xd, hgfx);
+        calcForce(yd, hgfy);
+        calcForce(zd, hgfz);
     }
 
     def calcAccelerationForNodes(domain:Domain) {
@@ -1062,88 +1026,61 @@ public class Lulesh {
         }
     }
 
-    private @Inline def calcElemCharacteristicLength(
+    private @Inline final def calcElemCharacteristicLength(
                             x:Rail[Double], 
                             y:Rail[Double],
                             z:Rail[Double],
                             volume:Double):Double {
+        val areaFace = (i:Long, j:Long, k:Long, l:Long) => {
+            val fx = (x(k) - x(i)) - (x(l) - x(j));
+            val fy = (y(k) - y(i)) - (y(l) - y(j));
+            val fz = (z(k) - z(i)) - (z(l) - z(j));
+            val gx = (x(k) - x(i)) + (x(l) - x(j));
+            val gy = (y(k) - y(i)) + (y(l) - y(j));
+            val gz = (z(k) - z(i)) + (z(l) - z(j));
+            val area = (fx*fx + fy*fy + fz*fz) * (gx*gx + gy*gy + gz*gz)
+                     - (fx*gx + fy*gy + fz*gz) * (fx*gx + fy*gy + fz*gz);
+            area
+        };
+
         var charLength:Double = 0.0;
-        charLength = Math.max(charLength, areaFace(x, y, z, 0, 1, 2, 3));
-        charLength = Math.max(charLength, areaFace(x, y, z, 4, 5, 6, 7));
-        charLength = Math.max(charLength, areaFace(x, y, z, 0, 1, 5, 4));
-        charLength = Math.max(charLength, areaFace(x, y, z, 1, 2, 6, 5));
-        charLength = Math.max(charLength, areaFace(x, y, z, 2, 3, 7, 6));
-        charLength = Math.max(charLength, areaFace(x, y, z, 3, 0, 4, 7));
+        charLength = Math.max(charLength, areaFace(0, 1, 2, 3));
+        charLength = Math.max(charLength, areaFace(4, 5, 6, 7));
+        charLength = Math.max(charLength, areaFace(0, 1, 5, 4));
+        charLength = Math.max(charLength, areaFace(1, 2, 6, 5));
+        charLength = Math.max(charLength, areaFace(2, 3, 7, 6));
+        charLength = Math.max(charLength, areaFace(3, 0, 4, 7));
 
         charLength = 4.0 * volume / Math.sqrt(charLength);
 
         return charLength;
     }
 
-    private @Inline def areaFace(x:Rail[Double], y:Rail[Double], z:Rail[Double],
-                                 i:Long, j:Long, k:Long, l:Long):Double {
-        val fx = (x(k) - x(i)) - (x(l) - x(j));
-        val fy = (y(k) - y(i)) - (y(l) - y(j));
-        val fz = (z(k) - z(i)) - (z(l) - z(j));
-        val gx = (x(k) - x(i)) + (x(l) - x(j));
-        val gy = (y(k) - y(i)) + (y(l) - y(j));
-        val gz = (z(k) - z(i)) + (z(l) - z(j));
-        val area = (fx*fx + fy*fy + fz*fz) * (gx*gx + gy*gy + gz*gz)
-                 - (fx*gx + fy*gy + fz*gz) * (fx*gx + fy*gy + fz*gz);
-        return area;
-    }
-
-    def calcElemVelocityGradient(xvel:Rail[Double], 
+    private @Inline final def calcElemVelocityGradient(xvel:Rail[Double], 
                                  yvel:Rail[Double],
                                  zvel:Rail[Double],
                                  b:Array_2[Double], 
                                  detJ:Double, d:Rail[Double]) {
         val inv_detJ = 1.0 / detJ;
 
-        d(0) = inv_detJ * ( b(0,0) * (xvel(0)-xvel(6))
-                          + b(0,1) * (xvel(1)-xvel(7))
-                          + b(0,2) * (xvel(2)-xvel(4))
-                          + b(0,3) * (xvel(3)-xvel(5)) );
+        val deriv= (vel:Rail[Double], coordIdx:Long) => {
+            inv_detJ * ( b(coordIdx,0) * (vel(0)-vel(6))
+                       + b(coordIdx,1) * (vel(1)-vel(7))
+                       + b(coordIdx,2) * (vel(2)-vel(4))
+                       + b(coordIdx,3) * (vel(3)-vel(5)) )
+        };
 
-        d(1) = inv_detJ * ( b(1,0) * (yvel(0)-yvel(6))
-                          + b(1,1) * (yvel(1)-yvel(7))
-                          + b(1,2) * (yvel(2)-yvel(4))
-                          + b(1,3) * (yvel(3)-yvel(5)) );
+        d(0) = deriv(xvel, 0);
+        d(1) = deriv(yvel, 1);
+        d(2) = deriv(zvel, 2);
 
-        d(2) = inv_detJ * ( b(2,0) * (zvel(0)-zvel(6))
-                          + b(2,1) * (zvel(1)-zvel(7))
-                          + b(2,2) * (zvel(2)-zvel(4))
-                          + b(2,3) * (zvel(3)-zvel(5)) );
+        val dyddx = deriv(yvel, 0);
+        val dxddy = deriv(xvel, 1);
+        val dzddx = deriv(zvel, 0);
+        val dxddz = deriv(xvel, 2);
+        val dzddy = deriv(zvel, 1);
+        val dyddz = deriv(yvel, 2);
 
-        val dyddx = inv_detJ * ( b(0,0) * (yvel(0)-yvel(6))
-                               + b(0,1) * (yvel(1)-yvel(7))
-                               + b(0,2) * (yvel(2)-yvel(4))
-                               + b(0,3) * (yvel(3)-yvel(5)) );
-
-        val dxddy = inv_detJ * ( b(1,0) * (xvel(0)-xvel(6))
-                               + b(1,1) * (xvel(1)-xvel(7))
-                               + b(1,2) * (xvel(2)-xvel(4))
-                               + b(1,3) * (xvel(3)-xvel(5)) );
-
-        val dzddx = inv_detJ * ( b(0,0) * (zvel(0)-zvel(6))
-                               + b(0,1) * (zvel(1)-zvel(7))
-                               + b(0,2) * (zvel(2)-zvel(4))
-                               + b(0,3) * (zvel(3)-zvel(5)) );
-
-        val dxddz = inv_detJ * ( b(2,0) * (xvel(0)-xvel(6))
-                               + b(2,1) * (xvel(1)-xvel(7))
-                               + b(2,2) * (xvel(2)-xvel(4))
-                               + b(2,3) * (xvel(3)-xvel(5)) );
-
-        val dzddy = inv_detJ * ( b(1,0) * (zvel(0)-zvel(6))
-                               + b(1,1) * (zvel(1)-zvel(7))
-                               + b(1,2) * (zvel(2)-zvel(4))
-                               + b(1,3) * (zvel(3)-zvel(5)) );
-
-        val dyddz = inv_detJ * ( b(2,0) * (yvel(0)-yvel(6))
-                                + b(2,1) * (yvel(1)-yvel(7))
-                                + b(2,2) * (yvel(2)-yvel(4))
-                                + b(2,3) * (yvel(3)-yvel(5)) );
         d(5) = 0.5 * (dxddy + dyddx);
         d(4) = 0.5 * (dxddz + dzddx);
         d(3) = 0.5 * (dzddy + dyddz);
@@ -1647,37 +1584,37 @@ public class Lulesh {
             /* Check for v > eosvmax or v < eosvmin */
             if ( eosvmin != 0.0 ) {
             // TODO parallel for
-            for (i in 0..(numElemReg-1)) {
-                val elem = regElemList(i);
-                if (vnewc(elem) <= eosvmin) { /* impossible due to calling func? */
-                    compHalfStep(i) = compression(i);
+                for (i in 0..(numElemReg-1)) {
+                    val elem = regElemList(i);
+                    if (vnewc(elem) <= eosvmin) { /* impossible due to calling func? */
+                        compHalfStep(i) = compression(i);
+                    }
                 }
-            }
 
-            if (eosvmax != 0.0 ) {
+                if (eosvmax != 0.0 ) {
+                    // TODO parallel for
+                    for (i in 0..(numElemReg-1)) {
+                       val elem = regElemList(i);
+                       if (vnewc(elem) >= eosvmax) { /* impossible due to calling func? */
+                          p_old(i)        = 0.0;
+                          compression(i)  = 0.0;
+                          compHalfStep(i) = 0.0;
+                       }
+                    }
+                 }
+
                 // TODO parallel for
                 for (i in 0..(numElemReg-1)) {
-                   val elem = regElemList(i);
-                   if (vnewc(elem) >= eosvmax) { /* impossible due to calling func? */
-                      p_old(i)        = 0.0;
-                      compression(i)  = 0.0;
-                      compHalfStep(i) = 0.0;
-                   }
+                    work(i) = 0.0; 
                 }
-             }
-
-            // TODO parallel for
-            for (i in 0..(numElemReg-1)) {
-                work(i) = 0.0; 
             }
-        }
 
-        calcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
-                         p_old, e_old, q_old, compression, compHalfStep,
-                         vnewc, work, delvc, pmin,
-                         p_cut, e_cut, q_cut, emin,
-                         qq_old, ql_old, rho0, eosvmax,
-                         numElemReg, regElemList);
+            calcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
+                             p_old, e_old, q_old, compression, compHalfStep,
+                             vnewc, work, delvc, pmin,
+                             p_cut, e_cut, q_cut, emin,
+                             qq_old, ql_old, rho0, eosvmax,
+                             numElemReg, regElemList);
         }
 
         // TODO parallel for
@@ -1694,7 +1631,7 @@ public class Lulesh {
                           numElemReg, regElemList);
     }
 
-    private @Inline def calcEnergyForElems(p_new:Rail[Double],
+    private def calcEnergyForElems(p_new:Rail[Double],
                 e_new:Rail[Double], q_new:Rail[Double], 
                 bvc:Rail[Double], pbvc:Rail[Double],
                 p_old:Rail[Double], e_old:Rail[Double], q_old:Rail[Double],
@@ -1979,7 +1916,7 @@ public class Lulesh {
     }
 
     /** get nodal coordinates from global arrays and copy into local arrays */
-    @Inline def collectDomainNodesToElemNodes(domain:Domain,
+    private @Inline final def collectDomainNodesToElemNodes(domain:Domain,
                                    elemIdx:Long,
                                    elemX:Rail[Double],
                                    elemY:Rail[Double],
