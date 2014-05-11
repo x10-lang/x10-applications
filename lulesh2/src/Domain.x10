@@ -9,6 +9,7 @@
  *  (C) Copyright IBM Corporation 2014.
  */
 
+import x10.regionarray.Region;
 import x10.compiler.NonEscaping;
 import x10.util.Random;
 
@@ -70,7 +71,7 @@ public class Domain {
     /** maximum allowable time increment */
     public val dtmax = 1.0e-2;
     /** end time for simulation */
-    public val stoptime = 1.0e-2; // *Real_t(edgeElems*tp/45.0);
+    public val stopTime = 1.0e-2; // *Real_t(edgeElems*tp/45.0);
 
     public val sizeX:Long;
     public val sizeY:Long;
@@ -99,13 +100,12 @@ public class Domain {
 
     /** length of cube mesh along side */
     public val nx:Long;
-    /** Number of places per side of cubic decomposition */
-    public val tp:Long;
 
-    // mesh decomposition TODO use DistArray?
-    public val colLoc:Long;
-    public val rowLoc:Long;
-    public val planeLoc:Long;
+    public val maxPlaneSize:Long;
+    public val maxEdgeSize:Long;
+
+    /** Location of this domain in the grid decomposition TODO use DistArray */
+    public val loc:DomainLoc;
 
     // Node-centered kinematic variables
     // positions
@@ -236,17 +236,14 @@ public class Domain {
     public def symmYempty():Boolean = (symmY == null);
     public def symmZempty():Boolean = (symmZ == null);
 
-    public def this(nx:Long, nr:Int, balance:Int, cost:Int) {
+    public def this(nx:Long, nr:Int, balance:Int, cost:Int, placesPerSide:Int) {
         this.nx = nx;
         this.numReg = nr;
         this.cost = cost;
         val edgeElems = nx;
         val edgeNodes = edgeElems+1;
-        val grid = MeshDecomposition.getPlaceGridLoc();
-        this.tp = grid.placesPerSide;
-        this.colLoc = grid.col;
-        this.rowLoc = grid.row;
-        this.planeLoc = grid.plane;
+        val loc = DomainLoc.make(here.id, placesPerSide);
+        this.loc = loc;
 
         // Initialize Sedov Mesh
 
@@ -257,6 +254,10 @@ public class Domain {
         this.sizeZ = edgeElems;
         this.numElem = edgeElems*edgeElems*edgeElems;
         this.numNode = edgeNodes*edgeNodes*edgeNodes;
+
+        // TODO cache alignment - required?
+        this.maxEdgeSize = Math.max(sizeX, Math.max(sizeY, sizeZ)) + 1;
+        this.maxPlaneSize = maxEdgeSize*maxEdgeSize;
 
         allocateElemPersistent(numElem);
 
@@ -309,52 +310,174 @@ public class Domain {
         // An energy of 3.948746e+7 is correct for a problem with
         // 45 zones along a side - we need to scale it
         val ebase = 3.948746e+7;
-        val scale = (nx * tp) / 45.0;
+        val scale = (nx * loc.tp) / 45.0;
         val einit = ebase*scale*scale*scale;
-        if (rowLoc + colLoc + planeLoc == 0) {
+        if (loc.isFirstDomain()) {
             // Dump into the first zone (which we know is in the corner)
             // of the domain that sits at the origin
             e(0) = einit;
         }
-        //set initial deltatime base on analytic CFL calculation
+        // set initial deltatime based on analytic CFL calculation
         deltatime = (0.5 * Math.cbrt(volo(0))) / Math.sqrt(2.0 * einit);
+    }
+
+    /** 
+     * Return the region of boundary elements at this place that are
+     * received from the given neighboring place.
+     * @param destId the id of the destination place
+     * @param nodes indicates that nodes are to be used
+     */
+    public def getBoundaryRegionRecv(destId:Long, edgeMax:Long) {
+        val neighborLoc = DomainLoc.make(destId, loc.tp);
+
+        val xDiff = neighborLoc.x - loc.x;
+        val yDiff = neighborLoc.y - loc.y;
+        val zDiff = neighborLoc.z - loc.z;
+
+        val xRange:LongRange;
+        if (xDiff == -1n) {
+            xRange = 0..0;
+        } else if (xDiff == 1n) {
+            xRange = edgeMax..edgeMax;
+        } else {
+            xRange = 1..(edgeMax-1);
+        }
+
+        val yRange:LongRange;
+        if (yDiff == -1n) {
+            yRange = 0..0;
+        } else if (yDiff == 1n) {
+            yRange = edgeMax..edgeMax;
+        } else {
+            yRange = 1..(edgeMax-1);
+        }
+
+        val zRange:LongRange;
+        if (zDiff == -1n) {
+            zRange = 0..0;
+        } else if (zDiff == 1n) {
+            zRange = edgeMax..edgeMax;
+        } else {
+            zRange = 1..(edgeMax-1);
+        }
+
+        return Region.makeRectangular(xRange, yRange, zRange);
+    }
+
+    /** 
+     * Return the region of boundary elements from this place that are
+     * required at the given neighboring place.
+     */
+    public def getBoundaryRegionSend(destId:Long, edgeMax:Long) {
+        val neighborLoc = DomainLoc.make(destId, loc.tp);
+
+        val xDiff = loc.x - neighborLoc.x;
+        val yDiff = loc.y - neighborLoc.y;
+        val zDiff = loc.z - neighborLoc.z;
+
+        val xRange:LongRange;
+        if (xDiff == -1n) {
+            xRange = (edgeMax-1)..(edgeMax-1);
+        } else if (xDiff == 1n) {
+            xRange = 1..1;
+        } else {
+            xRange = 1..(edgeMax-1);
+        }
+
+        val yRange:LongRange;
+        if (yDiff == -1n) {
+            yRange = (edgeMax-1)..(edgeMax-1);
+        } else if (yDiff == 1n) {
+            yRange = 1..1;
+        } else {
+            yRange = 1..(edgeMax-1);
+        }
+
+        val zRange:LongRange;
+        if (zDiff == -1n) {
+            zRange = (edgeMax-1)..(edgeMax-1);
+        } else if (zDiff == 1n) {
+            zRange = 1..1;
+        } else {
+            zRange = 1..(edgeMax-1);
+        }
+
+        return Region.makeRectangular(xRange, yRange, zRange);
+    }
+
+    public def gatherFields(destId:Long, 
+                accessFields:(dom:Domain) => Rail[Rail[Double]],
+                perEdge:Long):Rail[Double] {
+        val fields = accessFields(this);
+        val boundaryRegion = getBoundaryRegionSend(destId, perEdge-1);
+        val transfer = new Rail[Double](boundaryRegion.size()*fields.size);
+
+        var idx:Long = 0;
+        for (field in fields) {
+            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
+                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
+                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
+                        transfer(idx++) = field(x + y*perEdge + z*perEdge*perEdge);
+                    }
+                }
+            }
+        }
+
+        return transfer;
+    }
+
+    public def scatterFields(sourceId:Long, data:Rail[Double], 
+                accessFields:(dom:Domain) => Rail[Rail[Double]],
+                perEdge:Long) {
+        val fields = accessFields(this);
+        val boundaryRegion = getBoundaryRegionRecv(sourceId, perEdge-1);
+        var idx:Long = 0;
+        for (field in fields) {
+            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
+                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
+                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
+                        field(x + y*perEdge + z*perEdge*perEdge) = data(idx++);
+                    }
+                }
+            }
+        }
     }
 
     private @NonEscaping def buildMesh(nx:Long, edgeNodes:Long, edgeElems:Long) {
         // TODO use Array_2
         nodeList = new Rail[Long](8*numElem);
 
-        val meshEdgeElems = tp*nx;
+        val meshEdgeElems = loc.tp*nx;
 
         // initialize nodal coordinates 
         var nidx:Long = 0;
-        var tz:Double = 1.125 * (planeLoc * nx) / meshEdgeElems;
-        for (plane in 0..(edgeNodes-1)) {
-            var ty:Double = 1.125 * (rowLoc * nx) / meshEdgeElems;
-            for (row in 0..(edgeNodes-1)) {
-                var tx:Double = 1.125 * (colLoc * nx) / meshEdgeElems;
-                for (col in 0..(edgeNodes-1)) {
+        var tz:Double = 1.125 * (loc.z * nx) / meshEdgeElems;
+        for (edgeZ in 0..(edgeNodes-1)) {
+            var ty:Double = 1.125 * (loc.y * nx) / meshEdgeElems;
+            for (edgeY in 0..(edgeNodes-1)) {
+                var tx:Double = 1.125 * (loc.x * nx) / meshEdgeElems;
+                for (edgeX in 0..(edgeNodes-1)) {
                     x(nidx) = tx;
                     y(nidx) = ty;
                     z(nidx) = tz;
                     ++nidx;
                     // tx += ds; // may accumulate roundoff... 
-                    tx = 1.125 * (colLoc*nx + col + 1) / meshEdgeElems;
+                    tx = 1.125 * (loc.x*nx + edgeX + 1) / meshEdgeElems;
                 }
                 // ty += ds;  // may accumulate roundoff... 
-                ty = 1.125 * (rowLoc*nx + row + 1) / meshEdgeElems;
+                ty = 1.125 * (loc.y*nx + edgeY + 1) / meshEdgeElems;
             }
             // tz += ds;  // may accumulate roundoff... 
-            tz = 1.125 * (planeLoc*nx + plane + 1) / meshEdgeElems;
+            tz = 1.125 * (loc.z*nx + edgeZ + 1) / meshEdgeElems;
         }
 
 
         // embed hexehedral elements in nodal point lattice 
         var zidx:Long = 0;
         nidx = 0;
-        for (plane in 0..(edgeElems-1)) {
-            for (row in 0..(edgeElems-1)) {
-                for (col in 0..(edgeElems-1)) {
+        for (edgeZ in 0..(edgeElems-1)) {
+            for (edgeY in 0..(edgeElems-1)) {
+                for (edgeX in 0..(edgeElems-1)) {
                     nodeList(zidx*8+0) = nidx                                      ;
                     nodeList(zidx*8+1) = nidx                                   + 1;
                     nodeList(zidx*8+2) = nidx                       + edgeNodes + 1;
@@ -526,11 +649,11 @@ public class Domain {
     }
 
     private @NonEscaping def setupBoundaryNodesets(edgeNodes:Long) {
-        if (colLoc == 0)
+        if (loc.x == 0n)
             symmX = new Rail[Long](edgeNodes*edgeNodes);
-        if (rowLoc == 0)
+        if (loc.y == 0n)
             symmY = new Rail[Long](edgeNodes*edgeNodes);
-        if (planeLoc == 0)
+        if (loc.z == 0n)
             symmZ = new Rail[Long](edgeNodes*edgeNodes);
     }
 
@@ -538,17 +661,17 @@ public class Domain {
     private @NonEscaping def setupSymmetryPlanes(edgeNodes:Long) {
         var nidx:Long = 0;
         for (i in 0..(edgeNodes-1)) {
-            val planeInc = i*edgeNodes*edgeNodes;
-            val rowInc   = i*edgeNodes;
+            val zOffset = i*edgeNodes*edgeNodes;
+            val yOffset   = i*edgeNodes;
             for (j in 0..(edgeNodes-1)) {
-                if (planeLoc == 0) {
-                    symmZ(nidx) = rowInc   + j;
+                if (loc.z == 0n) {
+                    symmZ(nidx) = yOffset + j;
                 }
-                if (rowLoc == 0) {
-                    symmY(nidx) = planeInc + j;
+                if (loc.y == 0n) {
+                    symmY(nidx) = zOffset + j;
                 }
-                if (colLoc == 0) {
-                    symmX(nidx) = planeInc + j*edgeNodes;
+                if (loc.x == 0n) {
+                    symmX(nidx) = zOffset + j*edgeNodes;
                 }
                 ++nidx;
             }
@@ -585,99 +708,99 @@ public class Domain {
 
     /** Setup symmetry planes and free surface boundary arrays */
     private @NonEscaping def setupBoundaryConditions(edgeElems:Long) {
-        val rowMin = (rowLoc != 0);
-        val rowMax = (rowLoc != tp-1);
-        val colMin = (colLoc != 0);
-        val colMax = (colLoc != tp-1);
-        val planeMin = (planeLoc != 0);
-        val planeMax = (planeLoc != tp-1);
+        val xMin = (loc.y != 0n);
+        val xMax = (loc.y != loc.tp-1n);
+        val yMin = (loc.x != 0n);
+        val yMax = (loc.x != loc.tp-1n);
+        val zMin = (loc.z != 0n);
+        val zMax = (loc.z != loc.tp-1n);
 
         // offsets to ghost locations
         val ghostIdx = new Rail[Long](6, Int.MIN_VALUE);
 
         var pidx:Long = numElem;
-        if (planeMin) {
+        if (zMin) {
             ghostIdx(0) = pidx;
             pidx += sizeX*sizeY;
         }
 
-        if (planeMax) {
+        if (zMax) {
             ghostIdx(1) = pidx;
             pidx += sizeX*sizeY;
         }
 
-        if (rowMin) {
+        if (xMin) {
             ghostIdx(2) = pidx;
             pidx += sizeX*sizeZ;
         }
 
-        if (rowMax) {
+        if (xMax) {
             ghostIdx(3) = pidx;
             pidx += sizeX*sizeZ;
         }
 
-        if (colMin) {
+        if (yMin) {
             ghostIdx(4) = pidx;
             pidx += sizeY*sizeZ;
         }
 
-        if (colMax) {
+        if (yMax) {
             ghostIdx(5) = pidx;
         }
 
         // symmetry plane or free surface BCs
         elemBC = new Rail[Int](numElem);
         for (i in 0..(edgeElems-1)) {
-            val planeInc = i*edgeElems*edgeElems;
-            val rowInc   = i*edgeElems;
+            val zOffset = i*edgeElems*edgeElems;
+            val yOffset   = i*edgeElems;
             for (j in 0..(edgeElems-1)) {
-                if (planeLoc == 0) {
-                    elemBC(rowInc+j) |= ZETA_M_SYMM;
+                if (loc.z == 0n) {
+                    elemBC(yOffset+j) |= ZETA_M_SYMM;
                 } else {
-                    elemBC(rowInc+j) |= ZETA_M_COMM;
-                    lzetam(rowInc+j) = ghostIdx(0) + rowInc + j;
+                    elemBC(yOffset+j) |= ZETA_M_COMM;
+                    lzetam(yOffset+j) = ghostIdx(0) + yOffset + j;
                 }
 
-                if (planeLoc == tp-1) {
-                    elemBC(rowInc+j+numElem-edgeElems*edgeElems) |=
+                if (loc.z == loc.tp-1n) {
+                    elemBC(yOffset+j+numElem-edgeElems*edgeElems) |=
                         ZETA_P_FREE;
                 } else {
-                    elemBC(rowInc+j+numElem-edgeElems*edgeElems) |=
+                    elemBC(yOffset+j+numElem-edgeElems*edgeElems) |=
                         ZETA_P_COMM;
-                    lzetap(rowInc+j+numElem-edgeElems*edgeElems) =
-                    ghostIdx(1) + rowInc + j;
+                    lzetap(yOffset+j+numElem-edgeElems*edgeElems) =
+                    ghostIdx(1) + yOffset + j;
                 }
 
-                if (rowLoc == 0) {
-                    elemBC(planeInc+j) |= ETA_M_SYMM;
+                if (loc.y == 0n) {
+                    elemBC(zOffset+j) |= ETA_M_SYMM;
                 } else {
-                    elemBC(planeInc+j) |= ETA_M_COMM;
-                    letam(planeInc+j) = ghostIdx(2) + rowInc + j;
+                    elemBC(zOffset+j) |= ETA_M_COMM;
+                    letam(zOffset+j) = ghostIdx(2) + yOffset + j;
                 }
 
-                if (rowLoc == tp-1) {
-                    elemBC(planeInc+j+edgeElems*edgeElems-edgeElems) |= 
+                if (loc.y == loc.tp-1n) {
+                    elemBC(zOffset+j+edgeElems*edgeElems-edgeElems) |= 
                         ETA_P_FREE;
                 } else {
-                    elemBC(planeInc+j+edgeElems*edgeElems-edgeElems) |= 
+                    elemBC(zOffset+j+edgeElems*edgeElems-edgeElems) |= 
                         ETA_P_COMM;
-                    letap(planeInc+j+edgeElems*edgeElems-edgeElems) =
-                    ghostIdx(3) +  rowInc + j;
+                    letap(zOffset+j+edgeElems*edgeElems-edgeElems) =
+                    ghostIdx(3) +  yOffset + j;
                 }
 
-                if (colLoc == 0) {
-                    elemBC(planeInc+j*edgeElems) |= XI_M_SYMM;
+                if (loc.x == 0n) {
+                    elemBC(zOffset+j*edgeElems) |= XI_M_SYMM;
                 } else {
-                    elemBC(planeInc+j*edgeElems) |= XI_M_COMM;
-                    lxim(planeInc+j*edgeElems) = ghostIdx(4) + rowInc + j;
+                    elemBC(zOffset+j*edgeElems) |= XI_M_COMM;
+                    lxim(zOffset+j*edgeElems) = ghostIdx(4) + yOffset + j;
                 }
 
-                if (colLoc == tp-1) {
-                    elemBC(planeInc+j*edgeElems+edgeElems-1) |= XI_P_FREE;
+                if (loc.x == loc.tp-1n) {
+                    elemBC(zOffset+j*edgeElems+edgeElems-1) |= XI_P_FREE;
                 } else {
-                    elemBC(planeInc+j*edgeElems+edgeElems-1) |= XI_P_COMM;
-                    lxip(planeInc+j*edgeElems+edgeElems-1) =
-                        ghostIdx(5) + rowInc + j;
+                    elemBC(zOffset+j*edgeElems+edgeElems-1) |= XI_P_COMM;
+                    lxip(zOffset+j*edgeElems+edgeElems-1) =
+                        ghostIdx(5) + yOffset + j;
                 }
             }
         }

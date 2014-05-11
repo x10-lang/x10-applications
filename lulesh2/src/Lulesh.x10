@@ -17,7 +17,7 @@ import x10.util.Team;
 import x10.util.Timer;
 
 /** 
- * X10 implementation of LULESH proxy app, based on LULESH version 2.0.3.
+ * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
  * <p>
  * Various command line options (see ./lulesh2.0 -h)
  *  -q              : quiet mode - suppress stdout
@@ -47,9 +47,30 @@ public class Lulesh {
     /** The simulation domain at each place. */
     protected val domainPlh:PlaceLocalHandle[Domain];
 
+    /** Manager for nodal mass updates between all neighbors */
+    protected val massGhostMgr:GhostManager;
+    /** Manager for positions and velocity updates between all neighbors */
+    protected val posVelGhostMgr:GhostManager;
+    /** Manager for force updates between all neighbors */
+    protected val forceGhostMgr:GhostManager;
+    /** Manager for position gradient updates between plane neighbors */
+    protected val gradientGhostMgr:GhostManager;
+
+    private static val EXIT_CODE_INCORRECT_USAGE = 2n;
+
     public static def main(args:Rail[String]) {
+        val placesPerSide = Math.cbrt((Place.MAX_PLACES as Double) + 0.5) as Int;
+        if  (placesPerSide*placesPerSide*placesPerSide != Place.MAX_PLACES as Int) {
+            Console.ERR.println("Num processors must be a cube of an integer (1, 8, 27, ...)");
+            System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
+            return;
+        }
+
         val opts = CommandLineOptions.parse(args);
-        if (opts == null) return;
+        if (opts == null) {
+            System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
+            return;
+        }
 
         if (!opts.quiet) {
             Console.OUT.printf("Running problem size %d^3 per domain until completion\n", opts.nx);
@@ -65,53 +86,57 @@ public class Lulesh {
             Console.OUT.printf("See help (-h) for more options\n\n");
         }
 
-        new Lulesh(opts).run();
+        new Lulesh(opts, placesPerSide).run();
     }
 
-    public def this(opts:CommandLineOptions) {
+    public def this(opts:CommandLineOptions, placesPerSide:Int) {
         this.opts = opts;
-        this.domainPlh = PlaceLocalHandle.make[Domain](PlaceGroup.WORLD, 
-            () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost));
+        val domainPlh = PlaceLocalHandle.make[Domain](PlaceGroup.WORLD, 
+            () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide));
+        this.domainPlh = domainPlh;
+
+        // initialize ghost updates
+        this.massGhostMgr = new GhostManager(
+                () => domainPlh().loc.createNeighborList(false));
+        this.posVelGhostMgr = new GhostManager(
+                () => domainPlh().loc.createNeighborList(false));
+        this.forceGhostMgr = new GhostManager(
+                () => domainPlh().loc.createNeighborList(false));
+        this.gradientGhostMgr = new GhostManager(
+                () => domainPlh().loc.createNeighborList(true));
     }
 
     public def run() {
         finish for (place in PlaceGroup.WORLD) at(place) async {
             val domain = domainPlh();
 
-/*
-            fieldData = &Domain::nodalMass ;
-
-            // Initial domain boundary communication 
-            CommRecv(*locDom, MSG_COMM_SBN, 1,
-                    locDom->sizeX() + 1, locDom->sizeY() + 1, locDom->sizeZ() + 1,
-                    true, false) ;
-            CommSend(*locDom, MSG_COMM_SBN, 1, &fieldData,
-                    locDom->sizeX() + 1, locDom->sizeY() + 1, locDom->sizeZ() +  1,
-                    true, false) ;
-            CommSBN(*locDom, 1, &fieldData) ;
+            val sourceId = here.id;
+            val perEdge = domain.sizeX+1;
+            massGhostMgr.sendGhosts(domainPlh, (dom:Domain) => [dom.nodalMass], perEdge); 
+            massGhostMgr.waitForGhosts();
 
             Team.WORLD.barrier();
-*/
+
             val start = Timer.milliTime();
 
             //debug to see region sizes
             //for (var i:Long = 0; i < domain.numReg; i++)
             //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemSize(i));
 
-            while((domain.time < domain.stoptime) && (domain.cycle < opts.its)) {
+            while((domain.time < domain.stopTime) && (domain.cycle < opts.its)) {
 
                 timeIncrement(domain);
 
                 lagrangeLeapFrog(domain);
 
-                if (opts.showProg && !opts.quiet) {
+                if (opts.showProg && !opts.quiet && here.isFirst()) {
                     Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
                         domain.cycle, domain.time, domain.deltatime);
                 }
             }
 
-            domain.elapsedTimeMillis = Timer.milliTime() - start;
-            Team.WORLD.allreduce(domain.elapsedTimeMillis, Team.MAX);
+            val elapsedTimeMillis = Timer.milliTime() - start;
+            domain.elapsedTimeMillis = Team.WORLD.allreduce(elapsedTimeMillis, Team.MAX);
         } // at(place) async
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
@@ -193,7 +218,7 @@ public class Lulesh {
     /* Work Routines */
 
     protected def timeIncrement(domain:Domain) {
-        var targetdt:Double = domain.stoptime - domain.time;
+        var targetDt:Double = domain.stopTime - domain.time;
 
         if (domain.dtfixed <= 0.0 && domain.cycle != 0n) {
             var ratio:Double;
@@ -208,8 +233,7 @@ public class Lulesh {
             if (domain.dthydro < gNewDt) {
                 gNewDt = domain.dthydro * 2.0 / 3.0;
             }
-            newDt = gNewDt;
-            Team.WORLD.allreduce(newDt, Team.MIN);
+            newDt = Team.WORLD.allreduce(gNewDt, Team.MIN);
 
             ratio = newDt / oldDt;
             if (ratio >= 1.0) {
@@ -227,13 +251,13 @@ public class Lulesh {
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
-        if ((targetdt > domain.deltatime) &&
-            (targetdt < 4.0 * domain.deltatime / 3.0) ) {
-            targetdt = 2.0 * domain.deltatime / 3.0;
+        if ((targetDt > domain.deltatime) &&
+            (targetDt < 4.0 * domain.deltatime / 3.0) ) {
+            targetDt = 2.0 * domain.deltatime / 3.0;
         }
 
-        if (targetdt < domain.deltatime) {
-            domain.deltatime = targetdt;
+        if (targetDt < domain.deltatime) {
+            domain.deltatime = targetDt;
         }
 
         domain.time += domain.deltatime;
@@ -245,32 +269,20 @@ public class Lulesh {
         lagrangeNodal(domain);
 
         lagrangeElements(domain);
-/*
-        @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
-        commRecv(domain, MSG_SYNC_POS_VEL, 6,
-                domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() + 1,
-                false, false);
 
-        val fieldData:Rail[Rail[Double]] = new Rail[Rail[Double]](6);
-        fieldData(0) = domain.x;
-        fieldData(1) = domain.y;
-        fieldData(2) = domain.z;
-        fieldData(3) = domain.xd;
-        fieldData(4) = domain.yd;
-        fieldData(5) = domain.zd;
-
-        commSend(domain, MSG_SYNC_POS_VEL, 6, fieldData,
-                domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() + 1,
-                false, false);
-        }
-*/
+@Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
+        val perEdge = domain.sizeX+1;
+        posVelGhostMgr.sendGhosts(domainPlh, 
+            (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
+            perEdge
+        );
+}
 
         calcTimeConstraintsForElems(domain);
-/*
-        @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
-        commSyncPosVel(domain);
-        }
-*/
+
+@Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
+        posVelGhostMgr.waitForGhosts();
+}
     }
 
     /**
@@ -285,14 +297,6 @@ public class Lulesh {
         // and acceleration boundary conditions. 
         calcForceForNodes(domain);
 
-/*
-        @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {
-        CommRecv(domain, MSG_SYNC_POS_VEL, 6,
-                domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() + 1,
-                false, false);
-        }
-*/
-
         calcAccelerationForNodes(domain);
 
         applyAccelerationBoundaryConditionsForNodes(domain);
@@ -301,24 +305,14 @@ public class Lulesh {
 
         calcPositionForNodes(domain, delt);
 
-/*
-        @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {
-        val fieldData:Rail[Rail[Double]] = new Rail[Rail[Double]](6);
-        fieldData(0) = domain.x;
-        fieldData(1) = domain.y;
-        fieldData(2) = domain.z;
-        fieldData(3) = domain.xd;
-        fieldData(4) = domain.yd;
-        fieldData(5) = domain.zd;
-
-
-        CommSend(domain, MSG_SYNC_POS_VEL, 6, fieldData,
-                domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() + 1,
-                false, false);
-
-        CommSyncPosVel(domain);
-        }
- */
+@Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {
+        val perEdge = domain.sizeX+1;
+        posVelGhostMgr.sendGhosts(domainPlh,
+            (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
+            perEdge
+        );
+        posVelGhostMgr.waitForGhosts();
+}
     }
 
     /**
@@ -354,11 +348,6 @@ public class Lulesh {
     }
 
     protected def calcForceForNodes(domain:Domain) {
-/*
-        CommRecv(domain, MSG_COMM_SBN, 3,
-               domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() + 1,
-               true, false);
-*/
         // TODO parallel loop
         for (i in 0..(domain.numNode-1)) {
             domain.fx(i) = 0.0;
@@ -367,17 +356,13 @@ public class Lulesh {
         }
 
         calcVolumeForceForElems(domain);
-/*
-        Domain_member fieldData(3);
-        fieldData(0) = &Domain::fx;
-        fieldData(1) = &Domain::fy;
-        fieldData(2) = &Domain::fz;
 
-        CommSend(domain, MSG_COMM_SBN, 3, fieldData,
-               domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() +  1,
-               true, false);
-        CommSBN(domain, 3, fieldData);
-*/
+        val perEdge = domain.sizeX+1;
+        forceGhostMgr.sendGhosts(domainPlh, 
+            (dom:Domain) => [dom.fx, dom.fy, dom.fz],
+            perEdge
+        );
+        forceGhostMgr.waitForGhosts();
     }
 
     /** Calculate the volume force contribution for each mesh element. */
@@ -508,7 +493,7 @@ public class Lulesh {
         val cjzze =    (fjxxi * fjyet) - (fjyxi * fjxet);
 
         // calculate partials :
-        // this need only be done for l = 0,1,2,3   since , by symmetry ,
+        // this need only be done for l = 0,1,2,3 since, by symmetry,
         // (6,7,4,5) = - (0,1,2,3) .
         b(0,0) =   -  cjxxi  -  cjxet  -  cjxze;
         b(0,1) =      cjxxi  -  cjxet  -  cjxze;
@@ -1063,23 +1048,23 @@ public class Lulesh {
                                  detJ:Double, d:Rail[Double]) {
         val inv_detJ = 1.0 / detJ;
 
-        val deriv= (vel:Rail[Double], coordIdx:Long) => {
-            inv_detJ * ( b(coordIdx,0) * (vel(0)-vel(6))
-                       + b(coordIdx,1) * (vel(1)-vel(7))
-                       + b(coordIdx,2) * (vel(2)-vel(4))
-                       + b(coordIdx,3) * (vel(3)-vel(5)) )
+        val dv = (v:Rail[Double], coordIdx:Long) => {
+            inv_detJ * ( b(coordIdx,0) * (v(0)-v(6))
+                       + b(coordIdx,1) * (v(1)-v(7))
+                       + b(coordIdx,2) * (v(2)-v(4))
+                       + b(coordIdx,3) * (v(3)-v(5)) )
         };
 
-        d(0) = deriv(xvel, 0);
-        d(1) = deriv(yvel, 1);
-        d(2) = deriv(zvel, 2);
+        d(0) = dv(xvel, 0);
+        d(1) = dv(yvel, 1);
+        d(2) = dv(zvel, 2);
 
-        val dyddx = deriv(yvel, 0);
-        val dxddy = deriv(xvel, 1);
-        val dzddx = deriv(zvel, 0);
-        val dxddz = deriv(xvel, 2);
-        val dzddy = deriv(zvel, 1);
-        val dyddz = deriv(yvel, 2);
+        val dyddx = dv(yvel, 0);
+        val dxddy = dv(xvel, 1);
+        val dzddx = dv(zvel, 0);
+        val dxddz = dv(xvel, 2);
+        val dzddy = dv(zvel, 1);
+        val dyddz = dv(yvel, 2);
 
         d(5) = 0.5 * (dxddy + dyddx);
         d(4) = 0.5 * (dxddz + dzddx);
@@ -1098,36 +1083,21 @@ public class Lulesh {
 
         if (numElem != 0) {
             val allElem = numElem            /* local elem */
-              + 2*domain.sizeX*domain.sizeY  /* plane ghosts */
-              + 2*domain.sizeX*domain.sizeZ  /* row ghosts */
-              + 2*domain.sizeY*domain.sizeZ; /* col ghosts */
+              + 2*domain.sizeY*domain.sizeZ  /* X ghosts */
+              + 2*domain.sizeX*domain.sizeZ  /* Y ghosts */
+              + 2*domain.sizeX*domain.sizeY; /* Z ghosts */
 
-            domain.allocateGradients(allElem);
-
-/*    
-            CommRecv(domain, MSG_MONOQ, 3,
-                   domain.sizeX(), domain.sizeY(), domain.sizeZ(),
-                   true, true);
-*/    
+            domain.allocateGradients(allElem); 
 
             /* Calculate velocity gradients */
             calcMonotonicQGradientsForElems(domain, vnew);
 
-            /* Transfer velocity gradients in the first order elements */
-            /* problem->commElements->Transfer(CommElements::monoQ); */
-/* 
-            Domain_member fieldData[3];
-
-            fieldData[0] = &Domain::delv_xi;
-            fieldData[1] = &Domain::delv_eta;
-            fieldData[2] = &Domain::delv_zeta;
-
-            CommSend(domain, MSG_MONOQ, 3, fieldData,
-                   domain.sizeX(), domain.sizeY(), domain.sizeZ(),
-                   true, true);
-
-            CommMonoQ(domain);
-*/      
+            val perEdge = domain.sizeX;
+            gradientGhostMgr.sendGhosts(domainPlh, 
+                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
+                perEdge
+            );
+            gradientGhostMgr.waitForGhosts();
 
             calcMonotonicQForElems(domain, vnew);
 
@@ -1895,11 +1865,11 @@ public class Lulesh {
                 val absDiff = Math.abs(domain.e(j*nx+k) - domain.e(k*nx+j));
                 totalAbsDiff += absDiff;
 
-                if (maxAbsDiff < absDiff) maxAbsDiff = absDiff;
+                maxAbsDiff = Math.max(maxAbsDiff, absDiff);
 
                 val relDiff = absDiff / domain.e(k*nx+j);
 
-                if (maxRelDiff < relDiff)  maxRelDiff = relDiff;
+                maxRelDiff  = Math.max(maxRelDiff, relDiff);
             }
         }
 

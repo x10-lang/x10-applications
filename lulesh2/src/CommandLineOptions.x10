@@ -10,7 +10,7 @@
  */
 
 /**
- * Handles command line options to the LULESH proxy app.
+ * Handles command line options to LULESH.
  */
 public class CommandLineOptions {
     var quiet:Boolean = false;    // -q

@@ -39,7 +39,7 @@ run-poe:	${NativeX10BIN}
 	poe ${NativeX10BIN} ${APPFLAG}
 
 run-mpi:	${NativeX10BIN}
-	mpiexec -n 8 ${NativeX10BIN} ${APPFLAG}
+	mpiexec -n 8 ${NativeX10BIN} -s 10
 
 DOCSRC=$(shell find ${SRCPATH} -type f -iname '*.x10')
 
