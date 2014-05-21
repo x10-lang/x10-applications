@@ -110,9 +110,8 @@ public class Lulesh {
         finish for (place in PlaceGroup.WORLD) at(place) async {
             val domain = domainPlh();
 
-            val sourceId = here.id;
             val perEdge = domain.sizeX+1;
-            massGhostMgr.sendGhosts(domainPlh, (dom:Domain) => [dom.nodalMass], perEdge); 
+            massGhostMgr.combineBoundaries(domainPlh, (dom:Domain) => [dom.nodalMass], perEdge); 
             massGhostMgr.waitForGhosts();
 
             Team.WORLD.barrier();
@@ -272,7 +271,7 @@ public class Lulesh {
 
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
         val perEdge = domain.sizeX+1;
-        posVelGhostMgr.sendGhosts(domainPlh, 
+        posVelGhostMgr.updateBoundaryData(domainPlh, 
             (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
             perEdge
         );
@@ -307,7 +306,7 @@ public class Lulesh {
 
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {
         val perEdge = domain.sizeX+1;
-        posVelGhostMgr.sendGhosts(domainPlh,
+        posVelGhostMgr.updateBoundaryData(domainPlh,
             (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
             perEdge
         );
@@ -358,7 +357,7 @@ public class Lulesh {
         calcVolumeForceForElems(domain);
 
         val perEdge = domain.sizeX+1;
-        forceGhostMgr.sendGhosts(domainPlh, 
+        forceGhostMgr.combineBoundaries(domainPlh, 
             (dom:Domain) => [dom.fx, dom.fy, dom.fz],
             perEdge
         );
@@ -413,7 +412,6 @@ public class Lulesh {
                                 determ:Rail[Double], numElem:Long, 
                                 numNode:Long) {
 
-        val numElem8 = numElem * 8;
         val fx_local = new Rail[Double](8);
         val fy_local = new Rail[Double](8);
         val fz_local = new Rail[Double](8);
@@ -528,42 +526,40 @@ public class Lulesh {
     @Inline def calcElemNodeNormals(pf:Array_2[Double],
                     x:Rail[Double], y:Rail[Double], z:Rail[Double]) {
         pf.clear();
-        sumElemFaceNormal(pf, 0, 1, 2, 3, x, y, z);
-        sumElemFaceNormal(pf, 0, 4, 5, 1, x, y, z);
-        sumElemFaceNormal(pf, 1, 5, 6, 2, x, y, z);
-        sumElemFaceNormal(pf, 2, 6, 7, 3, x, y, z);
-        sumElemFaceNormal(pf, 3, 7, 4, 0, x, y, z);
-        sumElemFaceNormal(pf, 4, 7, 6, 5, x, y, z);
-    }
 
-    private @Inline def sumElemFaceNormal(pf:Array_2[Double],
-                            i:Long, j:Long, k:Long, l:Long,
-                            x:Rail[Double], y:Rail[Double], z:Rail[Double]) {
+        val sumElemFaceNormal = (i:Long, j:Long, k:Long, l:Long) => {
+            val bisectX0 = 0.5 * (x(l) + x(k) - x(j) - x(i));
+            val bisectY0 = 0.5 * (y(l) + y(k) - y(j) - y(i));
+            val bisectZ0 = 0.5 * (z(l) + z(k) - z(j) - z(i));
+            val bisectX1 = 0.5 * (x(k) + x(j) - x(l) - x(i));
+            val bisectY1 = 0.5 * (y(k) + y(j) - y(l) - y(i));
+            val bisectZ1 = 0.5 * (z(k) + z(j) - z(l) - z(i));
+            val areaX = 0.25 * (bisectY0 * bisectZ1 - bisectZ0 * bisectY1);
+            val areaY = 0.25 * (bisectZ0 * bisectX1 - bisectX0 * bisectZ1);
+            val areaZ = 0.25 * (bisectX0 * bisectY1 - bisectY0 * bisectX1);
 
-        val bisectX0 = 0.5 * (x(l) + x(k) - x(j) - x(i));
-        val bisectY0 = 0.5 * (y(l) + y(k) - y(j) - y(i));
-        val bisectZ0 = 0.5 * (z(l) + z(k) - z(j) - z(i));
-        val bisectX1 = 0.5 * (x(k) + x(j) - x(l) - x(i));
-        val bisectY1 = 0.5 * (y(k) + y(j) - y(l) - y(i));
-        val bisectZ1 = 0.5 * (z(k) + z(j) - z(l) - z(i));
-        val areaX = 0.25 * (bisectY0 * bisectZ1 - bisectZ0 * bisectY1);
-        val areaY = 0.25 * (bisectZ0 * bisectX1 - bisectX0 * bisectZ1);
-        val areaZ = 0.25 * (bisectX0 * bisectY1 - bisectY0 * bisectX1);
+            pf(0,i) += areaX;
+            pf(0,j) += areaX;
+            pf(0,k) += areaX;
+            pf(0,l) += areaX;
 
-        pf(0,i) += areaX;
-        pf(0,j) += areaX;
-        pf(0,k) += areaX;
-        pf(0,l) += areaX;
+            pf(1,i) += areaY;
+            pf(1,j) += areaY;
+            pf(1,k) += areaY;
+            pf(1,l) += areaY;
 
-        pf(1,i) += areaY;
-        pf(1,j) += areaY;
-        pf(1,k) += areaY;
-        pf(1,l) += areaY;
+            pf(2,i) += areaZ;
+            pf(2,j) += areaZ;
+            pf(2,k) += areaZ;
+            pf(2,l) += areaZ;
+        };
 
-        pf(2,i) += areaZ;
-        pf(2,j) += areaZ;
-        pf(2,k) += areaZ;
-        pf(2,l) += areaZ;
+        sumElemFaceNormal(0, 1, 2, 3);
+        sumElemFaceNormal(0, 4, 5, 1);
+        sumElemFaceNormal(1, 5, 6, 2);
+        sumElemFaceNormal(2, 6, 7, 3);
+        sumElemFaceNormal(3, 7, 4, 0);
+        sumElemFaceNormal(4, 7, 6, 5);
     }
 
     private @Inline def sumElemStressesToNodeForces(B:Array_2[Double],
@@ -1093,7 +1089,7 @@ public class Lulesh {
             calcMonotonicQGradientsForElems(domain, vnew);
 
             val perEdge = domain.sizeX;
-            gradientGhostMgr.sendGhosts(domainPlh, 
+            gradientGhostMgr.updatePlaneGhosts(domainPlh, 
                 (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
                 perEdge
             );
@@ -1263,7 +1259,6 @@ public class Lulesh {
     def calcMonotonicQForElems(domain:Domain, vnew:Rail[Double]) {
         // initialize parameters
         val ptiny = 1.e-36;
-
         for (r in 0..(domain.numReg-1)) {
             if (domain.regElemSize(r) > 0) {
                 calcMonotonicQRegionForElems(domain, r, vnew, ptiny);
@@ -1713,16 +1708,16 @@ public class Lulesh {
                         + vnewc(elem) * vnewc(elem) * bvc(i) * p_new(i) )
                     / rho0;
 
-             if (ssc <= 0.1111111e-36) {
-                ssc = 0.3333333e-18;
-             } else {
-                ssc = Math.sqrt(ssc);
-             }
+                 if (ssc <= 0.1111111e-36) {
+                    ssc = 0.3333333e-18;
+                 } else {
+                    ssc = Math.sqrt(ssc);
+                 }
 
-             q_new(i) = (ssc*ql_old(i) + qq_old(i));
+                 q_new(i) = (ssc*ql_old(i) + qq_old(i));
 
-             if (Math.abs(q_new(i)) < q_cut) q_new(i) = 0.0;
-          }
+                 if (Math.abs(q_new(i)) < q_cut) q_new(i) = 0.0;
+            }
         }
     }
 
