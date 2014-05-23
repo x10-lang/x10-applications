@@ -12,7 +12,14 @@
 /** Manages ghost cell updates of cell data for LULESH. */
 public class GhostManager {
     static class LocalState {
-        public val neighborList:Rail[Long];
+        /** List of neighbors to which data must be sent. */
+        public val neighborListSend:Rail[Long];
+        /** List of neighbors from which data must be received. */
+        public val neighborListRecv:Rail[Long];
+        /** 
+         * Flag for each neighbor in neighborListRecv indicating whether data
+         * have already been received from that neighbor for the current cycle.
+        */
         public val neighborsReceived:Rail[Boolean];
         /**
          * The current phase of the computation with regard to ghost cell updates.
@@ -21,9 +28,11 @@ public class GhostManager {
          * P+2 before neighboring places have completed phase P.
          */
         public var currentPhase:Long;
-        public def this(neighbors:Rail[Long]) {
-            this.neighborList = neighbors;
-            this.neighborsReceived = new Rail[Boolean](neighbors.size);
+
+        public def this(neighborListSend:Rail[Long], neighborListRecv:Rail[Long]) {
+            this.neighborListSend = neighborListSend;
+            this.neighborListRecv = neighborListRecv;
+            this.neighborsReceived = new Rail[Boolean](neighborListRecv.size);
             this.currentPhase = 0;
         }
     }
@@ -32,11 +41,13 @@ public class GhostManager {
 
     /**
      * Create a new GhostManager for ghost updates between all places.
-     * @param initNeighbors a closure that, when executed on a given place,
-     *     returns a list of the neighboring places
+     * @param initNeighborsSend a closure that, when executed at a given place,
+     *     returns a list of the neighboring places to which to send
+     * @param initNeighborsRecv a closure that, when executed at a given place,
+     *     returns a list of the neighboring places from which to receive
      */
-    public def this(initNeighbors:() => Rail[Long]) {
-        this.localState = PlaceLocalHandle.make[LocalState](PlaceGroup.WORLD, () => new LocalState(initNeighbors()));
+    public def this(initNeighborsSend:() => Rail[Long], initNeighborsRecv:() => Rail[Long]) {
+        this.localState = PlaceLocalHandle.make[LocalState](PlaceGroup.WORLD, () => new LocalState(initNeighborsSend(), initNeighborsRecv()));
     }
 
     /** 
@@ -59,7 +70,7 @@ public class GhostManager {
     }
 
     private def setNeighborReceived(neighborId:Long) {
-        val neighbors = localState().neighborList;
+        val neighbors = localState().neighborListRecv;
         val received = localState().neighborsReceived;
         for (i in 0..(neighbors.size-1)) {
 
@@ -80,7 +91,7 @@ public class GhostManager {
     }
 
     private def getNeighborNumber(neighborId:Long) {
-        val neighbors = localState().neighborList;
+        val neighbors = localState().neighborListRecv;
         for (i in 0..(neighbors.size-1)) {
             if (neighborId == neighbors(i)) {
                 return i;
@@ -96,7 +107,7 @@ public class GhostManager {
         val sourceId = here.id;
         val sourceDom = domainPlh();
         val phase = localState().currentPhase;
-        val neighbors = localState().neighborList;
+        val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, perEdge);
             at(Place(neighbors(i))) async {
@@ -115,7 +126,7 @@ public class GhostManager {
         val sourceId = here.id;
         val sourceDom = domainPlh();
         val phase = localState().currentPhase;
-        val neighbors = localState().neighborList;
+        val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, perEdge);
             at(Place(neighbors(i))) async {
@@ -136,7 +147,7 @@ public class GhostManager {
         val sourceId = here.id;
         val sourceDom = domainPlh();
         val phase = localState().currentPhase;
-        val neighbors = localState().neighborList;
+        val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, perEdge);
             at(Place(neighbors(i))) async {

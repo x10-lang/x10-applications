@@ -97,13 +97,17 @@ public class Lulesh {
 
         // initialize ghost updates
         this.massGhostMgr = new GhostManager(
-                () => domainPlh().loc.createNeighborList(false));
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                () => domainPlh().loc.createNeighborList(false, true, true));
         this.posVelGhostMgr = new GhostManager(
-                () => domainPlh().loc.createNeighborList(false));
+                () => domainPlh().loc.createNeighborList(false, false, true),
+                () => domainPlh().loc.createNeighborList(false, true, false));
         this.forceGhostMgr = new GhostManager(
-                () => domainPlh().loc.createNeighborList(false));
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                () => domainPlh().loc.createNeighborList(false, true, true));
         this.gradientGhostMgr = new GhostManager(
-                () => domainPlh().loc.createNeighborList(true));
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                () => domainPlh().loc.createNeighborList(true, true, true));
     }
 
     public def run() {

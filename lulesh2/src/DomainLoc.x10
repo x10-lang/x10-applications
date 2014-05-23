@@ -27,12 +27,6 @@ public class DomainLoc(
     /** Z location of this domain in the grid. */
     z:Int) {
 
-    // neighbor types
-    public static val NEIGHBOR_PLANE = 1n;
-    public static val NEIGHBOR_EDGE = 2n;
-    public static val NEIGHBOR_CORNER = 3n;
-    public static val NOT_NEIGHBOR = -1n;
-
     public var planeNeighbors:Long;
     public var edgeNeighbors:Long;
     public var cornerNeighbors:Long;
@@ -75,46 +69,46 @@ public class DomainLoc(
         return (x + y + z) == 0n;
     }
 
-    public def createNeighborList(planeOnly:Boolean) {
+    public def createNeighborList(planeOnly:Boolean, hi:Boolean, lo:Boolean) {
         val p = tp * tp;
         val r = tp;
         val c = 1;
         val max = tp-1;
 
         val nl = new ArrayList[Long](26);
-        if (z > 0  ) nl.add(id - p        );
-        if (z < max) nl.add(id + p        );
-        if (y > 0  ) nl.add(id     - r    );
-        if (y < max) nl.add(id     + r    );
-        if (x > 0  ) nl.add(id         - c);
-        if (x < max) nl.add(id         + c);
+        if (z > 0   && lo) nl.add(id - p        );
+        if (z < max && hi) nl.add(id + p        );
+        if (y > 0   && lo) nl.add(id     - r    );
+        if (y < max && hi) nl.add(id     + r    );
+        if (x > 0   && lo) nl.add(id         - c);
+        if (x < max && hi) nl.add(id         + c);
         planeNeighbors = nl.size();
 
         if (!planeOnly) {
             /* transfer between domains connected only by an edge */
-            if (z > 0   && y   > 0  ) nl.add(id - p - r    );
-            if (z > 0   && y   < max) nl.add(id - p + r    );
-            if (z < max && y   > 0  ) nl.add(id + p - r    );
-            if (z < max && y   < max) nl.add(id + p + r    );
-            if (z > 0   && x   > 0  ) nl.add(id - p     - c);
-            if (z > 0   && x   < max) nl.add(id - p     + c);
-            if (z < max && x   > 0  ) nl.add(id + p     - c);
-            if (z < max && x   < max) nl.add(id + p     + c);
-            if (y > 0   && x   > 0  ) nl.add(id     - r - c);
-            if (y > 0   && x   < max) nl.add(id     - r + c);
-            if (y < max && x   > 0  ) nl.add(id     + r - c);
-            if (y < max && x   < max) nl.add(id     + r + c);
+            if (z > 0   && y   > 0   && lo) nl.add(id - p - r    );
+            if (z > 0   && y   < max && lo) nl.add(id - p + r    );
+            if (z < max && y   > 0   && hi) nl.add(id + p - r    );
+            if (z < max && y   < max && hi) nl.add(id + p + r    );
+            if (z > 0   && x   > 0   && lo) nl.add(id - p     - c);
+            if (z > 0   && x   < max && lo) nl.add(id - p     + c);
+            if (z < max && x   > 0   && hi) nl.add(id + p     - c);
+            if (z < max && x   < max && hi) nl.add(id + p     + c);
+            if (y > 0   && x   > 0   && lo) nl.add(id     - r - c);
+            if (y > 0   && x   < max && lo) nl.add(id     - r + c);
+            if (y < max && x   > 0   && hi) nl.add(id     + r - c);
+            if (y < max && x   < max && hi) nl.add(id     + r + c);
             edgeNeighbors = nl.size() - planeNeighbors;
 
             /* receive data from domains connected only by a corner */
-            if (z > 0   && y > 0   && x > 0  ) nl.add(id - p - r - c);
-            if (z > 0   && y > 0   && x < max) nl.add(id - p - r + c);
-            if (z > 0   && y < max && x > 0  ) nl.add(id - p + r - c);
-            if (z > 0   && y < max && x < max) nl.add(id - p + r + c);
-            if (z < max && y > 0   && x > 0  ) nl.add(id + p - r - c);
-            if (z < max && y > 0   && x < max) nl.add(id + p - r + c);
-            if (z < max && y < max && x > 0  ) nl.add(id + p + r - c);
-            if (z < max && y < max && x < max) nl.add(id + p + r + c);
+            if (z > 0   && y > 0   && x > 0   && lo) nl.add(id - p - r - c);
+            if (z > 0   && y > 0   && x < max && lo) nl.add(id - p - r + c);
+            if (z > 0   && y < max && x > 0   && lo) nl.add(id - p + r - c);
+            if (z > 0   && y < max && x < max && lo) nl.add(id - p + r + c);
+            if (z < max && y > 0   && x > 0   && hi) nl.add(id + p - r - c);
+            if (z < max && y > 0   && x < max && hi) nl.add(id + p - r + c);
+            if (z < max && y < max && x > 0   && hi) nl.add(id + p + r - c);
+            if (z < max && y < max && x < max && hi) nl.add(id + p + r + c);
 
             cornerNeighbors = nl.size() - edgeNeighbors - planeNeighbors;
         } else {
@@ -123,22 +117,5 @@ public class DomainLoc(
         }
 
         return nl.toRail();
-    }
-
-    public def getNeighborType(neighbor:DomainLoc) {
-        val xDiff = Math.abs(x - neighbor.x);
-        if (xDiff > 1) return NOT_NEIGHBOR;
-        val yDiff = Math.abs(y - neighbor.y);
-        if (yDiff > 1) return NOT_NEIGHBOR;
-        val zDiff = Math.abs(z - neighbor.z);
-        if (zDiff > 1) return NOT_NEIGHBOR;
-        val diff = xDiff + yDiff + zDiff;
-
-        // could just return diff; this is for readability
-        if (diff == 1n) return NEIGHBOR_PLANE;
-        if (diff == 2n) return NEIGHBOR_EDGE;
-        if (diff == 3n) return NEIGHBOR_CORNER;
-
-        return NOT_NEIGHBOR; // error, or same domain?
     }
 }
