@@ -100,6 +100,10 @@ public class GhostManager {
         throw new IllegalArgumentException(here + " getNeighborNumber for " + neighborId);
     }
 
+    /**
+     * Update boundary data at all neighboring places, overwriting with data
+     * from this place's boundary region.
+     */
     public def updateBoundaryData(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         perEdge:Long) {
@@ -119,6 +123,11 @@ public class GhostManager {
         }
     }
 
+    /**
+     * Update ghost data for plane boundaries at neighboring places with plane
+     * boundary data from this place.  Plane ghost data are stored contiguously
+     * for each plane *after* all locally-managed data at each place. 
+     */
     public def updatePlaneGhosts(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         perEdge:Long) {
@@ -132,7 +141,7 @@ public class GhostManager {
             at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
                 var ghostOffset:Long = perEdge*perEdge*perEdge;
-                val ghostRegionSize = (perEdge-2)*(perEdge-2);
+                val ghostRegionSize = (perEdge)*(perEdge);
                 ghostOffset += getNeighborNumber(sourceId) * ghostRegionSize;
                 domainPlh().updateGhosts(ghosts, accessFields, ghostRegionSize, ghostOffset);
                 setNeighborReceived(sourceId);
@@ -140,6 +149,10 @@ public class GhostManager {
         }
     }
 
+    /**
+     * Accumulate (add) boundary data from this place to boundary data at 
+     * all neighboring places.
+     */
     public def combineBoundaries(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         perEdge:Long) {

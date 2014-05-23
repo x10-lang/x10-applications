@@ -322,10 +322,10 @@ public class Domain {
     }
 
     /** 
-     * Return the region of ghost elements for this place to receive from
+     * Return the region of ghost elements for this place to exchange with
      * the given neighboring place.
-     * @neighborId the id of the neighboring domain in the grid
-     * @edgeMax the maximum number of values per dimension of the boundary
+     * @param neighborId the id of the neighboring domain in the grid
+     * @param edgeMax the maximum number of values per dimension of the boundary
      */
     public def getBoundaryRegion(neighborId:Long, edgeMax:Long) {
         val neighborLoc = DomainLoc.make(neighborId, loc.tp);
@@ -363,48 +363,6 @@ public class Domain {
         return Region.makeRectangular(xRange, yRange, zRange);
     }
 
-    /** 
-     * Return the region of boundary elements to send from this place to the
-     * given neighboring place.
-     * @neighborId the id of the neighboring domain in the grid
-     * @edgeMax the maximum number of values per dimension of the boundary
-     */
-    public def getGhostRegionToSend(neighborId:Long, edgeMax:Long) {
-        val neighborLoc = DomainLoc.make(neighborId, loc.tp);
-        val xDiff = neighborLoc.x - loc.x;
-        val yDiff = neighborLoc.y - loc.y;
-        val zDiff = neighborLoc.z - loc.z;
-
-        val xRange:LongRange;
-        if (xDiff == -1n) {
-            xRange = 1..1;
-        } else if (xDiff == 1n) {
-            xRange = (edgeMax-1)..(edgeMax-1);
-        } else {
-            xRange = 1..(edgeMax-1);
-        }
-
-        val yRange:LongRange;
-        if (yDiff == -1n) {
-            yRange = 1..1;
-        } else if (yDiff == 1n) {
-            yRange = (edgeMax-1)..(edgeMax-1);
-        } else {
-            yRange = 1..(edgeMax-1);
-        }
-
-        val zRange:LongRange;
-        if (zDiff == -1n) {
-            zRange = 1..1;
-        } else if (zDiff == 1n) {
-            zRange = (edgeMax-1)..(edgeMax-1);
-        } else {
-            zRange = 1..(edgeMax-1);
-        }
-
-        return Region.makeRectangular(xRange, yRange, zRange);
-    }
-
     public def gatherBoundaryData(destId:Long, 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 perEdge:Long):Rail[Double] {
@@ -430,7 +388,7 @@ public class Domain {
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 perEdge:Long):Rail[Double] {
         val fields = accessFields(this);
-        val boundaryRegion = getGhostRegionToSend(destId, perEdge-1);
+        val boundaryRegion = getBoundaryRegion(destId, perEdge-1);
         val transfer = new Rail[Double](boundaryRegion.size()*fields.size);
         var idx:Long = 0;
         for (field in fields) {

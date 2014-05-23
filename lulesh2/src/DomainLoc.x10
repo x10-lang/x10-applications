@@ -65,10 +65,20 @@ public class DomainLoc(
         property(id, placesPerSide, x, y, z);
     }
 
+    /**
+     * Return true if this domain is the first i.e. it contains the origin.
+     */
     public def isFirstDomain() {
         return (x + y + z) == 0n;
     }
 
+    /**
+     * Create a list of domains that are grid neighbors of the current domain.
+     * @param planeOnly only include neighbors that share a plane boundary with 
+     *     this domain (do not include edge and corner neighbors)
+     * @param hi include domains that are further from the origin than this domain
+     * @param lo include domains that are closer to the origin than this domain
+     */
     public def createNeighborList(planeOnly:Boolean, hi:Boolean, lo:Boolean) {
         val p = tp * tp;
         val r = tp;
