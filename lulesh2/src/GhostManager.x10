@@ -9,6 +9,8 @@
  *  (C) Copyright IBM Corporation 2014.
  */
 
+import x10.compiler.Uncounted;
+
 /** Manages ghost cell updates of cell data for LULESH. */
 public class GhostManager {
     static class LocalState {
@@ -114,7 +116,7 @@ public class GhostManager {
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, perEdge);
-            at(Place(neighbors(i))) async {
+            @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
                 domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, perEdge);
                 setNeighborReceived(sourceId);
@@ -138,7 +140,7 @@ public class GhostManager {
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, perEdge);
-            at(Place(neighbors(i))) async {
+            @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
                 var ghostOffset:Long = perEdge*perEdge*perEdge;
                 val ghostRegionSize = (perEdge)*(perEdge);
@@ -163,7 +165,7 @@ public class GhostManager {
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, perEdge);
-            at(Place(neighbors(i))) async {
+            @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
                 domainPlh().accumulateBoundaryData(sourceId, boundaryData, accessFields, perEdge);
                 setNeighborReceived(sourceId);
