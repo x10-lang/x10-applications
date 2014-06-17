@@ -1,19 +1,28 @@
-X10RT ?= mpi
-
 # for compilation define exactly one of the following three variables:
 # SEDOV_SYNC_POS_VEL_NONE
 # SEDOV_SYNC_POS_VEL_EARLY
 # SEDOV_SYNC_POS_VEL_LATE
 SYNCFLAG = -define SEDOV_SYNC_POS_VEL_EARLY
 
-X10FLAG = -O -NO_CHECKS -VERBOSE_CHECKS -g -x10rt ${X10RT} -report postcompile=1 ${SYNCFLAG}
+X10FLAG = -O -NO_CHECKS -VERBOSE_CHECKS -g -report postcompile=1 ${SYNCFLAG}
+
+X10RTIMPL ?=  # sockets, mpi, pami, etc.
+ifdef X10RTIMPL
+  X10FLAG += -x10rt ${X10RTIMPL}
+endif
+
+# enable CPU profiling with google-perftools
+PROFILE ?=
+ifdef PROFILE
+  X10FLAG += -gpt
+endif
 
 BINDIR = bin
 ManagedX10BIN = ${BINDIR}/Lulesh2.0.jar
 NativeX10BIN = ${BINDIR}/lulesh2.0
 
 SRCPATH = src
-DOCPATH = doc
+DOCPATH = x10doc
 
 APPFLAG =  -s 20
 
@@ -39,7 +48,7 @@ run-poe:	${NativeX10BIN}
 	poe ${NativeX10BIN} ${APPFLAG}
 
 run-mpi:	${NativeX10BIN}
-	mpiexec -n 8 ${NativeX10BIN} -s 10
+	mpiexec -n 8 -env X10_NTHREADS 1 ${NativeX10BIN} -s 10
 
 DOCSRC=$(shell find ${SRCPATH} -type f -iname '*.x10')
 
