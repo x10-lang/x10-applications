@@ -28,6 +28,7 @@ SRCSX10 = \
 	CUDAHalfWilsonVectorField.x10 \
 	TestWilsonSolver.x10 \
 	MyRand.x10 \
+	CUDAEnv.x10 \
 
 SRCSCC = ${SRCSX10:.x10=.cc}
 SRCSCU = ${SRCSX10:.x10=.cu}

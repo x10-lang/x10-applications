@@ -8,7 +8,7 @@ import Lattice;
 public class CUDAParallelComplexField extends Lattice {
 
 //debug
-	static val gpu = here.children().size==0l ? here : here.child(0);
+	static val gpu = CUDAEnv.getCUDAPlace();
 
 	// val v : PlaceLocalHandle[Rail[Double]];
 	val v : PlaceLocalHandle[Cell[GlobalRail[Double]]];

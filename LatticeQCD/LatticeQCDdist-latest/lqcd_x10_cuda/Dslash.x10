@@ -471,7 +471,7 @@ class HalfWilsonMult extends Lattice {
 class CUDAHalfWilsonMult {
 
 //debug  
-	static val gpu = here.children().size == 0l ? here : here.child(0);
+	static val gpu = CUDAEnv.getCUDAPlace();
 
 	var h0_0r : Double;
 	var h0_0i : Double;
@@ -886,7 +886,7 @@ class CUDAHalfWilsonMult {
 public class Dslash extends Lattice {
 
 //debug
-	static val gpu = here.children().size == 0l ? here : here.child(0);
+	static val gpu = CUDAEnv.getCUDAPlace();
 
 	val nThreads : Long;
 	val ht1 : Rail[HalfWilsonMult];
