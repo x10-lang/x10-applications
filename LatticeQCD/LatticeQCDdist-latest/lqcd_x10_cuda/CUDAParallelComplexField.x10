@@ -28,7 +28,7 @@ public class CUDAParallelComplexField extends Lattice {
 		size = x*y*z*t*nc*nd*nf*2;
 		// v = PlaceLocalHandle.make[Rail[Double]](Place.places(), ()=>new Rail[Double](x*y*z*t*nc*nd*nf*2));
 //debug
-		v = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(here.child(0), x*y*z*t*nc*nd*nf*2, 0 as Double)));
+		v = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(gpu as Place, x*y*z*t*nc*nd*nf*2, 0 as Double)));
 
 		Ncol = nc;
 		Ndim = nd;

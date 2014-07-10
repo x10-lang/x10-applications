@@ -943,8 +943,8 @@ public class Dslash extends Lattice {
 		// dht2 = new CUDAHalfWilsonMult();
 
 		// Console.OUT.println("init: " + here.id());
-		// dv = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(here.child(0), x*y*z*t*3*4*1*2, 0 as Double)));
-		// dw = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(here.child(0), x*y*z*t*3*4*1*2, 0 as Double)));
+		// dv = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(gpu as Place, x*y*z*t*3*4*1*2, 0 as Double)));
+		// dw = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(gpu as Place, x*y*z*t*3*4*1*2, 0 as Double)));
 		// dv = new CUDAWilsonVectorField(x,y,z,t,1);
 		// dw = new CUDAWilsonVectorField(x,y,z,t,1);
 
