@@ -49,7 +49,7 @@ public class GhostManager {
      *     returns a list of the neighboring places from which to receive
      */
     public def this(initNeighborsSend:() => Rail[Long], initNeighborsRecv:() => Rail[Long]) {
-        this.localState = PlaceLocalHandle.make[LocalState](PlaceGroup.WORLD, () => new LocalState(initNeighborsSend(), initNeighborsRecv()));
+        this.localState = PlaceLocalHandle.make[LocalState](Place.places(), () => new LocalState(initNeighborsSend(), initNeighborsRecv()));
     }
 
     /** 

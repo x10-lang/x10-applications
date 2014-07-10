@@ -41,7 +41,7 @@ public class MC_Comm {
                 continue;
             numRecvs(i) = myRecvCount(id) as Long; 
             grefPs(i) = GlobalRail(new Rail[Particle.PackedRepresentation](numRecvs(i)));
-            pls(i) = Place.place(id);
+            pls(i) = Place(id);
         }
 
         val dest = here.id;
@@ -111,12 +111,12 @@ public class MC_Comm {
           for (i = 0n; i < myRecvCount(nabes(1)); ++i) {
               val ii = i;
               mc.particles()(mc.nparticles + displ(nabes(1)) + i) = 
-                  at (Place.place(nabes(0))) (mc.particles()(sdispl(at (here) here.id) + ii));
+                  at (Place(nabes(0))) (mc.particles()(sdispl(at (here) here.id) + ii));
           }
           for (i = 0n; i < myRecvCount(nabes(0)); ++i) {
               val ii = i;
               mc.particles()(mc.nparticles + displ(nabes(0)) + i) = 
-                  at (Place.place(nabes(1))) (mc.particles()(sdispl(at (here) here.id) + ii));
+                  at (Place(nabes(1))) (mc.particles()(sdispl(at (here) here.id) + ii));
           }
       }
       if (mycoords(1) % 2 == 0) {
@@ -124,12 +124,12 @@ public class MC_Comm {
           for (i = 0n; i < myRecvCount(nabes(3)); ++i) {
               val ii = i;
               mc.particles()(mc.nparticles + displ(nabes(3)) + i) = 
-                  at (Place.place(nabes(2))) (mc.particles()(sdispl(at (here) here.id) + ii));
+                  at (Place(nabes(2))) (mc.particles()(sdispl(at (here) here.id) + ii));
           }
           for (i = 0n; i < myRecvCount(nabes(2)); ++i) {
               val ii = i;
               mc.particles()(mc.nparticles + displ(nabes(2)) + i) = 
-                  at (Place.place(nabes(3))) (mc.particles()(sdispl(at (here) here.id) + ii));
+                  at (Place(nabes(3))) (mc.particles()(sdispl(at (here) here.id) + ii));
           }
       }
       if (mycoords(2) % 2 == 0) {
@@ -137,12 +137,12 @@ public class MC_Comm {
           for (i = 0n; i < myRecvCount(nabes(5)); ++i) {
               val ii = i;
               mc.particles()(mc.nparticles + displ(nabes(5)) + i) = 
-                  at (Place.place(nabes(4))) (mc.particles()(sdispl(at (here) here.id) + ii));
+                  at (Place(nabes(4))) (mc.particles()(sdispl(at (here) here.id) + ii));
           }
           for (i = 0n; i < myRecvCount(nabes(4)); ++i) {
               val ii = i;
               mc.particles()(mc.nparticles + displ(nabes(4)) + i) = 
-                  at (Place.place(nabes(5))) (mc.particles()(sdispl(at (here) here.id) + ii));
+                  at (Place(nabes(5))) (mc.particles()(sdispl(at (here) here.id) + ii));
           }
       }
       mc.nparticles += MC_Cycle.isum(myRecvCount, mc.nprocs);

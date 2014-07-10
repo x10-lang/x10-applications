@@ -7,7 +7,6 @@
 
 package comd;
 
-import x10.compiler.*;
 import x10.util.Team;
 import x10.util.Timer;
 import x10.util.concurrent.IntLatch;
@@ -28,7 +27,7 @@ public class Parallel {
     
     def this() {
     	this.t = new Timer();
-        this.team = new Team(PlaceGroup.WORLD);
+        this.team = Team.WORLD;
         this.startLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.numPlaces()));
         this.finishLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.numPlaces()));
         this.perPLH = PlaceLocalHandle.make[Rail[PerformanceTimer]](Place.places(), ()=>new Rail[PerformanceTimer](1));
@@ -60,7 +59,7 @@ public class Parallel {
 
     //public def initParallel(args:Rail[String]):void {
     public def initParallel(args:Rail[String], par:Parallel, hep:HaloExchangePlh, pp:(args:Rail[String], par:Parallel, hep:HaloExchangePlh)=>void):void {
-        PlaceGroup.WORLD.broadcastFlat(
+        Place.places().broadcastFlat(
             ()=>{
              for(var i:Int = 0n; i < Place.numPlaces() as Int; i++) { 
                   startLatch()(i) = new Latch2();
@@ -94,7 +93,7 @@ public class Parallel {
     	} else {
     		finish {
     			//1. Trigger asyncCopy(me -> dest)
-    			at (Place.place(dest)) async {
+    			at (Place(dest)) async {
     				startLatch()(me).release(); //Notify the "dest" that "me" is ready to send
     			}
 
@@ -105,7 +104,7 @@ public class Parallel {
     			// Now both recvBuf at "me" and sendBuf at the "source" are ready for asyncCopy
 
               //2.2. Perform asyncCopy(source -> me)
-    			at (Place.place(source)) async {
+    			at (Place(source)) async {
                   val len2 = sendLen()(0);
     				finish {
                      Rail.asyncCopy[T](sendBuf(), 0, recvBufferRef, 0, len2 as Long);

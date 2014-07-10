@@ -129,7 +129,7 @@ public class Main {
 	  	val flag = read_flag;
 	  	val lkg = leakage;
 
-		PlaceGroup.WORLD.broadcastFlat(()=>{
+		Place.places().broadcastFlat(()=>{
 			var mc:MC;
 			if (flag == 0n)
 	  		   mc = new MC(s, bf, se, nps, lkg, bufsize, nprocs, here.id as Int);

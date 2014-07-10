@@ -91,7 +91,7 @@ public class Lulesh {
 
     public def this(opts:CommandLineOptions, placesPerSide:Int) {
         this.opts = opts;
-        val domainPlh = PlaceLocalHandle.make[Domain](PlaceGroup.WORLD, 
+        val domainPlh = PlaceLocalHandle.make[Domain](Place.places(), 
             () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide));
         this.domainPlh = domainPlh;
 
@@ -111,7 +111,7 @@ public class Lulesh {
     }
 
     public def run() {
-        finish for (place in PlaceGroup.WORLD) at(place) async {
+        finish for (place in Place.places()) at(place) async {
             val domain = domainPlh();
 
             val perEdge = domain.sizeX+1;
