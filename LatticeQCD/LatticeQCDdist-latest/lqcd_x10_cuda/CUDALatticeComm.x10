@@ -1,19 +1,15 @@
-
-import CUDAHalfWilsonVectorField;
-import LatticeComm;
-
 class CUDALatticeComm extends LatticeComm {
 	val dbufSend = new Rail[CUDAHalfWilsonVectorField](8);
 	val dbufRecv = new Rail[CUDAHalfWilsonVectorField](8);
 	// val bufSend = new Rail[HalfWilsonVectorField](8);
 	// val bufRecv = new Rail[HalfWilsonVectorField](8);
-	// val recvCount : PlaceLocalHandle[Rail[Long]];
-	// val recvCountPrev : PlaceLocalHandle[Rail[Long]];
-	// val recvFlag : PlaceLocalHandle[Rail[Long]];
-	// val refBuffers : PlaceLocalHandle[Rail[GlobalRail[Double]]];
-	// var refInitDone : Long;
+	// val recvCount:PlaceLocalHandle[Rail[Long]];
+	// val recvCountPrev:PlaceLocalHandle[Rail[Long]];
+	// val recvFlag:PlaceLocalHandle[Rail[Long]];
+	// val refBuffers:PlaceLocalHandle[Rail[GlobalRail[Double]]];
+	// var refInitDone:Long;
 
-	def this(x : Long,y : Long,z : Long,t : Long, px : Long, py : Long, pz : Long, pt : Long,nid : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, px:Long, py:Long, pz:Long, pt:Long, nid:Long)
 	{
 		super(x,y,z,t,px,py,pz,pt,nid);
 
@@ -64,7 +60,7 @@ class CUDALatticeComm extends LatticeComm {
 	// 	}
 	// }
 
-	// def SendBuffer(dir : Long) : HalfWilsonVectorField
+	// def SendBuffer(dir:Long):HalfWilsonVectorField
 	// {
 	// 	if(decomp(dir) < 2){
 	// 		//we use same buffer for local boundary exchange
@@ -75,7 +71,7 @@ class CUDALatticeComm extends LatticeComm {
 	// 	}
 	// }
 
-	def SendDeviceBuffer(dir : Long) : CUDAHalfWilsonVectorField
+	def SendDeviceBuffer(dir:Long):CUDAHalfWilsonVectorField
 	{
 	  if(decomp(dir) < 2){
 	    //we use same buffer for local boundary exchange
@@ -86,12 +82,12 @@ class CUDALatticeComm extends LatticeComm {
 	  }
 	}
 
-	// def RecvBuffer(dir : Long) : HalfWilsonVectorField
+	// def RecvBuffer(dir:Long):HalfWilsonVectorField
 	// {
 	// 	return bufRecv(dir);
 	// }
 
-	def RecvDeviceBuffer(dir : Long) : CUDAHalfWilsonVectorField
+	def RecvDeviceBuffer(dir:Long):CUDAHalfWilsonVectorField
 	{
 		return dbufRecv(dir);
 	}
@@ -118,7 +114,7 @@ class CUDALatticeComm extends LatticeComm {
 	  }
 	}
 
-	// def Send(dir : Long)
+	// def Send(dir:Long)
 	// {
 	// 	if(decomp(dir) > 1){
 	// 		val bufRef = GlobalRail(bufSend(dir).v());
@@ -138,7 +134,7 @@ class CUDALatticeComm extends LatticeComm {
 	// 	}
 	// }
 
-	def PutDevice(dir : Long)
+	def PutDevice(dir:Long)
 	{
 	  // D2H
 	  finish {
@@ -148,13 +144,13 @@ class CUDALatticeComm extends LatticeComm {
 	  Put(dir);
 	}
 
-	// def Put(dir : Long)
+	// def Put(dir:Long)
 	// {
 	// 	val size = bufSend(dir).size;
 	// 	Rail.asyncCopy[Double](bufSend(dir).v(),0,refBuffers()(dir),0,size);
 	// }
 
-	def WaitDeviceRecv(dir : Long)
+	def WaitDeviceRecv(dir:Long)
 	{
 	  WaitRecv(dir);
 
@@ -166,7 +162,7 @@ class CUDALatticeComm extends LatticeComm {
 	  }
 	}
 
-// 	def WaitRecv(dir : Long)
+// 	def WaitRecv(dir:Long)
 // 	{
 // //		if(decomp(dir) > 1){
 // //			val size = bufRecv(dir).size;
@@ -178,11 +174,8 @@ class CUDALatticeComm extends LatticeComm {
 // //		}
 // 	}
 
-	// def Size(dir : Long) : Long
+	// def Size(dir:Long):Long
 	// {
 	// 	return bufRecv(dir).size;
 	// }
 }
-
-
-

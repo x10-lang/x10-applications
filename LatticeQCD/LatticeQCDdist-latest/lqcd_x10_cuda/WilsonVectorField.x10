@@ -1,23 +1,18 @@
-
-
 import x10.array.Array_1;
-
-import ParallelComplexField;
-
 
 public class WilsonVectorField extends ParallelComplexField {
 
-	def this(x : Long,y : Long,z : Long,t : Long,nid : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, nid:Long)
 	{
 		super(x,y,z,t,3,4,1,nid);
 	}
 
 	def MultGamma5()
 	{
-		var t0r : Double;
-		var t0i : Double;
-		var t1r : Double;
-		var t1i : Double;
+		var t0r:Double;
+		var t0i:Double;
+		var t1r:Double;
+		var t1i:Double;
 		for(i in 0..(nsite-1)){
 			// t0r = v()(i*24);
 			// t0i = v()(i*24 + 1);
@@ -73,12 +68,12 @@ public class WilsonVectorField extends ParallelComplexField {
 	}
 
 /*
-	def MultGamma5(rng : LongRange)
+	def MultGamma5(rng:LongRange)
 	{
-		var t0r : Double;
-		var t0i : Double;
-		var t1r : Double;
-		var t1i : Double;
+		var t0r:Double;
+		var t0i:Double;
+		var t1r:Double;
+		var t1i:Double;
 		for(i in (rng.min)..(rng.max-1)){
 			t0r = v()(i*24);
 			t0i = v()(i*24 + 1);
@@ -123,7 +118,3 @@ public class WilsonVectorField extends ParallelComplexField {
 */
 
 }
-
-
-
-

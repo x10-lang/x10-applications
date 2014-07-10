@@ -1,21 +1,16 @@
-
-import Lattice;
-
-
-
-public class ParallelLattice extends Lattice{
-	val rank : PlaceLocalHandle[Cell[Long]];
-	val nprocs : Long;
-	val Lx : Long;
-	val Ly : Long;
-	val Lz : Long;
-	val Lt : Long;
+public class ParallelLattice extends Lattice {
+	val rank:PlaceLocalHandle[Cell[Long]];
+	val nprocs:Long;
+	val Lx:Long;
+	val Ly:Long;
+	val Lz:Long;
+	val Lt:Long;
 	val netSize = new Rail[Long](4);
-	val netPos : PlaceLocalHandle[Rail[Long]];
-	val neighbors : PlaceLocalHandle[Rail[Long]];
+	val netPos:PlaceLocalHandle[Rail[Long]];
+	val neighbors:PlaceLocalHandle[Rail[Long]];
 	val decomp = new Rail[Long](8);
 
-	def this(x : Long,y : Long,z : Long,t : Long, px : Long, py : Long, pz : Long, pt : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, px:Long, py:Long, pz:Long, pt:Long)
 	{
 		super(x,y,z,t);
 
@@ -86,9 +81,3 @@ public class ParallelLattice extends Lattice{
 	}
 
 }
-
-
-
-
-
-

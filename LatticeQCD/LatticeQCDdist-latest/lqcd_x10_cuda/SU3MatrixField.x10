@@ -2,14 +2,8 @@ import x10.io.File;
 import x10.io.FileNotFoundException;
 import x10.array.Array_1;
 
-import ParallelComplexField;
-
-import ParallelLattice;
-
-import MyRand;
-
 public class SU3MatrixField extends ParallelComplexField {
-	def this(x : Long,y : Long,z : Long,t : Long,nid : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, nid:Long)
 	{
 		super(x,y,z,t,3,3,4,nid);
 	}
@@ -32,12 +26,12 @@ public class SU3MatrixField extends ParallelComplexField {
 	}
 
 /*
-	def LoadConf(fileName:String, pl : ParallelLattice)
+	def LoadConf(fileName:String, pl:ParallelLattice)
 	{
 		val file = new File(fileName);
 		val reader = file.openRead();
-		var d : Double;
-		var is : Long;
+		var d:Double;
+		var is:Long;
 
 		val sx = pl.netPos()(0) * Nx;
 		val ex = pl.netPos()(0) * Nx + Nx - 1;
@@ -75,11 +69,11 @@ public class SU3MatrixField extends ParallelComplexField {
 	}
 */
 
-	def RandomConf(s : Long, pl : ParallelLattice)
+	def RandomConf(s:Long, pl:ParallelLattice)
 	{
-	  var myrand : MyRand = new MyRand(s);
-	  var d : Double;
-	  var is : Long;
+	  var myrand:MyRand = new MyRand(s);
+	  var d:Double;
+	  var is:Long;
 
 	  val sx = pl.netPos()(0) * Nx;
 	  val ex = pl.netPos()(0) * Nx + Nx - 1;
@@ -119,6 +113,3 @@ public class SU3MatrixField extends ParallelComplexField {
 	  }
 	}
 }
-
-
-

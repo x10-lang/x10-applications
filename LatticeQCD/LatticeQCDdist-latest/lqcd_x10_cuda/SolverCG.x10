@@ -1,48 +1,38 @@
-
-
-
 import x10.array.Array_1;
-
-import ParallelLattice;
-import WilsonVectorField;
-import SU3MatrixField;
-import Dslash;
-import CUDAWilsonVectorField;
-import CUDALatticeComm;
 
 import x10.util.Team;
 import x10.util.CUDAUtilities;
 
 import x10.compiler.*;
 
-public class SolverCG extends Lattice{
+public class SolverCG extends Lattice {
 
-	val X : WilsonVectorField;
-	val S : WilsonVectorField;
-	val R : WilsonVectorField;
-	val P : WilsonVectorField;
-	val V2 : WilsonVectorField;
+	val X:WilsonVectorField;
+	val S:WilsonVectorField;
+	val R:WilsonVectorField;
+	val P:WilsonVectorField;
+	val V2:WilsonVectorField;
 
-	val dX : CUDAWilsonVectorField;
-	val dS : CUDAWilsonVectorField;
-	val dR : CUDAWilsonVectorField;
-	val dV2 : CUDAWilsonVectorField;
-	val dP : CUDAWilsonVectorField;
+	val dX:CUDAWilsonVectorField;
+	val dS:CUDAWilsonVectorField;
+	val dR:CUDAWilsonVectorField;
+	val dV2:CUDAWilsonVectorField;
+	val dP:CUDAWilsonVectorField;
 
 	val niter = 1000;
 	val enorm = 1.E-16;
-	var nconv : Long;
-	var diff : Double;
-	val Npx : Long;
-	val Npy : Long;
-	val Npz : Long;
-	val Npt : Long;
-	// val bEx : LatticeComm;
-	val bEx : CUDALatticeComm;
-	val nThreads : Long;
-	val opr : Dslash;
+	var nconv:Long;
+	var diff:Double;
+	val Npx:Long;
+	val Npy:Long;
+	val Npz:Long;
+	val Npt:Long;
+	// val bEx:LatticeComm;
+	val bEx:CUDALatticeComm;
+	val nThreads:Long;
+	val opr:Dslash;
 
-	def this(nx : Long,ny : Long,nz : Long,nt : Long, npx : Long, npy : Long, npz : Long, npt : Long,nid : Long)
+	def this(nx:Long, ny:Long, nz:Long, nt:Long, npx:Long, npy:Long, npz:Long, npt:Long, nid:Long)
 	{
 		super(nx,ny,nz,nt);
 
@@ -82,7 +72,7 @@ public class SolverCG extends Lattice{
 	  }
 	}
 
-	def Solve(XQ:WilsonVectorField, dU:CUDASU3MatrixField, dB:CUDAWilsonVectorField, cks : Double)
+	def Solve(XQ:WilsonVectorField, dU:CUDASU3MatrixField, dB:CUDAWilsonVectorField, cks:Double)
 	{
 		val retDiff = GlobalRef[Cell[Double]](new Cell[Double](0));
 		val retNconv = GlobalRef[Cell[Long]](new Cell[Long](-1));
@@ -91,14 +81,14 @@ public class SolverCG extends Lattice{
 		nconv = -1;
 
 		finish for (p in Place.places()) at(p) async {
-			var sr : Double = 0.0;
-			var rr : Double = 0.0;
-			var pap : Double = 0.0;
-			var snorm : Double = 0.0;
-			var rrp : Double = 0.0;
-			var cr : Double = 0.0;
-			var bk : Double = 0.0;
-			var nconv_loc : Long = -1;
+			var sr:Double = 0.0;
+			var rr:Double = 0.0;
+			var pap:Double = 0.0;
+			var snorm:Double = 0.0;
+			var rrp:Double = 0.0;
+			var cr:Double = 0.0;
+			var bk:Double = 0.0;
+			var nconv_loc:Long = -1;
 
 			bEx.init();
 			bEx.initRef();
@@ -186,10 +176,3 @@ public class SolverCG extends Lattice{
 	}
 
 }
-
-
-
-
-
-
-

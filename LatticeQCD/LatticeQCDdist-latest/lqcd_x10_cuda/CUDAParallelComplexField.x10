@@ -1,28 +1,24 @@
-// import x10.compiler.Inline;
-// import x10.compiler.Pragma;
 import x10.compiler.*;
 import x10.util.CUDAUtilities;
-
-import Lattice;
 
 public class CUDAParallelComplexField extends Lattice {
 
 //debug
 	static val gpu = CUDAEnv.getCUDAPlace();
 
-	// val v : PlaceLocalHandle[Rail[Double]];
-	val v : PlaceLocalHandle[Cell[GlobalRail[Double]]];
-	val Ncol : Long;
-	val Ndim : Long;
-	val Ncol2 : Long;
-	val Nvec : Long;
-	val Nfld : Long;
-	val size : Long;
-	val nThreads : Long;
-	val rngLA : Rail[LongRange];
+	// val v:PlaceLocalHandle[Rail[Double]];
+	val v:PlaceLocalHandle[Cell[GlobalRail[Double]]];
+	val Ncol:Long;
+	val Ndim:Long;
+	val Ncol2:Long;
+	val Nvec:Long;
+	val Nfld:Long;
+	val size:Long;
+	val nThreads:Long;
+	val rngLA:Rail[LongRange];
 
 
-	def this(x : Long,y : Long,z : Long,t : Long, nc : Long, nd : Long, nf : Long, nid : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, nc:Long, nd:Long, nf:Long, nid:Long)
 	{
 		super(x,y,z,t);
 		size = x*y*z*t*nc*nd*nf*2;
@@ -49,13 +45,13 @@ public class CUDAParallelComplexField extends Lattice {
 	//   }	  
 	// }
 
-	// public operator this(i : Long) = v()(i);
-	// public operator this(i : Long) = (t : Double) = {v()(i) = t;}
+	// public operator this(i:Long) = v()(i);
+	// public operator this(i:Long) = (t:Double) = {v()(i) = t;}
 
-	// public operator this(ic : Long, id : Long, is : Long) = v()(is*Nvec + id*Ncol2 + ic);
-	// public operator this(ic : Long, id : Long, is : Long) = (t : Double) = {v()(is*Nvec + id*Ncol2 + ic) = t;}
+	// public operator this(ic:Long, id:Long, is:Long) = v()(is*Nvec + id*Ncol2 + ic);
+	// public operator this(ic:Long, id:Long, is:Long) = (t:Double) = {v()(is*Nvec + id*Ncol2 + ic) = t;}
 
-	def Set(v : GlobalRail[Double]{home==gpu}, t : Double)
+	def Set(v:GlobalRail[Double]{home==gpu}, t:Double)
 	{
 	  val size = v.size;
 
@@ -74,7 +70,7 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def Mult(v : GlobalRail[Double]{home==gpu}, a : Double)
+	def Mult(v:GlobalRail[Double]{home==gpu}, a:Double)
 	{
 	  val size = v.size;
 
@@ -93,7 +89,7 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def Copy(v : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def Copy(v:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val size = v.size;
 
@@ -112,7 +108,7 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def Add(v : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def Add(v:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val size = v.size;
 
@@ -131,7 +127,7 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def Sub(v : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def Sub(v:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val size = v.size;
 
@@ -150,7 +146,7 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def MultAdd(a : Double, v:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
+	def MultAdd(a:Double, v:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val size = v.size;
 
@@ -169,19 +165,19 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def Dot(v : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}) : Double
+	def Dot(v:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}):Double
 	{
 	  val size = v.size;
 	  return ReductionKernel(v, w, size, 0);
 	}
 
-	def Norm(v : GlobalRail[Double]{home==gpu}) : Double
+	def Norm(v:GlobalRail[Double]{home==gpu}):Double
 	{
 	  val size = v.size;
 	  return ReductionKernel(v, v, size, 0);
 	}
 
-        def ReductionKernel(v1:GlobalRail[Double]{home==gpu}, v2:GlobalRail[Double]{home==gpu}, size:Long, offset:Long) : Double {
+        def ReductionKernel(v1:GlobalRail[Double]{home==gpu}, v2:GlobalRail[Double]{home==gpu}, size:Long, offset:Long):Double {
 
 	  //debug
 	  val max_threads = 1024;
@@ -239,7 +235,7 @@ public class CUDAParallelComplexField extends Lattice {
 		   offset:Long) {
 	  finish async at (gpu) @CUDA @CUDADirectParams{
 	    finish for (bid in 0n..Int.operator_as(blocks-1n)) async {
-	      var ssum : Rail[Double] = new Rail[Double](threads, 0);
+	      var ssum:Rail[Double] = new Rail[Double](threads, 0);
 	      clocked finish for (tid in 0n..Int.operator_as(threads-1n)) clocked async {
 		// val gid = bid * (2 * threads) + tid;
 		// val gids = blocks * (2 * threads);
@@ -285,7 +281,7 @@ public class CUDAParallelComplexField extends Lattice {
 		    offset:Long) {
 	  finish async at (gpu) @CUDA @CUDADirectParams{
 	    finish for (bid in 0n..Int.operator_as(blocks-1n)) async {
-	      var ssum : Rail[Double] = new Rail[Double](threads, 0);
+	      var ssum:Rail[Double] = new Rail[Double](threads, 0);
 	      clocked finish for (tid in 0n..Int.operator_as(threads-1n)) clocked async {
 		// val gid = bid * (2 * threads) + tid;
 		// val gids = blocks * (2 * threads);
@@ -324,7 +320,7 @@ public class CUDAParallelComplexField extends Lattice {
 
 
 /*
-	def Set(t : Double)
+	def Set(t:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -333,7 +329,7 @@ public class CUDAParallelComplexField extends Lattice {
 		}
 	}
 // unknown error
-	def Set(t : Double)
+	def Set(t:Double)
 	{
 	  val size_ = size;
 
@@ -352,14 +348,14 @@ public class CUDAParallelComplexField extends Lattice {
 	  }
 	}
 
-	def Set(t : Double, rng : LongRange)
+	def Set(t:Double, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = t;
 		}
 	}
 
-	def Mult(a : Double)
+	def Mult(a:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -367,14 +363,14 @@ public class CUDAParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Mult(a : Double, rng : LongRange)
+	def Mult(a:Double, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = a*v()(i);
 		}
 	}
 
-	def Copy(w : ParallelComplexField)
+	def Copy(w:ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -382,14 +378,14 @@ public class CUDAParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Copy(w : ParallelComplexField, rng : LongRange)
+	def Copy(w:ParallelComplexField, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = w.v()(i);
 		}
 	}
 
-	def Add(w : WilsonVectorField)
+	def Add(w:WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -397,14 +393,14 @@ public class CUDAParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Add(w : ParallelComplexField, rng : LongRange)
+	def Add(w:ParallelComplexField, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = v()(i) + w.v()(i);
 		}
 	}
 
-	def Sub(w : ParallelComplexField)
+	def Sub(w:ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -412,14 +408,14 @@ public class CUDAParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Sub(w : ParallelComplexField, rng : LongRange)
+	def Sub(w:ParallelComplexField, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = v()(i) - w.v()(i);
 		}
 	}
 
-	def MultAdd(a : Double, w : ParallelComplexField)
+	def MultAdd(a:Double, w:ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -427,14 +423,14 @@ public class CUDAParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def MultAdd(a : Double, w : ParallelComplexField, rng : LongRange)
+	def MultAdd(a:Double, w:ParallelComplexField, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = v()(i) + a * w.v()(i);
 		}
 	}
 
-	def SPX(a : Double, w : ParallelComplexField)
+	def SPX(a:Double, w:ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -442,18 +438,18 @@ public class CUDAParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def SPX(a : Double, w : ParallelComplexField, rng : LongRange)
+	def SPX(a:Double, w:ParallelComplexField, rng:LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = a*v()(i) + w.v()(i);
 		}
 	}
 
-	def Dot(w : ParallelComplexField) : Double
+	def Dot(w:ParallelComplexField):Double
 	{
-		var ret : Double = 0.0;
+		var ret:Double = 0.0;
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
-			var t : Double = 0.0;
+			var t:Double = 0.0;
 			for(i in rngLA(tid)){
 				t = t + v()(i) * w.v()(i);
 			}
@@ -461,20 +457,20 @@ public class CUDAParallelComplexField extends Lattice {
 		}
 		return ret;
 	}
-	def Dot(w : ParallelComplexField, rng : LongRange) : Double
+	def Dot(w:ParallelComplexField, rng:LongRange):Double
 	{
-		var t : Double = 0.0;
+		var t:Double = 0.0;
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			t = t + v()(i) * w.v()(i);
 		}
 		return t;
 	}
 
-	def Norm() : Double
+	def Norm():Double
 	{
-		var ret : Double = 0.0;
+		var ret:Double = 0.0;
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
-			var t : Double = 0.0;
+			var t:Double = 0.0;
 			for(i in rngLA(tid)){
 				t = t + v()(i) * v()(i);
 			}
@@ -482,9 +478,9 @@ public class CUDAParallelComplexField extends Lattice {
 		}
 		return ret;
 	}
-	def Norm(rng : LongRange) : Double
+	def Norm(rng:LongRange):Double
 	{
-		var t : Double = 0.0;
+		var t:Double = 0.0;
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			t = t + v()(i) * v()(i);
 		}
@@ -493,6 +489,3 @@ public class CUDAParallelComplexField extends Lattice {
 */
 
 }
-
-
-

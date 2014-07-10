@@ -1,21 +1,18 @@
-
-
-
 public class Lattice {
-	public val Nx : Long;
-	public val Ny : Long;
-	public val Nz : Long;
-	public val Nt : Long;
-	public val nsite : Long;
-	public val offset_ux : Long;
-	public val offset_uy : Long;
-	public val offset_uz : Long;
-	public val offset_ut : Long;
-	public val Nxy : Long;
-	public val Nxyz : Long;
-	public val Nyzt : Long;
-	public val Nxzt : Long;
-	public val Nxyt : Long;
+	public val Nx:Long;
+	public val Ny:Long;
+	public val Nz:Long;
+	public val Nt:Long;
+	public val nsite:Long;
+	public val offset_ux:Long;
+	public val offset_uy:Long;
+	public val offset_uz:Long;
+	public val offset_ut:Long;
+	public val Nxy:Long;
+	public val Nxyz:Long;
+	public val Nyzt:Long;
+	public val Nxzt:Long;
+	public val Nxyt:Long;
 	public val XP = 0;
 	public val XM = 1;
 	public val YP = 2;
@@ -25,9 +22,9 @@ public class Lattice {
 	public val TP = 6;
 	public val TM = 7;
 //debug
-	public val Ndst : Long;
+	public val Ndst:Long;
 
-	def this(x : Long,y : Long,z : Long,t : Long)
+	def this(x:Long, y:Long, z:Long, t:Long)
 	{
 		Nx = x;
 		Ny = y;
@@ -48,14 +45,6 @@ public class Lattice {
 		Nyzt = y*z*t;
 		Nxzt = x*z*t;
 		Nxyt = x*y*t;
-
-
 	}
 
 }
-
-
-
-
-
-

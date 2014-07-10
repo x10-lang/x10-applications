@@ -1,20 +1,11 @@
-
 import x10.io.File;
 import x10.io.FileNotFoundException;
 import x10.lang.Math;
-// import x10.compiler.Inline;
 import x10.compiler.*;
 
 import x10.util.CUDAUtilities;
 
 import x10.array.Array_1;
-
-import WilsonVectorField;
-import SU3MatrixField;
-
-import SolverCG;
-
-
 
 public final class TestWilsonSolver {
 	// constants
@@ -34,7 +25,7 @@ public final class TestWilsonSolver {
 	static val ND = 4;
 	static val ND2 = 2;
 
-	public static def main(args : Rail[String])
+	public static def main(args:Rail[String])
 	{
 		val latsize = new Rail[Long](4);
 		val netsize = new Rail[Long](4);
@@ -47,13 +38,13 @@ public final class TestWilsonSolver {
 
 		Console.OUT.println("Simple Wilson solver\n");
 
-		for(i in 0..3){
-			latsize(i) = 0;
-			netsize(1) = 0;
-		}
+		/*
+		latsize.clear();
+		netsize.clear();
+		*/
 		for(i in 0..(args.size-1)){
 			if(args(i).chars()(0) == 'L'){
-				var t : Long;
+				var t:Long;
 				t = 0;
 				for(j in 1..(args(i).length()-1)){
 					if(args(i).chars()(j) == 'x'){
@@ -65,7 +56,7 @@ public final class TestWilsonSolver {
 				}
 			}
 			else if(args(i).chars()(0) == 'P'){
-				var t : Long;
+				var t:Long;
 				t = 0;
 				for(j in 1..(args(i).length()-1)){
 					if(args(i).chars()(j) == 'x'){
@@ -77,8 +68,8 @@ public final class TestWilsonSolver {
 				}
 			}
 		}
-		var chkL : Long;
-		var chkP : Long;
+		var chkL:Long;
+		var chkP:Long;
 		chkL = 1;
 		chkP = 1;
 		for(i in 0..3){
@@ -92,8 +83,8 @@ public final class TestWilsonSolver {
 			latsize(3) = defLt;
 		}
 		if(chkP != Place.numPlaces()){
-			var np : Long;
-			var id : Long;
+			var np:Long;
+			var id:Long;
 			id = 3;
 			np = Place.numPlaces();
 			netsize(0) = 1;
@@ -202,7 +193,7 @@ public final class TestWilsonSolver {
 			if(ipet == parLat.netPos()(3)){
 			  for (iv in 0..(Nvc*ND-1)) {
 			    val rng = new LongRange(is*Nx*Ny*Nz + iv*Nx*Ny*Nz*Nt,(is+1)*Nx*Ny*Nz + iv*Nx*Ny*Nz*Nt);
-			    val corrF : Double;
+			    val corrF:Double;
 			    corrF = xq.Norm_SoA(rng);
 			    at(corr) async atomic corr()(it) += corrF;
 			  }
@@ -229,6 +220,3 @@ public final class TestWilsonSolver {
 	}
 
 }
-
-
-

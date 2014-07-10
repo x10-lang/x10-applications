@@ -1,18 +1,13 @@
-
-import HalfWilsonVectorField;
-import ParallelLattice;
-
-
-class LatticeComm extends ParallelLattice{
+class LatticeComm extends ParallelLattice {
 	val bufSend = new Rail[HalfWilsonVectorField](8);
 	val bufRecv = new Rail[HalfWilsonVectorField](8);
-	val recvCount : PlaceLocalHandle[Rail[Long]];
-	val recvCountPrev : PlaceLocalHandle[Rail[Long]];
-	val recvFlag : PlaceLocalHandle[Rail[Long]];
-	val refBuffers : PlaceLocalHandle[Rail[GlobalRail[Double]]];
-	var refInitDone : Long;
+	val recvCount:PlaceLocalHandle[Rail[Long]];
+	val recvCountPrev:PlaceLocalHandle[Rail[Long]];
+	val recvFlag:PlaceLocalHandle[Rail[Long]];
+	val refBuffers:PlaceLocalHandle[Rail[GlobalRail[Double]]];
+	var refInitDone:Long;
 
-	def this(x : Long,y : Long,z : Long,t : Long, px : Long, py : Long, pz : Long, pt : Long,nid : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, px:Long, py:Long, pz:Long, pt:Long, nid:Long)
 	{
 		super(x,y,z,t,px,py,pz,pt);
 
@@ -63,7 +58,7 @@ class LatticeComm extends ParallelLattice{
 		}
 	}
 
-	def SendBuffer(dir : Long) : HalfWilsonVectorField
+	def SendBuffer(dir:Long):HalfWilsonVectorField
 	{
 		if(decomp(dir) < 2){
 			//we use same buffer for local boundary exchange
@@ -73,12 +68,12 @@ class LatticeComm extends ParallelLattice{
 			return bufSend(dir);
 		}
 	}
-	def RecvBuffer(dir : Long) : HalfWilsonVectorField
+	def RecvBuffer(dir:Long):HalfWilsonVectorField
 	{
 		return bufRecv(dir);
 	}
 
-	def Send(dir : Long)
+	def Send(dir:Long)
 	{
 		if(decomp(dir) > 1){
 			val bufRef = GlobalRail(bufSend(dir).v());
@@ -98,13 +93,13 @@ class LatticeComm extends ParallelLattice{
 		}
 	}
 
-	def Put(dir : Long)
+	def Put(dir:Long)
 	{
 		val size = bufSend(dir).size;
 		Rail.asyncCopy[Double](bufSend(dir).v(),0,refBuffers()(dir),0,size);
 	}
 
-	def WaitRecv(dir : Long)
+	def WaitRecv(dir:Long)
 	{
 //		if(decomp(dir) > 1){
 //			val size = bufRecv(dir).size;
@@ -116,11 +111,8 @@ class LatticeComm extends ParallelLattice{
 //		}
 	}
 
-	def Size(dir : Long) : Long
+	def Size(dir:Long):Long
 	{
 		return bufRecv(dir).size;
 	}
 }
-
-
-

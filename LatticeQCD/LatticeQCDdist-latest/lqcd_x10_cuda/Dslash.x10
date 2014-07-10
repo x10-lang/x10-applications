@@ -1,32 +1,14 @@
-
-
-import WilsonVectorField;
-import SU3MatrixField;
-import HalfWilsonVectorField;
-
-import CUDAWilsonVectorField;
-import CUDASU3MatrixField;
-// import CUDAHalfWilsonVectorField;
-
-import CUDALatticeComm;
-
-//debug
-import Lattice;
-
-// import x10.compiler.Inline;
-// import x10.compiler.Pragma;
 import x10.compiler.*;
 
 import x10.util.Team;
 import x10.util.CUDAUtilities;
 
-
 final class GetGCD {
-	static def Do(a : Long, b: Long)
+	static def Do(a:Long, b:Long)
 	{
-		var i : Long;
-		var j : Long;
-		var t : Long;
+		var i:Long;
+		var j:Long;
+		var t:Long;
 
 		if(a == b){
 			return a;
@@ -55,26 +37,26 @@ final class GetGCD {
 // class HalfWilsonMult {
 //debug
 class HalfWilsonMult extends Lattice {
-	var h0_0r : Double;
-	var h0_0i : Double;
-	var h0_1r : Double;
-	var h0_1i : Double;
-	var h0_2r : Double;
-	var h0_2i : Double;
-	var h1_0r : Double;
-	var h1_0i : Double;
-	var h1_1r : Double;
-	var h1_1i : Double;
-	var h1_2r : Double;
-	var h1_2i : Double;
+	var h0_0r:Double;
+	var h0_0i:Double;
+	var h0_1r:Double;
+	var h0_1i:Double;
+	var h0_2r:Double;
+	var h0_2i:Double;
+	var h1_0r:Double;
+	var h1_0i:Double;
+	var h1_1r:Double;
+	var h1_1i:Double;
+	var h1_2r:Double;
+	var h1_2i:Double;
 
 //debug
-	def this(x : Long,y : Long,z : Long,t : Long)
+	def this(x:Long, y:Long, z:Long, t:Long)
 	{
 		super(x,y,z,t);
 	}
 
-	@Inline def Load(w : Rail[Double], iw : Long)
+	@Inline def Load(w:Rail[Double], iw:Long)
 	{
 		h0_0r  = w(iw*12+0);		h0_0i  = w(iw*12+1);
 		h0_1r  = w(iw*12+2);		h0_1i  = w(iw*12+3);
@@ -85,7 +67,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r = w(iw*12+10);	        h1_2i = w(iw*12+11);
 	}
 
-	@Inline def Store(w : Rail[Double], iw : Long)
+	@Inline def Store(w:Rail[Double], iw:Long)
 	{
 		w(iw*12+0) = h0_0r;		w(iw*12+1) = h0_0i;
 		w(iw*12+2) = h0_1r;		w(iw*12+3) = h0_1i;
@@ -96,7 +78,7 @@ class HalfWilsonMult extends Lattice {
 		w(iw*12+10)= h1_2r;		w(iw*12+11)= h1_2i;
 	}
 
-	@Inline def PackXP(w : Rail[Double], iw : Long)
+	@Inline def PackXP(w:Rail[Double], iw:Long)
 	{
 		// val pos = iw*24;
 	        val pos = iw;
@@ -111,7 +93,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r = w(pos+10*nsite)- w(pos+17*nsite);		h1_2i = w(pos+11*nsite)+ w(pos+16*nsite);
 	}
 
-	@Inline def PackXM(w : Rail[Double], iw : Long)
+	@Inline def PackXM(w:Rail[Double], iw:Long)
 	{
 	        val pos = iw;
 		//h0 = w0 - i*w3
@@ -125,7 +107,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)+ w(pos+17*nsite);		h1_2i= w(pos+11*nsite)- w(pos+16*nsite);
 	}
 
-	@Inline def PackYP(w : Rail[Double], iw : Long)
+	@Inline def PackYP(w:Rail[Double], iw:Long)
 	{
 		val pos = iw;
 		//h0 = w0 + w3
@@ -139,7 +121,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)- w(pos+16*nsite);		h1_2i= w(pos+11*nsite)- w(pos+17*nsite);
 	}
 
-	@Inline def PackYM(w : Rail[Double], iw : Long)
+	@Inline def PackYM(w:Rail[Double], iw:Long)
 	{
 		val pos = iw;
 		//h0 = w0 - w3
@@ -153,7 +135,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)+ w(pos+16*nsite);		h1_2i= w(pos+11*nsite)+ w(pos+17*nsite);
 	}
 	
-	@Inline def PackZP(w : Rail[Double], iw : Long)
+	@Inline def PackZP(w:Rail[Double], iw:Long)
 	{
 		val pos = iw;
 		//h0 = w0 + i*w2
@@ -167,7 +149,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)+ w(pos+23*nsite);		h1_2i= w(pos+11*nsite)- w(pos+22*nsite);
 	}
 
-	@Inline def PackZM(w : Rail[Double], iw : Long)
+	@Inline def PackZM(w:Rail[Double], iw:Long)
 	{
 		val pos = iw;
 		//h0 = w0 - i*w3
@@ -182,7 +164,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def PackTP(w : Rail[Double], iw : Long)
+	@Inline def PackTP(w:Rail[Double], iw:Long)
 	{
 		val pos = iw;
 		//h0 = 2.0*w2
@@ -197,7 +179,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def PackTM(w : Rail[Double], iw : Long)
+	@Inline def PackTM(w:Rail[Double], iw:Long)
 	{
 		val pos = iw;
 		//h0 = 2.0*w0
@@ -211,7 +193,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= 2.0*w(pos+10*nsite);		h1_2i= 2.0*w(pos+11*nsite);
 	}
 
-	@Inline def MultU(u : Rail[Double],iu : Long, h : HalfWilsonMult)
+	@Inline def MultU(u:Rail[Double], iu:Long, h:HalfWilsonMult)
 	{
 		// val pos = iu*18;
 		val pos = iu;
@@ -259,7 +241,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	// ht2(tid).MultUt(u.v(),offset_ut + nsite-Nxyz + i,ht1(tid));
-	@Inline def MultUt(u : Rail[Double],iu : Long, h : HalfWilsonMult)
+	@Inline def MultUt(u:Rail[Double], iu:Long, h:HalfWilsonMult)
 	{
 		// val pos = iu*18;
 		val pos = iu;
@@ -306,7 +288,7 @@ class HalfWilsonMult extends Lattice {
 				u(pos+16*Ndst)*h.h1_2i- u(pos+17*Ndst)*h.h1_2r;
 	}
 
-	@Inline def UnpackXP(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackXP(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 
@@ -329,7 +311,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) += cks*h0_2i;		w(pos+23*nsite) -= cks*h0_2r;
 	}
 
-	@Inline def UnpackXM(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackXM(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -351,7 +333,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) -= cks*h0_2i;		w(pos+23*nsite) += cks*h0_2r;
 	}
 
-	@Inline def UnpackYP(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackYP(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -373,7 +355,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) += cks*h0_2r;		w(pos+23*nsite) += cks*h0_2i;
 	}
 
-	@Inline def UnpackYM(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackYM(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -395,7 +377,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) -= cks*h0_2r;		w(pos+23*nsite) -= cks*h0_2i;
 	}
 
-	@Inline def UnpackZP(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackZP(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -417,7 +399,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) -= cks*h1_2i;		w(pos+23*nsite) += cks*h1_2r;
 	}
 
-	@Inline def UnpackZM(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackZM(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -440,7 +422,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTP(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackTP(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+12*nsite) += cks*h0_0r;		w(pos+13*nsite) += cks*h0_0i;
@@ -453,7 +435,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTM(w : Rail[Double], iw : Long, cks : Double)
+	@Inline def UnpackTM(w:Rail[Double], iw:Long, cks:Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -473,21 +455,21 @@ class CUDAHalfWilsonMult {
 //debug  
 	static val gpu = CUDAEnv.getCUDAPlace();
 
-	var h0_0r : Double;
-	var h0_0i : Double;
-	var h0_1r : Double;
-	var h0_1i : Double;
-	var h0_2r : Double;
-	var h0_2i : Double;
-	var h1_0r : Double;
-	var h1_0i : Double;
-	var h1_1r : Double;
-	var h1_1i : Double;
-	var h1_2r : Double;
-	var h1_2i : Double;
+	var h0_0r:Double;
+	var h0_0i:Double;
+	var h0_1r:Double;
+	var h0_1i:Double;
+	var h0_2r:Double;
+	var h0_2i:Double;
+	var h1_0r:Double;
+	var h1_0i:Double;
+	var h1_1r:Double;
+	var h1_1i:Double;
+	var h1_2r:Double;
+	var h1_2i:Double;
 
 /*
-	@Inline def Load(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def Load(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		h0_0r  = w(iw*12+0);		h0_0i  = w(iw*12+1);
 		h0_1r  = w(iw*12+2);		h0_1i  = w(iw*12+3);
@@ -498,7 +480,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(iw*12+10);	h1_2i = w(iw*12+11);
 	}
 
-	@Inline def Store(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def Store(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		w(iw*12+0) = h0_0r;		w(iw*12+1) = h0_0i;
 		w(iw*12+2) = h0_1r;		w(iw*12+3) = h0_1i;
@@ -509,7 +491,7 @@ class CUDAHalfWilsonMult {
 		w(iw*12+10)= h1_2r;		w(iw*12+11)= h1_2i;
 	}
 
-	@Inline def PackXP(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackXP(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 + i*w3
@@ -523,7 +505,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)- w(pos+17);		h1_2i = w(pos+11)+ w(pos+16);
 	}
 
-	@Inline def PackXM(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackXM(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 - i*w3
@@ -537,7 +519,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)+ w(pos+17);		h1_2i = w(pos+11)- w(pos+16);
 	}
 
-	@Inline def PackYP(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackYP(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 + w3
@@ -551,7 +533,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)- w(pos+16);		h1_2i = w(pos+11)- w(pos+17);
 	}
 
-	@Inline def PackYM(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackYM(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 - w3
@@ -565,7 +547,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)+ w(pos+16);		h1_2i = w(pos+11)+ w(pos+17);
 	}
 	
-	@Inline def PackZP(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackZP(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 + i*w2
@@ -579,7 +561,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)+ w(pos+23);		h1_2i = w(pos+11)- w(pos+22);
 	}
 
-	@Inline def PackZM(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackZM(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 - i*w3
@@ -594,7 +576,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def PackTP(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackTP(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = 2.0*w2
@@ -609,7 +591,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def PackTM(w : GlobalRail[Double]{home==gpu}, iw : Long)
+	@Inline def PackTM(w:GlobalRail[Double]{home==gpu}, iw:Long)
 	{
 		val pos = iw*24;
 		//h0 = 2.0*w0
@@ -623,7 +605,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = 2.0*w(pos+10);		h1_2i = 2.0*w(pos+11);
 	}
 
-	@Inline def MultU(u : GlobalRail[Double]{home==gpu},iu : Long, h : CUDAHalfWilsonMult)
+	@Inline def MultU(u:GlobalRail[Double]{home==gpu}, iu:Long, h:CUDAHalfWilsonMult)
 	{
 		val pos = iu*18;
 		h0_0r = 	u(pos+0)*h.h0_0r - u(pos+1)*h.h0_0i + 
@@ -669,7 +651,7 @@ class CUDAHalfWilsonMult {
 				u(pos+16)*h.h1_2i + u(pos+17)*h.h1_2r;
 	}
 
-	@Inline def MultUt(u : GlobalRail[Double]{home==gpu},iu : Long, h : CUDAHalfWilsonMult)
+	@Inline def MultUt(u:GlobalRail[Double]{home==gpu}, iu:Long, h:CUDAHalfWilsonMult)
 	{
 		val pos = iu*18;
 		h0_0r = 	u(pos+0) *h.h0_0r + u(pos+1) *h.h0_0i + 
@@ -715,7 +697,7 @@ class CUDAHalfWilsonMult {
 				u(pos+16)*h.h1_2i - u(pos+17)*h.h1_2r;
 	}
 
-	@Inline def UnpackXP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackXP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 
@@ -738,7 +720,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) += cks*h0_2i;		w(pos+23) -= cks*h0_2r;
 	}
 
-	@Inline def UnpackXM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackXM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -760,7 +742,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) -= cks*h0_2i;		w(pos+23) += cks*h0_2r;
 	}
 
-	@Inline def UnpackYP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackYP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -782,7 +764,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) += cks*h0_2r;		w(pos+23) += cks*h0_2i;
 	}
 
-	@Inline def UnpackYM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackYM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -804,7 +786,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) -= cks*h0_2r;		w(pos+23) -= cks*h0_2i;
 	}
 
-	@Inline def UnpackZP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackZP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -826,7 +808,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) -= cks*h1_2i;		w(pos+23) += cks*h1_2r;
 	}
 
-	@Inline def UnpackZM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackZM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -849,7 +831,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackTP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+12) += cks*h0_0r;		w(pos+13) += cks*h0_0i;
@@ -862,7 +844,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
+	@Inline def UnpackTM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -888,33 +870,33 @@ public class Dslash extends Lattice {
 //debug
 	static val gpu = CUDAEnv.getCUDAPlace();
 
-	val nThreads : Long;
-	val ht1 : Rail[HalfWilsonMult];
-	val ht2 : Rail[HalfWilsonMult];
+	val nThreads:Long;
+	val ht1:Rail[HalfWilsonMult];
+	val ht2:Rail[HalfWilsonMult];
 //debug
-	// val dht1 : Rail[CUDAHalfWilsonMult];
-	// val dht2 : Rail[CUDAHalfWilsonMult];
-	// val dht1 : CUDAHalfWilsonMult;
-	// val dht2 : CUDAHalfWilsonMult;
+	// val dht1:Rail[CUDAHalfWilsonMult];
+	// val dht2:Rail[CUDAHalfWilsonMult];
+	// val dht1:CUDAHalfWilsonMult;
+	// val dht2:CUDAHalfWilsonMult;
 	
 	// val dv:PlaceLocalHandle[Cell[GlobalRail[Double]]];
 	// val dw:PlaceLocalHandle[Cell[GlobalRail[Double]]];
-	// val dv : CUDAWilsonVectorField;
-	// val dw : CUDAWilsonVectorField;
+	// val dv:CUDAWilsonVectorField;
+	// val dw:CUDAWilsonVectorField;
   
-	val rngX : Rail[LongRange];
-	val rngYOut : Rail[LongRange];
-	val rngYInBnd : Rail[LongRange];
-	val rngYIn : Rail[LongRange];
-	val rngZOut : Rail[LongRange];
-	val rngZInBnd : Rail[LongRange];
-	val rngZIn : Rail[LongRange];
-	val rngTBnd : Rail[LongRange];
-	val rngT : Rail[LongRange];
-	val rngYSnd : Rail[LongRange];
-	val rngZSnd : Rail[LongRange];
+	val rngX:Rail[LongRange];
+	val rngYOut:Rail[LongRange];
+	val rngYInBnd:Rail[LongRange];
+	val rngYIn:Rail[LongRange];
+	val rngZOut:Rail[LongRange];
+	val rngZInBnd:Rail[LongRange];
+	val rngZIn:Rail[LongRange];
+	val rngTBnd:Rail[LongRange];
+	val rngT:Rail[LongRange];
+	val rngYSnd:Rail[LongRange];
+	val rngZSnd:Rail[LongRange];
 
-	def this(x : Long,y : Long,z : Long,t : Long, nid : Long)
+	def this(x:Long, y:Long, z:Long, t:Long, nid:Long)
 	{
 		super(x,y,z,t);
 
@@ -948,12 +930,12 @@ public class Dslash extends Lattice {
 		// dv = new CUDAWilsonVectorField(x,y,z,t,1);
 		// dw = new CUDAWilsonVectorField(x,y,z,t,1);
 
-		var no : Long;
-		var ni : Long;
-		var io : Long;
-		var ii : Long;
-		var g0 : Long;
-		var g1 : Long;
+		var no:Long;
+		var ni:Long;
+		var io:Long;
+		var ii:Long;
+		var g0:Long;
+		var g1:Long;
 		for(tid in 0..(nThreads - 1)){
 			// ht1(tid) = new HalfWilsonMult();
 			// ht2(tid) = new HalfWilsonMult();
@@ -1004,7 +986,7 @@ public class Dslash extends Lattice {
 	//   CUDAUtilities.deleteGlobalRail(dw.v()());	    
 	// }
 
-	def MakeXPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
+	def MakeXPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1014,7 +996,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeXPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def MakeXPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1062,7 +1044,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeXMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
+	def MakeXMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1073,7 +1055,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeXMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
+	def MakeXMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1166,7 +1148,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeYPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
+	def MakeYPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1178,7 +1160,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeYPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def MakeYPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1232,7 +1214,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeYMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
+	def MakeYMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1245,7 +1227,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeYMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
+	def MakeYMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1343,7 +1325,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeZPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
+	def MakeZPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -1355,7 +1337,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeZPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def MakeZPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1409,7 +1391,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeZMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
+	def MakeZMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -1422,7 +1404,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeZMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
+	def MakeZMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1520,7 +1502,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeTPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
+	def MakeTPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -1530,7 +1512,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeTPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
+	def MakeTPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1579,7 +1561,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeTMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
+	def MakeTMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -1590,7 +1572,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeTMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
+	def MakeTMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1683,7 +1665,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetXPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
+	def SetXPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1694,10 +1676,10 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	// def SetXPBndKernel(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
+	// def SetXPBndKernel(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
         // SetXPBndKernel(dx.RecvDeviceBuffer(bx.XP).v()(), dv.v()(), du.v()(), -cks);
-	def SetXPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
-			   u : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetXPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
+			   u:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1800,7 +1782,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetXMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
+	def SetXMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1810,7 +1792,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetXMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetXMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1866,7 +1848,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetYPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
+	def SetYPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1881,8 +1863,8 @@ public class Dslash extends Lattice {
 
   // rngYOut(tid) = new LongRange(io * Nt*Nz / no,(io + 1) * Nt*Nz / no-1);
   // rngYInBnd(tid)  = new LongRange(ii * Nx / ni,(ii + 1) * Nx / ni-1);
-	def SetYPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
-			   u : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetYPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
+			   u:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1988,7 +1970,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetYMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
+	def SetYMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -2000,7 +1982,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetYMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetYMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2061,7 +2043,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetZPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
+	def SetZPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -2074,8 +2056,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetZPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
-			   u : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetZPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
+			   u:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2182,7 +2164,7 @@ public class Dslash extends Lattice {
 	  }
 	}		    
 
-	def SetZMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
+	def SetZMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -2194,7 +2176,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetZMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetZMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2256,7 +2238,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetTPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
+	def SetTPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -2267,8 +2249,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetTPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
-			   u : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetTPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
+			   u:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2362,7 +2344,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetTMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
+	def SetTMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -2372,7 +2354,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetTMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
+	def SetTMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2421,7 +2403,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultXP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultXP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -2434,9 +2416,9 @@ public class Dslash extends Lattice {
 		}
 	}
 // rngX(tid) = new LongRange(tid * Ny*Nz*Nt / nid,(tid + 1) * Ny*Nz*Nt / nid-1);
-	// def MultXPKernel(v : CUDAWilsonVectorField, u : CUDASU3MatrixField, w : CUDAWilsonVectorField, cks : Double)
-	def MultXPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	// def MultXPKernel(v:CUDAWilsonVectorField, u:CUDASU3MatrixField, w:CUDAWilsonVectorField, cks:Double)
+	def MultXPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2551,7 +2533,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultXM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultXM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -2564,8 +2546,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultXMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultXMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2677,7 +2659,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultYP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultYP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -2692,8 +2674,8 @@ public class Dslash extends Lattice {
 
   // rngYOut(tid) = new LongRange(io * Nt*Nz / no,(io + 1) * Nt*Nz / no-1);
   // rngYIn(tid)  = new LongRange(ii * (Nxy - Nx) / ni,(ii + 1) * (Nxy - Nx) / ni-1);
-	def MultYPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultYPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2803,7 +2785,7 @@ public class Dslash extends Lattice {
 	  }
 	}		    
 
-	def MultYM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultYM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -2818,8 +2800,8 @@ public class Dslash extends Lattice {
 
   // rngYOut(tid) = new LongRange(io * Nt*Nz / no,(io + 1) * Nt*Nz / no-1);
   // rngYIn(tid)  = new LongRange(ii * (Nxy - Nx) / ni,(ii + 1) * (Nxy - Nx) / ni-1);
-	def MultYMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultYMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2931,7 +2913,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultZP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultZP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -2946,8 +2928,8 @@ public class Dslash extends Lattice {
 
   // rngZOut(tid) = new LongRange(io * Nt / no,(io + 1) * Nt / no-1);
   // rngZIn(tid)  = new LongRange(ii * (Nxyz-Nxy) / ni,(ii + 1) * (Nxyz-Nxy) / ni-1);
-	def MultZPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultZPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3061,7 +3043,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultZM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultZM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -3074,8 +3056,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultZMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultZMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3189,7 +3171,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultTP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultTP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngT(tid)){
@@ -3200,8 +3182,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultTPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultTPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3300,7 +3282,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultTM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
+	def MultTM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngT(tid)){
@@ -3311,8 +3293,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultTMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
-			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	def MultTMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
+			 w:GlobalRail[Double]{home==gpu}, cks:Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3411,7 +3393,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def Dopr_Get(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField,cks : Double, bx : CUDALatticeComm)
+	def Dopr_Get(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 		Team.WORLD.barrier();
 
@@ -3490,8 +3472,8 @@ public class Dslash extends Lattice {
 		Team.WORLD.barrier();
 	}
 
-	def Dopr_Put_overlap(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField, 
-			     dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	def Dopr_Put_overlap(dv:CUDAWilsonVectorField, du:CUDASU3MatrixField, 
+			     dw:CUDAWilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 		Team.WORLD.barrier();
 		//finish is placed for asyncronous copy
@@ -3696,8 +3678,8 @@ public class Dslash extends Lattice {
 		// if (here.id() == 0) Console.OUT.println("set :" + finishTime / 1000 + " usec.");
 	}
 
-	def Dopr_Put(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField, 
-		     dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	def Dopr_Put(dv:CUDAWilsonVectorField, du:CUDASU3MatrixField, 
+		     dw:CUDAWilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 	  Team.WORLD.barrier();
 
@@ -3929,7 +3911,7 @@ public class Dslash extends Lattice {
 	  Team.WORLD.barrier();
 	}
 
-	def Dopr_Put(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField,cks : Double, bx : CUDALatticeComm)
+	def Dopr_Put(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 		Team.WORLD.barrier();
 
@@ -4066,7 +4048,7 @@ public class Dslash extends Lattice {
 		Team.WORLD.barrier();
 	}
 
-	def Dopr_Put_uc(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField,cks : Double, bx : CUDALatticeComm)
+	def Dopr_Put_uc(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 		val flagRef = GlobalRail(bx.recvFlag());
 
@@ -4195,15 +4177,15 @@ public class Dslash extends Lattice {
 	}
 
 
-	def DoprH(v : WilsonVectorField, u : SU3MatrixField,
-		  w : WilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	def DoprH(v:WilsonVectorField, u:SU3MatrixField,
+		  w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 	  Dopr_Put(v,u,w,cks,bx);
 	  v.MultGamma5();
 	}
 
-	def DoprH(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField,
-		  dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	def DoprH(dv:CUDAWilsonVectorField, du:CUDASU3MatrixField,
+		  dw:CUDAWilsonVectorField, cks:Double, bx:CUDALatticeComm)
 	{
 	  val startTime = System.nanoTime();
 	  Dopr_Put_overlap(dv,du,dw,cks,bx);
@@ -4215,8 +4197,4 @@ public class Dslash extends Lattice {
 
 	}
 
-
-
 }
-
-

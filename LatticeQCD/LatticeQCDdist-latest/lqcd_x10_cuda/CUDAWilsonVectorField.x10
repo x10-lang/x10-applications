@@ -3,17 +3,14 @@ import x10.util.CUDAUtilities;
 
 import x10.array.Array_1;
 
-import CUDAParallelComplexField;
-
-
 public class CUDAWilsonVectorField extends CUDAParallelComplexField {
 
-	def this(x : Long,y : Long,z : Long,t : Long)
+	def this(x:Long, y:Long, z:Long, t:Long)
 	{
 		super(x,y,z,t,3,4,1,1);
 	}
 
-	def MultGamma5(dv : GlobalRail[Double]{home==gpu})
+	def MultGamma5(dv:GlobalRail[Double]{home==gpu})
 	{
 	  val nsite_ = nsite;
 
@@ -25,10 +22,10 @@ public class CUDAWilsonVectorField extends CUDAParallelComplexField {
 		val gid = bid * threads + tid;
 		val gids = blocks * threads;
 
-		var t0r : Double;
-		var t0i : Double;
-		var t1r : Double;
-		var t1i : Double;
+		var t0r:Double;
+		var t0i:Double;
+		var t1r:Double;
+		var t1i:Double;
 
 		for (var i:Long = gid; i < nsite_; i += gids) {
 		  // for(i in 0..(nsite-1)){
@@ -77,12 +74,12 @@ public class CUDAWilsonVectorField extends CUDAParallelComplexField {
 	}
 
 /*
-	def MultGamma5(rng : LongRange)
+	def MultGamma5(rng:LongRange)
 	{
-		var t0r : Double;
-		var t0i : Double;
-		var t1r : Double;
-		var t1i : Double;
+		var t0r:Double;
+		var t0i:Double;
+		var t1r:Double;
+		var t1i:Double;
 		for(i in (rng.min)..(rng.max-1)){
 			t0r = v()(i*24);
 			t0i = v()(i*24 + 1);
@@ -126,7 +123,3 @@ public class CUDAWilsonVectorField extends CUDAParallelComplexField {
 	}
 */
 }
-
-
-
-
