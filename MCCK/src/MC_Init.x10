@@ -55,7 +55,7 @@ public class MC_Init {
     }
     
     private def getDim():Rail[Int] {
-       fact(Place.MAX_PLACES as Int, 2n);
+       fact(Place.numPlaces() as Int, 2n);
        var packed:Rail[Int] = new Rail[Int](counter);
        
        var index:Int = 0n;

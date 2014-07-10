@@ -19,7 +19,7 @@ public class CommandLineOptions {
     var numReg:Int = 11n;         // -r
     var balance:Int = 1n;         // -b
     var cost:Int = 1n;            // -c
-    var numFiles:Int = ((Place.MAX_PLACES+10)/9) as Int; // -f
+    var numFiles:Int = ((Place.numPlaces()+10)/9) as Int; // -f
     var showProg:Boolean = false; // -p
     var viz:Boolean = false;      // -v
 

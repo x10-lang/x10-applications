@@ -22,7 +22,7 @@ public final class SolveWilson {
   
   // constants
   static val places = Place.places();
-  static val Np = Place.MAX_PLACES;
+  static val Np = Place.numPlaces();
   
   // static val Lszx = 4;
   // static val Lszy = 4;
@@ -160,7 +160,7 @@ public final class SolveWilson {
   public static def main(Rail[String]) {
     
     Console.OUT.println("X10_NTHREADS: " + Runtime.NTHREADS);
-    Console.OUT.println("X10_NPLACES: " + Place.MAX_PLACES);
+    Console.OUT.println("X10_NPLACES: " + Place.numPlaces());
 
     Console.OUT.println("Npx: " + Npx + ", Npy: " + Npy + ", Npz: " + Npz 
     			+ ", Npt: " + Npt);

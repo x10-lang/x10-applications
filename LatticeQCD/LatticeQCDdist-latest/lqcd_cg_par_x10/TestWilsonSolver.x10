@@ -34,7 +34,7 @@ public final class TestWilsonSolver {
 	// static val Npt = 2;
 	// // static val Npt = 1;
 
-  static Np = Place.MAX_PLACES;
+  static Np = Place.numPlaces();
   static val LD = 4;
   static val Npx = Math.pow2((    Math.log2(Np)) / LD);
   static val Npy = Math.pow2((1 + Math.log2(Np)) / LD);
@@ -56,7 +56,7 @@ public final class TestWilsonSolver {
 	public static def main(Rail[String])
 	{
 		Console.OUT.println("X10_NTHREADS: " + Runtime.NTHREADS);
-		Console.OUT.println("X10_NPLACES: " + Place.MAX_PLACES);
+		Console.OUT.println("X10_NPLACES: " + Place.numPlaces());
 
 		Console.OUT.println("Simple Wilson solver\n");
 

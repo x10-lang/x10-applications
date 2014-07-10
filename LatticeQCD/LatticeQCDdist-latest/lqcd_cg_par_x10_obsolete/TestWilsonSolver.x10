@@ -28,7 +28,7 @@ public final class TestWilsonSolver {
 	// static val Npy = 1;
 	// static val Npz = 2;
 	// static val Npt = 2;
-  static Np = Place.MAX_PLACES;
+  static Np = Place.numPlaces();
   static val LD = 4;
   static val Npx = Math.pow2((    Math.log2(Np)) / LD);
   static val Npy = Math.pow2((1 + Math.log2(Np)) / LD);
@@ -55,7 +55,7 @@ public final class TestWilsonSolver {
 		val nThreads = Runtime.NTHREADS;
 
 		Console.OUT.println("X10_NTHREADS: " + Runtime.NTHREADS);
-		Console.OUT.println("X10_NPLACES: " + Place.MAX_PLACES);
+		Console.OUT.println("X10_NPLACES: " + Place.numPlaces());
 
 		Console.OUT.println("Simple Wilson solver\n");
 
@@ -100,7 +100,7 @@ public final class TestWilsonSolver {
 //			Lz = latsize(2);
 //			Lt = latsize(3);
 //		}
-//		if(chkP == Place.MAX_PLACES){
+//		if(chkP == Place.numPlaces()){
 //			Npx = netsize(0);
 //			Npy = netsize(1);
 //			Npz = netsize(2);

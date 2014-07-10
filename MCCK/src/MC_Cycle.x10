@@ -19,10 +19,10 @@ public class MC_Cycle {
     private val comm_choice:Int;      
    
     /** how many particles sent to proc i at a stage */
-    public static val mySendCount = new Rail[Int](Place.MAX_PLACES);
+    public static val mySendCount = new Rail[Int](Place.numPlaces());
    
     /** how many particles recv from proc i at a stage */
-    public static val myRecvCount = new Rail[Int](Place.MAX_PLACES);
+    public static val myRecvCount = new Rail[Int](Place.numPlaces());
 
     def this(mcobj:MC, comm_choice:Int) {
         mc = mcobj;      

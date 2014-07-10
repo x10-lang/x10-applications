@@ -12,7 +12,7 @@ public class Main {
 
 	  var leakage:Double = 0.5;
 	  val bufsize = 0.5;
-	  val nprocs = Place.MAX_PLACES as Int;
+	  val nprocs = Place.numPlaces() as Int;
 	  var np:Int = 0n;
 	  var mype:Int = 0n;
       var nstages:Int = 0n;      

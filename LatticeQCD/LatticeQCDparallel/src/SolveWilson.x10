@@ -66,7 +66,7 @@ public final class SolveWilson {
   public static def main(Rail[String]) {
     
     Console.OUT.println("X10_NTHREADS: " + Runtime.NTHREADS);
-    Console.OUT.println("X10_NPLACES: " + Place.MAX_PLACES);
+    Console.OUT.println("X10_NPLACES: " + Place.numPlaces());
 
     val nc2 = Ncol;
     

@@ -29,8 +29,8 @@ public class Parallel {
     def this() {
     	this.t = new Timer();
         this.team = new Team(PlaceGroup.WORLD);
-        this.startLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.MAX_PLACES));
-        this.finishLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.MAX_PLACES));
+        this.startLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.numPlaces()));
+        this.finishLatch = PlaceLocalHandle.make[Rail[Latch2]](Place.places(), ()=>new Rail[Latch2](Place.numPlaces()));
         this.perPLH = PlaceLocalHandle.make[Rail[PerformanceTimer]](Place.places(), ()=>new Rail[PerformanceTimer](1));
     }
     
@@ -62,7 +62,7 @@ public class Parallel {
     public def initParallel(args:Rail[String], par:Parallel, hep:HaloExchangePlh, pp:(args:Rail[String], par:Parallel, hep:HaloExchangePlh)=>void):void {
         PlaceGroup.WORLD.broadcastFlat(
             ()=>{
-             for(var i:Int = 0n; i < Place.MAX_PLACES as Int; i++) { 
+             for(var i:Int = 0n; i < Place.numPlaces() as Int; i++) { 
                   startLatch()(i) = new Latch2();
                   finishLatch()(i) = new Latch2();
                 }

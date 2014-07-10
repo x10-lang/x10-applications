@@ -59,8 +59,8 @@ public class Lulesh {
     private static val EXIT_CODE_INCORRECT_USAGE = 2n;
 
     public static def main(args:Rail[String]) {
-        val placesPerSide = Math.cbrt((Place.MAX_PLACES as Double) + 0.5) as Int;
-        if  (placesPerSide*placesPerSide*placesPerSide != Place.MAX_PLACES as Int) {
+        val placesPerSide = Math.cbrt((Place.numPlaces() as Double) + 0.5) as Int;
+        if  (placesPerSide*placesPerSide*placesPerSide != Place.numPlaces() as Int) {
             Console.ERR.println("Num processors must be a cube of an integer (1, 8, 27, ...)");
             System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
             return;
@@ -74,9 +74,9 @@ public class Lulesh {
 
         if (!opts.quiet) {
             Console.OUT.printf("Running problem size %d^3 per domain until completion\n", opts.nx);
-            Console.OUT.printf("Num places: %d\n", Place.MAX_PLACES);
+            Console.OUT.printf("Num places: %d\n", Place.numPlaces());
             Console.OUT.printf("Num threads: %d\n", Runtime.NTHREADS);
-            Console.OUT.printf("Total number of elements: %lld\n\n", Place.MAX_PLACES*opts.nx*opts.nx*opts.nx);
+            Console.OUT.printf("Total number of elements: %lld\n\n", Place.numPlaces()*opts.nx*opts.nx*opts.nx);
             Console.OUT.printf("To run other sizes, use -s <integer>.\n");
             Console.OUT.printf("To run a fixed number of iterations, use -i <integer>.\n");
             Console.OUT.printf("To run a more or less balanced region set, use -b <integer>.\n");
@@ -1846,12 +1846,12 @@ public class Lulesh {
         // processor speed independent of multi-place parallelism.
         // GrindTime2 takes into account speedups from multi-place parallelism 
         val grindTime1 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx);
-        val grindTime2 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx*Place.MAX_PLACES);
+        val grindTime2 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx*Place.numPlaces());
 
         var elemId:Long = 0;
         Console.OUT.printf("Run completed:  \n");
         Console.OUT.printf("   Problem size        =  %i \n",    nx);
-        Console.OUT.printf("   Place.MAX_PLACES    =  %i \n",    Place.MAX_PLACES);
+        Console.OUT.printf("   Place.numPlaces()    =  %i \n",    Place.numPlaces());
         Console.OUT.printf("   Iteration count     =  %i \n",    domain.cycle);
         Console.OUT.printf("   Final Origin Energy = %12.6e \n", domain.e(elemId));
 
