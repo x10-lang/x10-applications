@@ -32,7 +32,7 @@ public final class TestWilsonSolver {
 		val nThreads = Runtime.NTHREADS;
 
 		Console.OUT.println("X10_NTHREADS: " + Runtime.NTHREADS);
-		Console.OUT.println("X10_NPLACES: " + Place.numPlaces());
+		Console.OUT.println("X10_NPLACES: " + Place.MAX_PLACES);
 		Console.OUT.println("ALL_PLACES: " + Place.ALL_PLACES);
 		Console.OUT.println("NUM_ACCELS: " + Place.NUM_ACCELS);
 
@@ -82,11 +82,11 @@ public final class TestWilsonSolver {
 			latsize(2) = defLz;
 			latsize(3) = defLt;
 		}
-		if(chkP != Place.numPlaces()){
+		if(chkP != Place.MAX_PLACES){
 			var np:Long;
 			var id:Long;
 			id = 3;
-			np = Place.numPlaces();
+			np = Place.MAX_PLACES;
 			netsize(0) = 1;
 			netsize(1) = 1;
 			netsize(2) = 1;
