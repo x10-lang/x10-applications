@@ -132,7 +132,7 @@ public class Lulesh {
 
                 lagrangeLeapFrog(domain);
 
-                if (opts.showProg && !opts.quiet && here.isFirst()) {
+                if (opts.showProg && !opts.quiet && here.equals(Place.FIRST_PLACE)) {
                     Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
                         domain.cycle, domain.time, domain.deltatime);
                 }
