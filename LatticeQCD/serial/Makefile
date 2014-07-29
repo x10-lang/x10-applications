@@ -1,5 +1,6 @@
 
-X10C = ../../bin/x10c++
+#X10C = ../../bin/x10c++
+X10C = x10c++
 LD = $(X10C)
 
 X10FLAGS = -O -x10rt pami -NO_CHECKS
@@ -35,7 +36,7 @@ $(MODULE): $(SRCSX10)
 
 
 clean:
-	rm -f $(SRCSCC) $(SRCSH) $(MODULE)
+	rm -f $(SRCSCC) $(SRCSH) $(MODULE) GetGCD.h xxx_main_xxx.cc
 
 
 
