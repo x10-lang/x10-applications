@@ -42,7 +42,7 @@ $(MODULE): $(SRCSX10)
 
 
 clean:
-	rm -f $(SRCSCC) $(SRCSH) $(MODULE)
+	rm -f $(SRCSCC) $(SRCSH) $(MODULE) HalfWilsonMult.h GetGCD.h xxx_main_xxx.cc
 
 
 
