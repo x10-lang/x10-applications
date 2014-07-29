@@ -1,5 +1,5 @@
 X10_FLAGS	= -O -NO_CHECKS
-X10RUN_FLAGS	= -nocompressedrefs -nogcpolicy -nojitopts
+X10RUN_FLAGS	=
 
 X10CPP_TARGET = SolveWilsonX10c++
 X10_TARGET = SolveWilson
