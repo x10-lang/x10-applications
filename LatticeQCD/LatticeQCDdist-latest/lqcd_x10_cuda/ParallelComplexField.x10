@@ -1,23 +1,27 @@
 import x10.compiler.Inline;
 import x10.compiler.Pragma;
 
+import Lattice;
+
 public class ParallelComplexField extends Lattice {
-	val v:PlaceLocalHandle[Rail[Double]];
-	val Ncol:Long;
-	val Ndim:Long;
-	val Ncol2:Long;
-	val Nvec:Long;
-	val Nfld:Long;
-	val size:Long;
-	val nThreads:Long;
-	val rngLA:Rail[LongRange];
+	val v : PlaceLocalHandle[Rail[Double]];
+	val Ncol : Long;
+	val Ndim : Long;
+	val Ncol2 : Long;
+	val Nvec : Long;
+	val Nfld : Long;
+	val size : Long;
+	val nThreads : Long;
+	val rngLA : Rail[LongRange];
 
 
-	def this(x:Long, y:Long, z:Long, t:Long, nc:Long, nd:Long, nf:Long, nid:Long)
+	def this(x : Long,y : Long,z : Long,t : Long, nc : Long, nd : Long, nf : Long, nid : Long)
 	{
 		super(x,y,z,t);
 		size = x*y*z*t*nc*nd*nf*2;
+//debug
 		v = PlaceLocalHandle.make[Rail[Double]](Place.places(), ()=>new Rail[Double](x*y*z*t*nc*nd*nf*2));
+		// v = PlaceLocalHandle.make[Rail[Double]](Place.places(), ()=>new Rail[Double](x*y*z*t*nc*nd*nf*2 + 1));
 
 		Ncol = nc;
 		Ndim = nd;
@@ -32,14 +36,14 @@ public class ParallelComplexField extends Lattice {
 		}
 	}
 
-	public operator this(i:Long) = v()(i);
-	public operator this(i:Long) = (t:Double) = {v()(i) = t;}
+	public operator this(i : Long) = v()(i);
+	public operator this(i : Long) = (t : Double) = {v()(i) = t;}
 
-	public operator this(ic:Long, id:Long, is:Long) = v()(is*Nvec + id*Ncol2 + ic);
-	public operator this(ic:Long, id:Long, is:Long) = (t:Double) = {v()(is*Nvec + id*Ncol2 + ic) = t;}
+	public operator this(ic : Long, id : Long, is : Long) = v()(is*Nvec + id*Ncol2 + ic);
+	public operator this(ic : Long, id : Long, is : Long) = (t : Double) = {v()(is*Nvec + id*Ncol2 + ic) = t;}
 
 
-	def Set(t:Double)
+	def Set(t : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -47,14 +51,14 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Set(t:Double, rng:LongRange)
+	def Set(t : Double, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = t;
 		}
 	}
 
-	def Mult(a:Double)
+	def Mult(a : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -62,14 +66,14 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Mult(a:Double, rng:LongRange)
+	def Mult(a : Double, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = a*v()(i);
 		}
 	}
 
-	def Copy(w:ParallelComplexField)
+	def Copy(w : ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -77,14 +81,14 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Copy(w:ParallelComplexField, rng:LongRange)
+	def Copy(w : ParallelComplexField, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = w.v()(i);
 		}
 	}
 
-	def Add(w:WilsonVectorField)
+	def Add(w : WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -92,14 +96,14 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Add(w:ParallelComplexField, rng:LongRange)
+	def Add(w : ParallelComplexField, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = v()(i) + w.v()(i);
 		}
 	}
 
-	def Sub(w:ParallelComplexField)
+	def Sub(w : ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -107,14 +111,14 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def Sub(w:ParallelComplexField, rng:LongRange)
+	def Sub(w : ParallelComplexField, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = v()(i) - w.v()(i);
 		}
 	}
 
-	def MultAdd(a:Double, w:ParallelComplexField)
+	def MultAdd(a : Double, w : ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -122,14 +126,14 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def MultAdd(a:Double, w:ParallelComplexField, rng:LongRange)
+	def MultAdd(a : Double, w : ParallelComplexField, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = v()(i) + a * w.v()(i);
 		}
 	}
 
-	def SPX(a:Double, w:ParallelComplexField)
+	def SPX(a : Double, w : ParallelComplexField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngLA(tid)){
@@ -137,18 +141,18 @@ public class ParallelComplexField extends Lattice {
 			}
 		}
 	}
-	def SPX(a:Double, w:ParallelComplexField, rng:LongRange)
+	def SPX(a : Double, w : ParallelComplexField, rng : LongRange)
 	{
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			v()(i) = a*v()(i) + w.v()(i);
 		}
 	}
 
-	def Dot(w:ParallelComplexField):Double
+	def Dot(w : ParallelComplexField) : Double
 	{
-		var ret:Double = 0.0;
+		var ret : Double = 0.0;
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
-			var t:Double = 0.0;
+			var t : Double = 0.0;
 			for(i in rngLA(tid)){
 				t = t + v()(i) * w.v()(i);
 			}
@@ -156,20 +160,20 @@ public class ParallelComplexField extends Lattice {
 		}
 		return ret;
 	}
-	def Dot(w:ParallelComplexField, rng:LongRange):Double
+	def Dot(w : ParallelComplexField, rng : LongRange) : Double
 	{
-		var t:Double = 0.0;
+		var t : Double = 0.0;
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			t = t + v()(i) * w.v()(i);
 		}
 		return t;
 	}
 
-	def Norm():Double
+	def Norm() : Double
 	{
-		var ret:Double = 0.0;
+		var ret : Double = 0.0;
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
-			var t:Double = 0.0;
+			var t : Double = 0.0;
 			for(i in rngLA(tid)){
 				t = t + v()(i) * v()(i);
 			}
@@ -177,18 +181,18 @@ public class ParallelComplexField extends Lattice {
 		}
 		return ret;
 	}
-	def Norm(rng:LongRange):Double
+	def Norm(rng : LongRange) : Double
 	{
-		var t:Double = 0.0;
+		var t : Double = 0.0;
 		for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 			t = t + v()(i) * v()(i);
 		}
 		return t;
 	}
 
-	def Norm_SoA(rng:LongRange):Double
+	def Norm_SoA(rng : LongRange) : Double
 	{
-		var t:Double = 0.0;
+		var t : Double = 0.0;
 		// for(i in (rng.min*Nvec)..(rng.max*Nvec-1)){
 		for(i in (rng.min)..(rng.max-1)){
 			t = t + v()(i) * v()(i);
@@ -197,3 +201,6 @@ public class ParallelComplexField extends Lattice {
 	}
 
 }
+
+
+

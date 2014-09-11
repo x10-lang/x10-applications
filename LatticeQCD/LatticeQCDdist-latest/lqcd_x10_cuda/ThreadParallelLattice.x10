@@ -1,9 +1,13 @@
+
+
+import Lattice;
+
 final class GetGCD {
-	static def Do(a:Long, b:Long)
+	static def Do(a : Long, b: Long)
 	{
-		var i:Long;
-		var j:Long;
-		var t:Long;
+		var i : Long;
+		var j : Long;
+		var t : Long;
 
 		if(a == b){
 			return a;
@@ -30,28 +34,28 @@ final class GetGCD {
 
 
 public class ThreadParallelLattice extends Lattice {
-	val rngX:Rail[LongRange];
-	val rngYOut:Rail[LongRange];
-	val rngYInBnd:Rail[LongRange];
-	val rngYIn:Rail[LongRange];
-	val rngZOut:Rail[LongRange];
-	val rngZInBnd:Rail[LongRange];
-	val rngZIn:Rail[LongRange];
-	val rngTBnd:Rail[LongRange];
-	val rngT:Rail[LongRange];
-	val rngYSnd:Rail[LongRange];
-	val rngZSnd:Rail[LongRange];
+	val rngX : Rail[LongRange];
+	val rngYOut : Rail[LongRange];
+	val rngYInBnd : Rail[LongRange];
+	val rngYIn : Rail[LongRange];
+	val rngZOut : Rail[LongRange];
+	val rngZInBnd : Rail[LongRange];
+	val rngZIn : Rail[LongRange];
+	val rngTBnd : Rail[LongRange];
+	val rngT : Rail[LongRange];
+	val rngYSnd : Rail[LongRange];
+	val rngZSnd : Rail[LongRange];
 
-	def this(x:Long, y:Long, z:Long, t:Long, nid:Long)
+	def this(x : Long,y : Long,z : Long,t : Long, nid : Long)
 	{
 		super(x,y,z,t);
 
-		var no:Long;
-		var ni:Long;
-		var io:Long;
-		var ii:Long;
-		var g0:Long;
-		var g1:Long;
+		var no : Long;
+		var ni : Long;
+		var io : Long;
+		var ii : Long;
+		var g0 : Long;
+		var g1 : Long;
 
 		nThreads = nid;
 
@@ -96,4 +100,10 @@ public class ThreadParallelLattice extends Lattice {
 		}
 	}
 
+
 }
+
+
+
+
+

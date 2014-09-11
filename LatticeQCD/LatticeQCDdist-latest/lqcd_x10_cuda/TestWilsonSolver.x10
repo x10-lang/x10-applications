@@ -163,7 +163,7 @@ public final class TestWilsonSolver {
 		  for(id in 0..0) {
 
 		    finish for(p in Place.places()) at(p) async {
-		      bq.Set(0.0);
+		      bq.Set(0.0f);
 		      if(p.id == 0){
 			// bq.v()(2*ic + id*Nvc) = 1.0;
 			//debug					  

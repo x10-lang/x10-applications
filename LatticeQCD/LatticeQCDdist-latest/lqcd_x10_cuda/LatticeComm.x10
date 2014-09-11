@@ -1,13 +1,22 @@
-class LatticeComm extends ParallelLattice {
+
+import HalfWilsonVectorField;
+import ParallelLattice;
+//debug
+import ParallelComplexField;
+
+// import x10.regionarray.*;
+
+class LatticeComm extends ParallelLattice{
 	val bufSend = new Rail[HalfWilsonVectorField](8);
 	val bufRecv = new Rail[HalfWilsonVectorField](8);
-	val recvCount:PlaceLocalHandle[Rail[Long]];
-	val recvCountPrev:PlaceLocalHandle[Rail[Long]];
-	val recvFlag:PlaceLocalHandle[Rail[Long]];
-	val refBuffers:PlaceLocalHandle[Rail[GlobalRail[Double]]];
-	var refInitDone:Long;
+	val recvFlag : PlaceLocalHandle[Rail[Long]];
+	val refBuffers : PlaceLocalHandle[Rail[GlobalRail[Double]]];
+	var refInitDone : Long;
 
-	def this(x:Long, y:Long, z:Long, t:Long, px:Long, py:Long, pz:Long, pt:Long, nid:Long)
+	val counts : PlaceLocalHandle[Rail[Long]];
+	val recvCounts : PlaceLocalHandle[Rail[Long]];
+
+	def this(x : Long,y : Long,z : Long,t : Long, px : Long, py : Long, pz : Long, pt : Long,nid : Long)
 	{
 		super(x,y,z,t,px,py,pz,pt);
 
@@ -31,16 +40,12 @@ class LatticeComm extends ParallelLattice {
 		bufSend(TM) = new HalfWilsonVectorField(x,y,z,1,nid);
 		bufRecv(TM) = new HalfWilsonVectorField(x,y,z,1,nid);
 
-		recvCount = PlaceLocalHandle.make[Rail[Long]](Place.places(), ()=>new Rail[Long](8));
-		recvCountPrev = PlaceLocalHandle.make[Rail[Long]](Place.places(), ()=>new Rail[Long](8));
 		recvFlag = PlaceLocalHandle.make[Rail[Long]](Place.places(), ()=>new Rail[Long](8));
+//debug
+		counts = PlaceLocalHandle.make[Rail[Long]](Place.places(), ()=>new Rail[Long](8, 0));
+		recvCounts = PlaceLocalHandle.make[Rail[Long]](Place.places(), ()=>new Rail[Long](8, 0));
 
 		refBuffers = PlaceLocalHandle.make[Rail[GlobalRail[Double]]](Place.places(), ()=>new Rail[GlobalRail[Double]](8));
-
-		for(i in 0..7){
-			recvCount()(i) = 0;
-			recvCountPrev()(i) = 0;
-		}
 
 		refInitDone = 0;
 	}
@@ -51,14 +56,16 @@ class LatticeComm extends ParallelLattice {
 			for(i in 0..7){
 				if(decomp(i) > 1){
 					val iDest = neighbors()( (i + 1 - 2*(i & 1)) );
+//debug
 					refBuffers()(i) = at(Place(iDest)) new GlobalRail[Double](bufRecv(i).v());
+					// refBuffers()(i) = at(Place(neighbors()(i))) new GlobalRail[Double](bufRecv(i).v());
 				}
 			}
 			refInitDone = 1;
 		}
 	}
 
-	def SendBuffer(dir:Long):HalfWilsonVectorField
+	def SendBuffer(dir : Long) : HalfWilsonVectorField
 	{
 		if(decomp(dir) < 2){
 			//we use same buffer for local boundary exchange
@@ -68,50 +75,69 @@ class LatticeComm extends ParallelLattice {
 			return bufSend(dir);
 		}
 	}
-	def RecvBuffer(dir:Long):HalfWilsonVectorField
+	def RecvBuffer(dir : Long) : HalfWilsonVectorField
 	{
 		return bufRecv(dir);
 	}
 
-	def Send(dir:Long)
+	def Send(dir : Long)
 	{
-		if(decomp(dir) > 1){
-			val bufRef = GlobalRail(bufSend(dir).v());
-			val iDest = neighbors()( (dir + 1 - 2*(dir & 1)) );
+	  if(decomp(dir) > 1){
+	    val bufRef = GlobalRail(bufSend(dir).v());
+	    val iDest = neighbors()( (dir + 1 - 2*(dir & 1)) );
 
-			finish {
-				at(Place(iDest)) async {
-					val size = bufRecv(dir).size;
-					finish{
-						Rail.asyncCopy[Double](bufRef,0,bufRecv(dir).v(),0,size);
-					}
-			//		finish{
-			//			Rail.uncountedCopy[Double](bufRef,0,bufRecv(dir).v(),0,size,()=>{recvCount()(dir)+=size;});
-			//		}
-				}
-			}
+	    finish {
+	      at(Place(iDest)) async {
+	      // at(Place(iDest)) {
+		val size = bufRecv(dir).size;
+		finish{
+		  Rail.asyncCopy[Double](bufRef,0,bufRecv(dir).v(),0,size);
 		}
+		// finish{
+		  // Rail.uncountedCopy[Double](bufRef, 0, bufRecv(dir).v(), 0, size, ()=>{recvCount()(dir)+=size;});
+		// }
+	      }
+	    }
+	  }
 	}
 
-	def Put(dir:Long)
+	def Put(dir : Long)
 	{
-		val size = bufSend(dir).size;
-		Rail.asyncCopy[Double](bufSend(dir).v(),0,refBuffers()(dir),0,size);
+	  val size = bufSend(dir).size;
+//debug
+	  Rail.asyncCopy[Double](bufSend(dir).v(), 0, refBuffers()(dir), 0, size);
+	  // Rail.uncountedCopy[Double](bufSend(dir).v(), 0, refBuffers()(dir), 0, size, ()=>{
+	  //   atomic counts()(dir) += 1;
+	  //   atomic recvCounts()(dir) += 1;
+	  // });
+
 	}
 
-	def WaitRecv(dir:Long)
+	def WaitSend(dir : Long)
 	{
-//		if(decomp(dir) > 1){
-//			val size = bufRecv(dir).size;
-//			val t = recvCountPrev()(dir) + size;
-//			while(recvCount()(dir) < t){
-//				;
-//			}
-//			recvCountPrev()(dir) = t;
-//		}
+	  if(decomp(dir) > 1){
+	    val iDest = neighbors()( (dir + 1 - 2*(dir & 1)) );
+
+	    at (Place(iDest)) {
+	      while (counts()(dir) < 1) {
+		Runtime.probe();
+	      }
+	      atomic counts()(dir) -= 1;
+	    }
+	  }
 	}
 
-	def Size(dir:Long):Long
+	def WaitRecv(dir : Long)
+	{
+	  if(decomp(dir) > 1){
+	    while (recvCounts()(dir) < 1){
+	      Runtime.probe();
+	    }
+	    atomic recvCounts()(dir) -= 1;
+	  }
+	}
+
+	def Size(dir : Long) : Long
 	{
 		return bufRecv(dir).size;
 	}

@@ -1,14 +1,32 @@
+
+
+import WilsonVectorField;
+import SU3MatrixField;
+import HalfWilsonVectorField;
+
+import CUDAWilsonVectorField;
+import CUDASU3MatrixField;
+// import CUDAHalfWilsonVectorField;
+
+import CUDALatticeComm;
+
+//debug
+import Lattice;
+
+// import x10.compiler.Inline;
+// import x10.compiler.Pragma;
 import x10.compiler.*;
 
 import x10.util.Team;
 import x10.util.CUDAUtilities;
 
+
 final class GetGCD {
-	static def Do(a:Long, b:Long)
+	static def Do(a : Long, b: Long)
 	{
-		var i:Long;
-		var j:Long;
-		var t:Long;
+		var i : Long;
+		var j : Long;
+		var t : Long;
 
 		if(a == b){
 			return a;
@@ -37,26 +55,26 @@ final class GetGCD {
 // class HalfWilsonMult {
 //debug
 class HalfWilsonMult extends Lattice {
-	var h0_0r:Double;
-	var h0_0i:Double;
-	var h0_1r:Double;
-	var h0_1i:Double;
-	var h0_2r:Double;
-	var h0_2i:Double;
-	var h1_0r:Double;
-	var h1_0i:Double;
-	var h1_1r:Double;
-	var h1_1i:Double;
-	var h1_2r:Double;
-	var h1_2i:Double;
+	var h0_0r : Double;
+	var h0_0i : Double;
+	var h0_1r : Double;
+	var h0_1i : Double;
+	var h0_2r : Double;
+	var h0_2i : Double;
+	var h1_0r : Double;
+	var h1_0i : Double;
+	var h1_1r : Double;
+	var h1_1i : Double;
+	var h1_2r : Double;
+	var h1_2i : Double;
 
 //debug
-	def this(x:Long, y:Long, z:Long, t:Long)
+	def this(x : Long,y : Long,z : Long,t : Long)
 	{
 		super(x,y,z,t);
 	}
 
-	@Inline def Load(w:Rail[Double], iw:Long)
+	@Inline def Load(w : Rail[Double], iw : Long)
 	{
 		h0_0r  = w(iw*12+0);		h0_0i  = w(iw*12+1);
 		h0_1r  = w(iw*12+2);		h0_1i  = w(iw*12+3);
@@ -67,7 +85,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r = w(iw*12+10);	        h1_2i = w(iw*12+11);
 	}
 
-	@Inline def Store(w:Rail[Double], iw:Long)
+	@Inline def Store(w : Rail[Double], iw : Long)
 	{
 		w(iw*12+0) = h0_0r;		w(iw*12+1) = h0_0i;
 		w(iw*12+2) = h0_1r;		w(iw*12+3) = h0_1i;
@@ -78,7 +96,7 @@ class HalfWilsonMult extends Lattice {
 		w(iw*12+10)= h1_2r;		w(iw*12+11)= h1_2i;
 	}
 
-	@Inline def PackXP(w:Rail[Double], iw:Long)
+	@Inline def PackXP(w : Rail[Double], iw : Long)
 	{
 		// val pos = iw*24;
 	        val pos = iw;
@@ -93,7 +111,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r = w(pos+10*nsite)- w(pos+17*nsite);		h1_2i = w(pos+11*nsite)+ w(pos+16*nsite);
 	}
 
-	@Inline def PackXM(w:Rail[Double], iw:Long)
+	@Inline def PackXM(w : Rail[Double], iw : Long)
 	{
 	        val pos = iw;
 		//h0 = w0 - i*w3
@@ -107,7 +125,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)+ w(pos+17*nsite);		h1_2i= w(pos+11*nsite)- w(pos+16*nsite);
 	}
 
-	@Inline def PackYP(w:Rail[Double], iw:Long)
+	@Inline def PackYP(w : Rail[Double], iw : Long)
 	{
 		val pos = iw;
 		//h0 = w0 + w3
@@ -121,7 +139,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)- w(pos+16*nsite);		h1_2i= w(pos+11*nsite)- w(pos+17*nsite);
 	}
 
-	@Inline def PackYM(w:Rail[Double], iw:Long)
+	@Inline def PackYM(w : Rail[Double], iw : Long)
 	{
 		val pos = iw;
 		//h0 = w0 - w3
@@ -135,7 +153,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)+ w(pos+16*nsite);		h1_2i= w(pos+11*nsite)+ w(pos+17*nsite);
 	}
 	
-	@Inline def PackZP(w:Rail[Double], iw:Long)
+	@Inline def PackZP(w : Rail[Double], iw : Long)
 	{
 		val pos = iw;
 		//h0 = w0 + i*w2
@@ -149,7 +167,7 @@ class HalfWilsonMult extends Lattice {
 		h1_2r= w(pos+10*nsite)+ w(pos+23*nsite);		h1_2i= w(pos+11*nsite)- w(pos+22*nsite);
 	}
 
-	@Inline def PackZM(w:Rail[Double], iw:Long)
+	@Inline def PackZM(w : Rail[Double], iw : Long)
 	{
 		val pos = iw;
 		//h0 = w0 - i*w3
@@ -164,36 +182,36 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def PackTP(w:Rail[Double], iw:Long)
+	@Inline def PackTP(w : Rail[Double], iw : Long)
 	{
 		val pos = iw;
 		//h0 = 2.0*w2
-		h0_0r = 2.0*w(pos+12*nsite);		h0_0i = 2.0*w(pos+13*nsite);
-		h0_1r = 2.0*w(pos+14*nsite);		h0_1i = 2.0*w(pos+15*nsite);
-		h0_2r = 2.0*w(pos+16*nsite);		h0_2i = 2.0*w(pos+17*nsite);
+		h0_0r = 2.0f*w(pos+12*nsite);		h0_0i = 2.0f*w(pos+13*nsite);
+		h0_1r = 2.0f*w(pos+14*nsite);		h0_1i = 2.0f*w(pos+15*nsite);
+		h0_2r = 2.0f*w(pos+16*nsite);		h0_2i = 2.0f*w(pos+17*nsite);
 
 		//h1 = 2.0*w3
-		h1_0r = 2.0*w(pos+18*nsite);		h1_0i = 2.0*w(pos+19*nsite);
-		h1_1r = 2.0*w(pos+20*nsite);		h1_1i = 2.0*w(pos+21*nsite);
-		h1_2r= 2.0*w(pos+22*nsite);		h1_2i= 2.0*w(pos+23*nsite);
+		h1_0r = 2.0f*w(pos+18*nsite);		h1_0i = 2.0f*w(pos+19*nsite);
+		h1_1r = 2.0f*w(pos+20*nsite);		h1_1i = 2.0f*w(pos+21*nsite);
+		h1_2r= 2.0f*w(pos+22*nsite);		h1_2i= 2.0f*w(pos+23*nsite);
 	}
 
 	//Dirac representation
-	@Inline def PackTM(w:Rail[Double], iw:Long)
+	@Inline def PackTM(w : Rail[Double], iw : Long)
 	{
 		val pos = iw;
 		//h0 = 2.0*w0
-		h0_0r = 2.0*w(pos+0*nsite);		h0_0i = 2.0*w(pos+1*nsite);
-		h0_1r = 2.0*w(pos+2*nsite);		h0_1i = 2.0*w(pos+3*nsite);
-		h0_2r = 2.0*w(pos+4*nsite);		h0_2i = 2.0*w(pos+5*nsite);
+		h0_0r = 2.0f*w(pos+0*nsite);		h0_0i = 2.0f*w(pos+1*nsite);
+		h0_1r = 2.0f*w(pos+2*nsite);		h0_1i = 2.0f*w(pos+3*nsite);
+		h0_2r = 2.0f*w(pos+4*nsite);		h0_2i = 2.0f*w(pos+5*nsite);
 
 		//h1 = 2.0*w1
-		h1_0r = 2.0*w(pos+6*nsite);		h1_0i = 2.0*w(pos+7*nsite);
-		h1_1r = 2.0*w(pos+8*nsite);		h1_1i = 2.0*w(pos+9*nsite);
-		h1_2r= 2.0*w(pos+10*nsite);		h1_2i= 2.0*w(pos+11*nsite);
+		h1_0r = 2.0f*w(pos+6*nsite);		h1_0i = 2.0f*w(pos+7*nsite);
+		h1_1r = 2.0f*w(pos+8*nsite);		h1_1i = 2.0f*w(pos+9*nsite);
+		h1_2r= 2.0f*w(pos+10*nsite);		h1_2i= 2.0f*w(pos+11*nsite);
 	}
 
-	@Inline def MultU(u:Rail[Double], iu:Long, h:HalfWilsonMult)
+	@Inline def MultU(u : Rail[Double],iu : Long, h : HalfWilsonMult)
 	{
 		// val pos = iu*18;
 		val pos = iu;
@@ -241,7 +259,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	// ht2(tid).MultUt(u.v(),offset_ut + nsite-Nxyz + i,ht1(tid));
-	@Inline def MultUt(u:Rail[Double], iu:Long, h:HalfWilsonMult)
+	@Inline def MultUt(u : Rail[Double],iu : Long, h : HalfWilsonMult)
 	{
 		// val pos = iu*18;
 		val pos = iu;
@@ -288,7 +306,7 @@ class HalfWilsonMult extends Lattice {
 				u(pos+16*Ndst)*h.h1_2i- u(pos+17*Ndst)*h.h1_2r;
 	}
 
-	@Inline def UnpackXP(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackXP(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 
@@ -311,7 +329,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) += cks*h0_2i;		w(pos+23*nsite) -= cks*h0_2r;
 	}
 
-	@Inline def UnpackXM(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackXM(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -333,7 +351,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) -= cks*h0_2i;		w(pos+23*nsite) += cks*h0_2r;
 	}
 
-	@Inline def UnpackYP(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackYP(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -355,7 +373,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) += cks*h0_2r;		w(pos+23*nsite) += cks*h0_2i;
 	}
 
-	@Inline def UnpackYM(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackYM(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -377,7 +395,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) -= cks*h0_2r;		w(pos+23*nsite) -= cks*h0_2i;
 	}
 
-	@Inline def UnpackZP(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackZP(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -399,7 +417,7 @@ class HalfWilsonMult extends Lattice {
 		w(pos+22*nsite) -= cks*h1_2i;		w(pos+23*nsite) += cks*h1_2r;
 	}
 
-	@Inline def UnpackZM(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackZM(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -422,7 +440,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTP(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackTP(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+12*nsite) += cks*h0_0r;		w(pos+13*nsite) += cks*h0_0i;
@@ -435,7 +453,7 @@ class HalfWilsonMult extends Lattice {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTM(w:Rail[Double], iw:Long, cks:Double)
+	@Inline def UnpackTM(w : Rail[Double], iw : Long, cks : Double)
 	{
 		val pos = iw;
 		w(pos+0*nsite) += cks*h0_0r;			w(pos+1*nsite) += cks*h0_0i;
@@ -455,21 +473,21 @@ class CUDAHalfWilsonMult {
 //debug  
 	static val gpu = CUDAEnv.getCUDAPlace();
 
-	var h0_0r:Double;
-	var h0_0i:Double;
-	var h0_1r:Double;
-	var h0_1i:Double;
-	var h0_2r:Double;
-	var h0_2i:Double;
-	var h1_0r:Double;
-	var h1_0i:Double;
-	var h1_1r:Double;
-	var h1_1i:Double;
-	var h1_2r:Double;
-	var h1_2i:Double;
+	var h0_0r : Double;
+	var h0_0i : Double;
+	var h0_1r : Double;
+	var h0_1i : Double;
+	var h0_2r : Double;
+	var h0_2i : Double;
+	var h1_0r : Double;
+	var h1_0i : Double;
+	var h1_1r : Double;
+	var h1_1i : Double;
+	var h1_2r : Double;
+	var h1_2i : Double;
 
 /*
-	@Inline def Load(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def Load(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		h0_0r  = w(iw*12+0);		h0_0i  = w(iw*12+1);
 		h0_1r  = w(iw*12+2);		h0_1i  = w(iw*12+3);
@@ -480,7 +498,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(iw*12+10);	h1_2i = w(iw*12+11);
 	}
 
-	@Inline def Store(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def Store(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		w(iw*12+0) = h0_0r;		w(iw*12+1) = h0_0i;
 		w(iw*12+2) = h0_1r;		w(iw*12+3) = h0_1i;
@@ -491,7 +509,7 @@ class CUDAHalfWilsonMult {
 		w(iw*12+10)= h1_2r;		w(iw*12+11)= h1_2i;
 	}
 
-	@Inline def PackXP(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackXP(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 + i*w3
@@ -505,7 +523,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)- w(pos+17);		h1_2i = w(pos+11)+ w(pos+16);
 	}
 
-	@Inline def PackXM(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackXM(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 - i*w3
@@ -519,7 +537,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)+ w(pos+17);		h1_2i = w(pos+11)- w(pos+16);
 	}
 
-	@Inline def PackYP(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackYP(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 + w3
@@ -533,7 +551,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)- w(pos+16);		h1_2i = w(pos+11)- w(pos+17);
 	}
 
-	@Inline def PackYM(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackYM(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 - w3
@@ -547,7 +565,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)+ w(pos+16);		h1_2i = w(pos+11)+ w(pos+17);
 	}
 	
-	@Inline def PackZP(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackZP(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 + i*w2
@@ -561,7 +579,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = w(pos+10)+ w(pos+23);		h1_2i = w(pos+11)- w(pos+22);
 	}
 
-	@Inline def PackZM(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackZM(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = w0 - i*w3
@@ -576,7 +594,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def PackTP(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackTP(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = 2.0*w2
@@ -591,7 +609,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def PackTM(w:GlobalRail[Double]{home==gpu}, iw:Long)
+	@Inline def PackTM(w : GlobalRail[Double]{home==gpu}, iw : Long)
 	{
 		val pos = iw*24;
 		//h0 = 2.0*w0
@@ -605,7 +623,7 @@ class CUDAHalfWilsonMult {
 		h1_2r = 2.0*w(pos+10);		h1_2i = 2.0*w(pos+11);
 	}
 
-	@Inline def MultU(u:GlobalRail[Double]{home==gpu}, iu:Long, h:CUDAHalfWilsonMult)
+	@Inline def MultU(u : GlobalRail[Double]{home==gpu},iu : Long, h : CUDAHalfWilsonMult)
 	{
 		val pos = iu*18;
 		h0_0r = 	u(pos+0)*h.h0_0r - u(pos+1)*h.h0_0i + 
@@ -651,7 +669,7 @@ class CUDAHalfWilsonMult {
 				u(pos+16)*h.h1_2i + u(pos+17)*h.h1_2r;
 	}
 
-	@Inline def MultUt(u:GlobalRail[Double]{home==gpu}, iu:Long, h:CUDAHalfWilsonMult)
+	@Inline def MultUt(u : GlobalRail[Double]{home==gpu},iu : Long, h : CUDAHalfWilsonMult)
 	{
 		val pos = iu*18;
 		h0_0r = 	u(pos+0) *h.h0_0r + u(pos+1) *h.h0_0i + 
@@ -697,7 +715,7 @@ class CUDAHalfWilsonMult {
 				u(pos+16)*h.h1_2i - u(pos+17)*h.h1_2r;
 	}
 
-	@Inline def UnpackXP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackXP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 
@@ -720,7 +738,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) += cks*h0_2i;		w(pos+23) -= cks*h0_2r;
 	}
 
-	@Inline def UnpackXM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackXM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -742,7 +760,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) -= cks*h0_2i;		w(pos+23) += cks*h0_2r;
 	}
 
-	@Inline def UnpackYP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackYP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -764,7 +782,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) += cks*h0_2r;		w(pos+23) += cks*h0_2i;
 	}
 
-	@Inline def UnpackYM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackYM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -786,7 +804,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) -= cks*h0_2r;		w(pos+23) -= cks*h0_2i;
 	}
 
-	@Inline def UnpackZP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackZP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -808,7 +826,7 @@ class CUDAHalfWilsonMult {
 		w(pos+22) -= cks*h1_2i;		w(pos+23) += cks*h1_2r;
 	}
 
-	@Inline def UnpackZM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackZM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -831,7 +849,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTP(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackTP(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+12) += cks*h0_0r;		w(pos+13) += cks*h0_0i;
@@ -844,7 +862,7 @@ class CUDAHalfWilsonMult {
 	}
 
 	//Dirac representation
-	@Inline def UnpackTM(w:GlobalRail[Double]{home==gpu}, iw:Long, cks:Double)
+	@Inline def UnpackTM(w : GlobalRail[Double]{home==gpu}, iw : Long, cks : Double)
 	{
 		val pos = iw*24;
 		w(pos+0) += cks*h0_0r;		w(pos+1) += cks*h0_0i;
@@ -870,33 +888,33 @@ public class Dslash extends Lattice {
 //debug
 	static val gpu = CUDAEnv.getCUDAPlace();
 
-	val nThreads:Long;
-	val ht1:Rail[HalfWilsonMult];
-	val ht2:Rail[HalfWilsonMult];
+	val nThreads : Long;
+	val ht1 : Rail[HalfWilsonMult];
+	val ht2 : Rail[HalfWilsonMult];
 //debug
-	// val dht1:Rail[CUDAHalfWilsonMult];
-	// val dht2:Rail[CUDAHalfWilsonMult];
-	// val dht1:CUDAHalfWilsonMult;
-	// val dht2:CUDAHalfWilsonMult;
+	// val dht1 : Rail[CUDAHalfWilsonMult];
+	// val dht2 : Rail[CUDAHalfWilsonMult];
+	// val dht1 : CUDAHalfWilsonMult;
+	// val dht2 : CUDAHalfWilsonMult;
 	
 	// val dv:PlaceLocalHandle[Cell[GlobalRail[Double]]];
 	// val dw:PlaceLocalHandle[Cell[GlobalRail[Double]]];
-	// val dv:CUDAWilsonVectorField;
-	// val dw:CUDAWilsonVectorField;
+	// val dv : CUDAWilsonVectorField;
+	// val dw : CUDAWilsonVectorField;
   
-	val rngX:Rail[LongRange];
-	val rngYOut:Rail[LongRange];
-	val rngYInBnd:Rail[LongRange];
-	val rngYIn:Rail[LongRange];
-	val rngZOut:Rail[LongRange];
-	val rngZInBnd:Rail[LongRange];
-	val rngZIn:Rail[LongRange];
-	val rngTBnd:Rail[LongRange];
-	val rngT:Rail[LongRange];
-	val rngYSnd:Rail[LongRange];
-	val rngZSnd:Rail[LongRange];
+	val rngX : Rail[LongRange];
+	val rngYOut : Rail[LongRange];
+	val rngYInBnd : Rail[LongRange];
+	val rngYIn : Rail[LongRange];
+	val rngZOut : Rail[LongRange];
+	val rngZInBnd : Rail[LongRange];
+	val rngZIn : Rail[LongRange];
+	val rngTBnd : Rail[LongRange];
+	val rngT : Rail[LongRange];
+	val rngYSnd : Rail[LongRange];
+	val rngZSnd : Rail[LongRange];
 
-	def this(x:Long, y:Long, z:Long, t:Long, nid:Long)
+	def this(x : Long,y : Long,z : Long,t : Long, nid : Long)
 	{
 		super(x,y,z,t);
 
@@ -925,17 +943,17 @@ public class Dslash extends Lattice {
 		// dht2 = new CUDAHalfWilsonMult();
 
 		// Console.OUT.println("init: " + here.id());
-		// dv = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(gpu as Place, x*y*z*t*3*4*1*2, 0 as Double)));
-		// dw = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(gpu as Place, x*y*z*t*3*4*1*2, 0 as Double)));
+		// dv = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(here.child(0), x*y*z*t*3*4*1*2, 0 as Double)));
+		// dw = PlaceLocalHandle.make[Cell[GlobalRail[Double]]](Place.places(), ()=>new Cell(CUDAUtilities.makeGlobalRail(here.child(0), x*y*z*t*3*4*1*2, 0 as Double)));
 		// dv = new CUDAWilsonVectorField(x,y,z,t,1);
 		// dw = new CUDAWilsonVectorField(x,y,z,t,1);
 
-		var no:Long;
-		var ni:Long;
-		var io:Long;
-		var ii:Long;
-		var g0:Long;
-		var g1:Long;
+		var no : Long;
+		var ni : Long;
+		var io : Long;
+		var ii : Long;
+		var g0 : Long;
+		var g1 : Long;
 		for(tid in 0..(nThreads - 1)){
 			// ht1(tid) = new HalfWilsonMult();
 			// ht2(tid) = new HalfWilsonMult();
@@ -986,7 +1004,7 @@ public class Dslash extends Lattice {
 	//   CUDAUtilities.deleteGlobalRail(dw.v()());	    
 	// }
 
-	def MakeXPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
+	def MakeXPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -996,7 +1014,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeXPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
+	def MakeXPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1044,7 +1062,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeXMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
+	def MakeXMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1055,7 +1073,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeXMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
+	def MakeXMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1148,7 +1166,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeYPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
+	def MakeYPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1160,7 +1178,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeYPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
+	def MakeYPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1214,7 +1232,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeYMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
+	def MakeYMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1227,7 +1245,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeYMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
+	def MakeYMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1325,7 +1343,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeZPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
+	def MakeZPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -1337,7 +1355,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeZPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
+	def MakeZPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1391,7 +1409,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeZMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
+	def MakeZMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -1404,7 +1422,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeZMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
+	def MakeZMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1502,7 +1520,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeTPBnd(bx:CUDALatticeComm, w:WilsonVectorField)
+	def MakeTPBnd(bx : CUDALatticeComm, w : WilsonVectorField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -1512,7 +1530,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeTPBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu})
+	def MakeTPBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1538,14 +1556,14 @@ public class Dslash extends Lattice {
 		  var pos:Long = i;
 
 		  //h0 = 2.0*w2
-		  val h0_0r = 2.0*w(pos+12*nsite_);		val h0_0i = 2.0*w(pos+13*nsite_);
-		  val h0_1r = 2.0*w(pos+14*nsite_);		val h0_1i = 2.0*w(pos+15*nsite_);
-		  val h0_2r = 2.0*w(pos+16*nsite_);		val h0_2i = 2.0*w(pos+17*nsite_);
+		  val h0_0r = 2.0f*w(pos+12*nsite_);		val h0_0i = 2.0f*w(pos+13*nsite_);
+		  val h0_1r = 2.0f*w(pos+14*nsite_);		val h0_1i = 2.0f*w(pos+15*nsite_);
+		  val h0_2r = 2.0f*w(pos+16*nsite_);		val h0_2i = 2.0f*w(pos+17*nsite_);
 
 		  //h1 = 2.0*w3
-		  val h1_0r = 2.0*w(pos+18*nsite_);		val h1_0i = 2.0*w(pos+19*nsite_);
-		  val h1_1r = 2.0*w(pos+20*nsite_);		val h1_1i = 2.0*w(pos+21*nsite_);
-		  val h1_2r= 2.0*w(pos+22*nsite_);		val h1_2i= 2.0*w(pos+23*nsite_);
+		  val h1_0r = 2.0f*w(pos+18*nsite_);		val h1_0i = 2.0f*w(pos+19*nsite_);
+		  val h1_1r = 2.0f*w(pos+20*nsite_);		val h1_1i = 2.0f*w(pos+21*nsite_);
+		  val h1_2r= 2.0f*w(pos+22*nsite_);		val h1_2i= 2.0f*w(pos+23*nsite_);
 
 		  // ht1(tid).Store(bx.SendBuffer(bx.TP).v(),i);
 		  bx(i*12+0) = h0_0r;		bx(i*12+1) = h0_0i;
@@ -1561,7 +1579,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MakeTMBnd(bx:CUDALatticeComm, w:WilsonVectorField, u:SU3MatrixField)
+	def MakeTMBnd(bx : CUDALatticeComm, w : WilsonVectorField, u : SU3MatrixField)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -1572,7 +1590,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MakeTMBndKernel(bx:GlobalRail[Double]{home==gpu}, w:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu})
+	def MakeTMBndKernel(bx : GlobalRail[Double]{home==gpu}, w : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu})
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1597,14 +1615,14 @@ public class Dslash extends Lattice {
 		  // ht1(tid).PackTM(w.v(),nsite-Nxyz + i);
 		  var pos:Long = nsite_-Nxyz_ + i;
 		  //h0 = 2.0*w0
-		  val h0_0r_t = 2.0*w(pos+0*nsite_);		val h0_0i_t = 2.0*w(pos+1*nsite_);
-		  val h0_1r_t = 2.0*w(pos+2*nsite_);		val h0_1i_t = 2.0*w(pos+3*nsite_);
-		  val h0_2r_t = 2.0*w(pos+4*nsite_);		val h0_2i_t = 2.0*w(pos+5*nsite_);
+		  val h0_0r_t = 2.0f*w(pos+0*nsite_);		val h0_0i_t = 2.0f*w(pos+1*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+2*nsite_);		val h0_1i_t = 2.0f*w(pos+3*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+4*nsite_);		val h0_2i_t = 2.0f*w(pos+5*nsite_);
 
 		  //h1 = 2.0*w1
-		  val h1_0r_t = 2.0*w(pos+6*nsite_);		val h1_0i_t = 2.0*w(pos+7*nsite_);
-		  val h1_1r_t = 2.0*w(pos+8*nsite_);		val h1_1i_t = 2.0*w(pos+9*nsite_);
-		  val h1_2r_t= 2.0*w(pos+10*nsite_);		val h1_2i_t= 2.0*w(pos+11*nsite_);
+		  val h1_0r_t = 2.0f*w(pos+6*nsite_);		val h1_0i_t = 2.0f*w(pos+7*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+8*nsite_);		val h1_1i_t = 2.0f*w(pos+9*nsite_);
+		  val h1_2r_t= 2.0f*w(pos+10*nsite_);		val h1_2i_t= 2.0f*w(pos+11*nsite_);
 
 		  // ht2(tid).MultUt(u.v(),offset_ut + nsite-Nxyz + i,ht1(tid));
 		  pos = offset_ut_ + nsite_-Nxyz_ + i;
@@ -1665,7 +1683,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetXPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
+	def SetXPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1676,10 +1694,157 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	// def SetXPBndKernel(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
-        // SetXPBndKernel(dx.RecvDeviceBuffer(bx.XP).v()(), dv.v()(), du.v()(), -cks);
-	def SetXPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
-			   u:GlobalRail[Double]{home==gpu}, cks:Double)
+/*
+	def SetBndKernel(bxp : GlobalRail[Double]{home==gpu}, bxm : GlobalRail[Double]{home==gpu}, 
+			 byp : GlobalRail[Double]{home==gpu}, bym : GlobalRail[Double]{home==gpu}, 
+			 bzp : GlobalRail[Double]{home==gpu}, bzm : GlobalRail[Double]{home==gpu}, 
+			 btp : GlobalRail[Double]{home==gpu}, btm : GlobalRail[Double]{home==gpu}, 
+			 v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_ux_ = offset_ux;
+	  val offset_uy_ = offset_ux;
+	  val offset_uz_ = offset_ux;
+	  val offset_ut_ = offset_ux;
+
+	  finish async at (gpu) @CUDA @CUDADirectParams {
+	    val blocks = CUDAUtilities.autoBlocks();
+	    val threads = CUDAUtilities.autoThreads();
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {
+	  	val gid = bid * threads + tid;
+	  	val gids = blocks * threads;
+
+		// SetXPBndKernel
+	  	for (var i:Long = gid; i < Ny_*Nz_*Nt_; i += gids) {
+
+		  // ht1(tid).Load(bx.RecvBuffer(bx.XP).v(),i);
+		  var pos:Long = i;
+
+		  val h0_0r_t  = bxp(pos*12+0);		val h0_0i_t  = bxp(pos*12+1);
+		  val h0_1r_t  = bxp(pos*12+2);		val h0_1i_t  = bxp(pos*12+3);
+		  val h0_2r_t  = bxp(pos*12+4);		val h0_2i_t  = bxp(pos*12+5);
+
+		  val h1_0r_t  = bxp(pos*12+6);		val h1_0i_t  = bxp(pos*12+7);
+		  val h1_1r_t  = bxp(pos*12+8);		val h1_1i_t  = bxp(pos*12+9);
+		  val h1_2r_t = bxp(pos*12+10);	        val h1_2i_t = bxp(pos*12+11);
+
+		  // ht2(tid).MultU(u.v(),offset_ux + i*Nx + Nx - 1,ht1(tid));
+		  pos = offset_ux_ + i*Nx_ + Nx_ - 1;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r= 	u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i= 	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackXP(v.v(),i*Nx + Nx - 1,cks);
+		  pos = i*Nx_ + Nx_ - 1;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -i*h1
+		  v(pos+12*nsite_)= v(pos+12*nsite_)+ cks*h1_0i;		v(pos+13*nsite_)= v(pos+13*nsite_)- cks*h1_0r;
+		  v(pos+14*nsite_)= v(pos+14*nsite_)+ cks*h1_1i;		v(pos+15*nsite_)= v(pos+15*nsite_)- cks*h1_1r;
+		  v(pos+16*nsite_)= v(pos+16*nsite_)+ cks*h1_2i;		v(pos+17*nsite_)= v(pos+17*nsite_)- cks*h1_2r;
+
+		  //w4 += -i*h0
+		  v(pos+18*nsite_)= v(pos+18*nsite_)+ cks*h0_0i;		v(pos+19*nsite_)= v(pos+19*nsite_)- cks*h0_0r;
+		  v(pos+20*nsite_)= v(pos+20*nsite_)+ cks*h0_1i;		v(pos+21*nsite_)= v(pos+21*nsite_)- cks*h0_1r;
+		  v(pos+22*nsite_)= v(pos+22*nsite_)+ cks*h0_2i;		v(pos+23*nsite_)= v(pos+23*nsite_)- cks*h0_2r;
+		}
+
+		// SetXMBndKernel
+	  	for (var i:Long = gid; i < Ny_*Nz_*Nt_; i += gids) {
+		  // ht1(tid).Load(bx.RecvBuffer(bx.XM).v(),i);
+		  var pos:Long = i;
+
+		  val h0_0r  = bxm(pos*12+0);		val h0_0i  = bxm(pos*12+1);
+		  val h0_1r  = bxm(pos*12+2);		val h0_1i  = bxm(pos*12+3);
+		  val h0_2r  = bxm(pos*12+4);		val h0_2i  = bxm(pos*12+5);
+
+		  val h1_0r  = bxm(pos*12+6);		val h1_0i  = bxm(pos*12+7);
+		  val h1_1r  = bxm(pos*12+8);		val h1_1i  = bxm(pos*12+9);
+		  val h1_2r = bxm(pos*12+10);	        val h1_2i = bxm(pos*12+11);
+
+		  // ht1(tid).UnpackXM(v.v(),i*Nx,cks);
+		  pos = i*Nx_;  
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += i*h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2r;
+
+		  //w4 += i*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2r;
+		}
+	      }
+	    }
+	  }
+	}
+*/
+	def SetXPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
+			   u : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1782,7 +1947,147 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetXMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
+	def SetXBndKernel(bxp : GlobalRail[Double]{home==gpu}, bxm : GlobalRail[Double]{home==gpu}, 
+			 v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_ux_ = offset_ux;
+
+	  finish async at (gpu) @CUDA @CUDADirectParams {
+	    val blocks = CUDAUtilities.autoBlocks();
+	    val threads = CUDAUtilities.autoThreads();
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {
+	  	val gid = bid * threads + tid;
+	  	val gids = blocks * threads;
+
+		// SetXPBndKernel
+	  	for (var i:Long = gid; i < Ny_*Nz_*Nt_; i += gids) {
+
+		  // ht1(tid).Load(bx.RecvBuffer(bx.XP).v(),i);
+		  var pos:Long = i;
+
+		  val h0_0r_t  = bxp(pos*12+0);		val h0_0i_t  = bxp(pos*12+1);
+		  val h0_1r_t  = bxp(pos*12+2);		val h0_1i_t  = bxp(pos*12+3);
+		  val h0_2r_t  = bxp(pos*12+4);		val h0_2i_t  = bxp(pos*12+5);
+
+		  val h1_0r_t  = bxp(pos*12+6);		val h1_0i_t  = bxp(pos*12+7);
+		  val h1_1r_t  = bxp(pos*12+8);		val h1_1i_t  = bxp(pos*12+9);
+		  val h1_2r_t = bxp(pos*12+10);	        val h1_2i_t = bxp(pos*12+11);
+
+		  // ht2(tid).MultU(u.v(),offset_ux + i*Nx + Nx - 1,ht1(tid));
+		  pos = offset_ux_ + i*Nx_ + Nx_ - 1;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r= 	u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i= 	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackXP(v.v(),i*Nx + Nx - 1,cks);
+		  pos = i*Nx_ + Nx_ - 1;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -i*h1
+		  v(pos+12*nsite_)= v(pos+12*nsite_)+ cks*h1_0i;		v(pos+13*nsite_)= v(pos+13*nsite_)- cks*h1_0r;
+		  v(pos+14*nsite_)= v(pos+14*nsite_)+ cks*h1_1i;		v(pos+15*nsite_)= v(pos+15*nsite_)- cks*h1_1r;
+		  v(pos+16*nsite_)= v(pos+16*nsite_)+ cks*h1_2i;		v(pos+17*nsite_)= v(pos+17*nsite_)- cks*h1_2r;
+
+		  //w4 += -i*h0
+		  v(pos+18*nsite_)= v(pos+18*nsite_)+ cks*h0_0i;		v(pos+19*nsite_)= v(pos+19*nsite_)- cks*h0_0r;
+		  v(pos+20*nsite_)= v(pos+20*nsite_)+ cks*h0_1i;		v(pos+21*nsite_)= v(pos+21*nsite_)- cks*h0_1r;
+		  v(pos+22*nsite_)= v(pos+22*nsite_)+ cks*h0_2i;		v(pos+23*nsite_)= v(pos+23*nsite_)- cks*h0_2r;
+		}
+
+		// SetXMBndKernel
+	  	for (var i:Long = gid; i < Ny_*Nz_*Nt_; i += gids) {
+		  // ht1(tid).Load(bx.RecvBuffer(bx.XM).v(),i);
+		  var pos:Long = i;
+
+		  val h0_0r  = bxm(pos*12+0);		val h0_0i  = bxm(pos*12+1);
+		  val h0_1r  = bxm(pos*12+2);		val h0_1i  = bxm(pos*12+3);
+		  val h0_2r  = bxm(pos*12+4);		val h0_2i  = bxm(pos*12+5);
+
+		  val h1_0r  = bxm(pos*12+6);		val h1_0i  = bxm(pos*12+7);
+		  val h1_1r  = bxm(pos*12+8);		val h1_1i  = bxm(pos*12+9);
+		  val h1_2r = bxm(pos*12+10);	        val h1_2i = bxm(pos*12+11);
+
+		  // ht1(tid).UnpackXM(v.v(),i*Nx,cks);
+		  pos = i*Nx_;  
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += i*h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2r;
+
+		  //w4 += i*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2r;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def SetXMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -1792,7 +2097,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetXMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetXMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1848,7 +2153,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetYPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
+	def SetYPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1863,8 +2168,153 @@ public class Dslash extends Lattice {
 
   // rngYOut(tid) = new LongRange(io * Nt*Nz / no,(io + 1) * Nt*Nz / no-1);
   // rngYInBnd(tid)  = new LongRange(ii * Nx / ni,(ii + 1) * Nx / ni-1);
-	def SetYPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
-			   u:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetYBndKernel(bxp : GlobalRail[Double]{home==gpu}, bxm : GlobalRail[Double]{home==gpu}, 
+			   v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_uy_ = offset_uy;
+
+	  val threads = Int.operator_as(Nx_);
+	  val blocks = Int.operator_as(Nz_*Nt_);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams {
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {
+		// for(i in rngYOut(tid)){
+	  	// for (var i:Long = gid; i < Nz_*Nt_; i += gids) {
+		val i = bid; 
+		val j = tid; 
+		{
+		  // for(i in rngYInBnd(tid)){
+// 		  val j = tid; {
+		  // ht1(tid).Load(bx.RecvBuffer(bx.YP).v(),i*Nx + j);
+		  var pos:Long = i*Nx_ + j;
+
+		  val h0_0r_t  = bxp(pos*12+0);		val h0_0i_t  = bxp(pos*12+1);
+		  val h0_1r_t  = bxp(pos*12+2);		val h0_1i_t  = bxp(pos*12+3);
+		  val h0_2r_t  = bxp(pos*12+4);		val h0_2i_t  = bxp(pos*12+5);
+
+		  val h1_0r_t  = bxp(pos*12+6);		val h1_0i_t  = bxp(pos*12+7);
+		  val h1_1r_t  = bxp(pos*12+8);		val h1_1i_t  = bxp(pos*12+9);
+		  val h1_2r_t = bxp(pos*12+10);	        val h1_2i_t = bxp(pos*12+11);
+
+		  // ht2(tid).MultU(u.v(),offset_uy + i*Nxy + Nxy-Nx + j,ht1(tid));
+		  pos = offset_uy_ + i*Nxy_ + Nxy_-Nx_ + j;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r= 	u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i= 	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackYP(v.v(),i*Nxy + Nxy-Nx + j,cks);
+		  pos = i*Nxy_ + Nxy_-Nx_ + j;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) - cks*h1_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) - cks*h1_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) - cks*h1_2i;
+
+		  //w4 += cks*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h0_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h0_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h0_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2i;
+		}
+		{
+		  // for(i in rngYInBnd(tid)){
+// 		  val j = tid; {
+// 		  {
+		    // ht1(tid).Load(bx.RecvBuffer(bx.YM).v(),i*Nx + j);
+		    var pos:Long = i*Nx_ + j;
+
+		    val h0_0r  = bxm(pos*12+0);		val h0_0i  = bxm(pos*12+1);
+		    val h0_1r  = bxm(pos*12+2);		val h0_1i  = bxm(pos*12+3);
+		    val h0_2r  = bxm(pos*12+4);		val h0_2i  = bxm(pos*12+5);
+
+		    val h1_0r  = bxm(pos*12+6);		val h1_0i  = bxm(pos*12+7);
+		    val h1_1r  = bxm(pos*12+8);		val h1_1i  = bxm(pos*12+9);
+		    val h1_2r = bxm(pos*12+10);	        val h1_2i = bxm(pos*12+11);
+
+		    // ht1(tid).UnpackYM(v.v(),i*Nxy + j,cks);
+		    pos = i*Nxy_ + j;
+
+		    v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		    v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		    v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		    v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		    v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		    v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		    //w3 += cks*h1
+		    v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h1_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0i;
+		    v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h1_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1i;
+		    v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h1_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2i;
+
+		    //w4 += -h0
+		    v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) - cks*h0_0i;
+		    v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) - cks*h0_1i;
+		    v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) - cks*h0_2i;
+// 		  }
+		}
+	      }
+	    }
+	  }
+	}
+
+	def SetYPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
+			   u : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -1970,7 +2420,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetYMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
+	def SetYMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -1982,7 +2432,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetYMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetYMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2043,7 +2493,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetZPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
+	def SetZPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -2056,8 +2506,154 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetZPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
-			   u:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetZBndKernel(bxp : GlobalRail[Double]{home==gpu}, bxm : GlobalRail[Double]{home==gpu}, 
+			  v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_uz_ = offset_uz;
+
+	  val threads = Int.operator_as(Nxy_);
+	  val blocks = Int.operator_as(Nt_);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams {
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {
+		// for(i in rngYOut(tid)){
+	  	// for (var i:Long = gid; i < Nz_*Nt_; i += gids) {
+		val i = bid;
+		val j = tid; 
+		{
+		  // for(i in rngYInBnd(tid)){
+// 		  val j = tid; {
+		    // ht1(tid).Load(bx.RecvBuffer(bx.ZP).v(),i*Nxy + j);
+		    var pos:Long = i*Nxy_ + j;
+
+		    val h0_0r_t  = bxp(pos*12+0);		val h0_0i_t  = bxp(pos*12+1);
+		    val h0_1r_t  = bxp(pos*12+2);		val h0_1i_t  = bxp(pos*12+3);
+		    val h0_2r_t  = bxp(pos*12+4);		val h0_2i_t  = bxp(pos*12+5);
+
+		    val h1_0r_t  = bxp(pos*12+6);		val h1_0i_t  = bxp(pos*12+7);
+		    val h1_1r_t  = bxp(pos*12+8);		val h1_1i_t  = bxp(pos*12+9);
+		    val h1_2r_t = bxp(pos*12+10);	        val h1_2i_t = bxp(pos*12+11);
+
+		    // ht2(tid).MultU(u.v(),offset_uz + i*Nxyz + Nxyz-Nxy + j,ht1(tid));
+		    pos = offset_uz_ + i*Nxyz_ + Nxyz_-Nxy_ + j;
+
+		    val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		    u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		    u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		    val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		    u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		    u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		    val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		    u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		    u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		    val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		    u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		    u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		    val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		    u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		    u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		    val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		    u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		    u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		    val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		    u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		    u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		    val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		    u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		    u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		    val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		    u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		    u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		    val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		    u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		    u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		    val h1_2r= 	u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		    u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		    u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		    val h1_2i= 	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		    u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		    u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		    // ht2(tid).UnpackZP(v.v(),i*Nxyz + Nxyz-Nxy + j,cks);
+		    pos = i*Nxyz_ + Nxyz_-Nxy_ + j;
+
+		    v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		    v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		    v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		    v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		    v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		    v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		    //w3 += -i*h0
+		    v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h0_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) - cks*h0_0r;
+		    v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h0_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) - cks*h0_1r;
+		    v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h0_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) - cks*h0_2r;
+
+		    //w4 += i*h1
+		    v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h1_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h1_0r;
+		    v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h1_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h1_1r;
+		    v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h1_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h1_2r;
+		  }
+		{
+		  // for(i in rngYInBnd(tid)){
+// 		  val j = tid; {
+// 		  {
+		    // ht1(tid).Load(bx.RecvBuffer(bx.ZM).v(),i*Nxy + j);
+		    var pos:Long = i*Nxy_ + j;
+
+		    val h0_0r  = bxm(pos*12+0);		val h0_0i  = bxm(pos*12+1);
+		    val h0_1r  = bxm(pos*12+2);		val h0_1i  = bxm(pos*12+3);
+		    val h0_2r  = bxm(pos*12+4);		val h0_2i  = bxm(pos*12+5);
+
+		    val h1_0r  = bxm(pos*12+6);		val h1_0i  = bxm(pos*12+7);
+		    val h1_1r  = bxm(pos*12+8);		val h1_1i  = bxm(pos*12+9);
+		    val h1_2r = bxm(pos*12+10);	        val h1_2i = bxm(pos*12+11);
+
+		    // ht1(tid).UnpackZM(v.v(),i*Nxyz + j,cks);
+		    pos = i*Nxyz_ + j;
+
+		    v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		    v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		    v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		    v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		    v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		    v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		    //w3 += i*h0
+		    v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h0_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h0_0r;
+		    v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h0_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h0_1r;
+		    v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h0_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h0_2r;
+
+		    //w4 += -i*h1
+		    v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h1_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) - cks*h1_0r;
+		    v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h1_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) - cks*h1_1r;
+		    v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h1_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) - cks*h1_2r;
+// 		  }
+		}
+	      }
+	    }
+	  }
+	}		    
+
+	def SetZPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
+			   u : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2164,7 +2760,7 @@ public class Dslash extends Lattice {
 	  }
 	}		    
 
-	def SetZMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
+	def SetZMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -2176,7 +2772,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetZMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetZMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2238,7 +2834,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetTPBnd(bx:CUDALatticeComm, v:WilsonVectorField, u:SU3MatrixField, cks:Double)
+	def SetTPBnd(bx : CUDALatticeComm, v : WilsonVectorField, u : SU3MatrixField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -2249,8 +2845,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetTPBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu},
-			   u:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetTPBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu},
+			   u : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2344,7 +2940,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def SetTMBnd(bx:CUDALatticeComm, v:WilsonVectorField, cks:Double)
+	def SetTMBnd(bx : CUDALatticeComm, v : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngTBnd(tid)){
@@ -2354,7 +2950,7 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def SetTMBndKernel(bx:GlobalRail[Double]{home==gpu}, v:GlobalRail[Double]{home==gpu}, cks:Double)
+	def SetTMBndKernel(bx : GlobalRail[Double]{home==gpu}, v : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2403,7 +2999,1571 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultXP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+        def SetTBndKernel(bxp : GlobalRail[Double]{home==gpu}, bxm : GlobalRail[Double]{home==gpu},
+			  v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_ut_ = offset_ut;
+
+	  finish async at (gpu) @CUDA @CUDADirectParams {
+	    val blocks = CUDAUtilities.autoBlocks();
+	    val threads = CUDAUtilities.autoThreads();
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {
+	  	val gid = bid * threads + tid;
+	  	val gids = blocks * threads;
+	  	for (var i:Long = gid; i < Nxyz_; i += gids) {
+
+		  // ht1(tid).Load(bx.RecvBuffer(bx.TP).v(),i);
+		  var pos:Long = i;
+
+		  val h0_0r_t  = bxp(pos*12+0);		val h0_0i_t  = bxp(pos*12+1);
+		  val h0_1r_t  = bxp(pos*12+2);		val h0_1i_t  = bxp(pos*12+3);
+		  val h0_2r_t  = bxp(pos*12+4);		val h0_2i_t  = bxp(pos*12+5);
+
+		  val h1_0r_t  = bxp(pos*12+6);		val h1_0i_t  = bxp(pos*12+7);
+		  val h1_1r_t  = bxp(pos*12+8);		val h1_1i_t  = bxp(pos*12+9);
+		  val h1_2r_t = bxp(pos*12+10);	        val h1_2i_t = bxp(pos*12+11);
+
+		  // ht2(tid).MultU(u.v(),offset_ut + nsite-Nxyz + i,ht1(tid));
+		  pos = offset_ut_ + nsite_-Nxyz_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackTP(v.v(),nsite-Nxyz + i,cks);
+		  pos = nsite_-Nxyz_ + i;
+
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h0_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h0_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h0_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h0_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h0_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h0_2i;
+
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h1_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h1_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h1_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h1_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h1_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h1_2i;
+		}
+
+		// SetTMBndKernel
+	  	for (var i:Long = gid; i < Nxyz_; i += gids) {
+
+		  // ht1(tid).Load(bx.RecvBuffer(bx.TM).v(),i);
+		  var pos:Long = i;
+
+		  val h0_0r  = bxm(pos*12+0);		val h0_0i  = bxm(pos*12+1);
+		  val h0_1r  = bxm(pos*12+2);		val h0_1i  = bxm(pos*12+3);
+		  val h0_2r  = bxm(pos*12+4);		val h0_2i  = bxm(pos*12+5);
+
+		  val h1_0r  = bxm(pos*12+6);		val h1_0i  = bxm(pos*12+7);
+		  val h1_1r  = bxm(pos*12+8);		val h1_1i  = bxm(pos*12+9);
+		  val h1_2r = bxm(pos*12+10);	        val h1_2i = bxm(pos*12+11);
+
+		  // ht1(tid).UnpackTM(v.v(),i,cks);
+// 		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def MultKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val size = v.size;
+
+	  val offset_ux_ = offset_ux;
+	  val offset_uy_ = offset_uy;
+	  val offset_uz_ = offset_uz;
+	  val offset_ut_ = offset_ut;
+
+	  val threads = Int.operator_as(Nxy_);
+	  val blocks = Int.operator_as(nsite_ / threads) + ((nsite_ % threads > 0) ? 1n : 0n);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams{
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {	  
+
+		var i:Long;
+
+	  	val gid = bid * threads + tid;
+	  	val gids = blocks * threads;
+
+		// Copy previous iteration result
+	  	for (i = gid; i < size; i += gids) {
+	  	  v(i) = w(i);
+	  	}
+
+		val tid_x = tid % Nx_;
+		val tid_y = tid / Nx_;
+		val bid_z = bid % Nz_;
+		val bid_t = bid / Nz_;
+
+		//MultTPKernel
+		i = tid + bid*Nxy_; if (i < nsite_-Nxyz_) {
+		  var pos:Long = i + Nxyz_;
+
+		  //h0 = 2.0*w2
+		  val h0_0r_t = 2.0f*w(pos+12*nsite_);		val h0_0i_t = 2.0f*w(pos+13*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+14*nsite_);		val h0_1i_t = 2.0f*w(pos+15*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+16*nsite_);		val h0_2i_t = 2.0f*w(pos+17*nsite_);
+
+		  //h1 = 2.0*w3
+		  val h1_0r_t = 2.0f*w(pos+18*nsite_);		val h1_0i_t = 2.0f*w(pos+19*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+20*nsite_);		val h1_1i_t = 2.0f*w(pos+21*nsite_);
+		  val h1_2r_t = 2.0f*w(pos+22*nsite_);		val h1_2i_t = 2.0f*w(pos+23*nsite_);
+
+		  // ht2(tid).MultU(u.v(),offset_ut + i,ht1(tid));
+		  pos = offset_ut_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackTP(v.v(),i,cks);
+		  pos = i;
+
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h0_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h0_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h0_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h0_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h0_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h0_2i;
+
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h1_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h1_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h1_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h1_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h1_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h1_2i;
+		}
+
+		//MultTMKernel
+		if (i > Nxyz_) {
+		  var pos:Long = i - Nxyz_;
+
+		  //h0 = 2.0*w0
+		  val h0_0r_t = 2.0f*w(pos+0*nsite_);		val h0_0i_t = 2.0f*w(pos+1*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+2*nsite_);		val h0_1i_t = 2.0f*w(pos+3*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+4*nsite_);		val h0_2i_t = 2.0f*w(pos+5*nsite_);
+
+		  //h1 = 2.0*w1
+		  val h1_0r_t = 2.0f*w(pos+6*nsite_);		val h1_0i_t = 2.0f*w(pos+7*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+8*nsite_);		val h1_1i_t = 2.0f*w(pos+9*nsite_);
+		  val h1_2r_t = 2.0f*w(pos+10*nsite_);		val h1_2i_t = 2.0f*w(pos+11*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_ut + i,ht1(tid));
+		  pos = offset_ut_ + i - Nxyz_;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t + 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t + 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackTM(v.v(),i + Nxyz,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+		}
+
+		// MultXPKernel
+		i = tid + bid*Nxy_; if (tid_x < Nx_ - 1) {
+                  // dht1.PackXP(w,i*Nx + j + 1);
+		  var pos:Long = i + 1;
+
+		  //h0 = w0 + i*w3
+		  val h0_0r_t = w(pos+0*nsite_) - w(pos+19*nsite_);		val h0_0i_t = w(pos+1*nsite_) + w(pos+18*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) - w(pos+21*nsite_);		val h0_1i_t = w(pos+3*nsite_) + w(pos+20*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) - w(pos+23*nsite_);		val h0_2i_t = w(pos+5*nsite_) + w(pos+22*nsite_);
+
+		  //h1 = w1 + i*w2
+		  val h1_0r_t = w(pos+6*nsite_) - w(pos+13*nsite_);		val h1_0i_t = w(pos+7*nsite_) + w(pos+12*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) - w(pos+15*nsite_);		val h1_1i_t = w(pos+9*nsite_) + w(pos+14*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)- w(pos+17*nsite_);		val h1_2i_t = w(pos+11*nsite_)+ w(pos+16*nsite_);
+
+	          // dht2.MultU(v,offset_ux + i*Nx + j,dht1);
+		  pos = offset_ux_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r= 	u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i= 	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // dht2.UnpackXP(v,i*Nx + j,cks);		
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -i*h1
+		  v(pos+12*nsite_)= v(pos+12*nsite_)+ cks*h1_0i;		v(pos+13*nsite_)= v(pos+13*nsite_)- cks*h1_0r;
+		  v(pos+14*nsite_)= v(pos+14*nsite_)+ cks*h1_1i;		v(pos+15*nsite_)= v(pos+15*nsite_)- cks*h1_1r;
+		  v(pos+16*nsite_)= v(pos+16*nsite_)+ cks*h1_2i;		v(pos+17*nsite_)= v(pos+17*nsite_)- cks*h1_2r;
+
+		  //w4 += -i*h0
+		  v(pos+18*nsite_)= v(pos+18*nsite_)+ cks*h0_0i;		v(pos+19*nsite_)= v(pos+19*nsite_)- cks*h0_0r;
+		  v(pos+20*nsite_)= v(pos+20*nsite_)+ cks*h0_1i;		v(pos+21*nsite_)= v(pos+21*nsite_)- cks*h0_1r;
+		  v(pos+22*nsite_)= v(pos+22*nsite_)+ cks*h0_2i;		v(pos+23*nsite_)= v(pos+23*nsite_)- cks*h0_2r;
+		}
+
+
+		//MultXMKernel
+		if (tid_x > 0) {
+		  // ht1(tid).PackXM(w.v(),i*Nx + j - 1);
+		  var pos:Long = i - 1;
+
+		  //h0 = w0 - i*w3
+		  val h0_0r_t = w(pos+0*nsite_) + w(pos+19*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+18*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) + w(pos+21*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+20*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) + w(pos+23*nsite_);		val h0_2i_t = w(pos+5*nsite_) - w(pos+22*nsite_);
+
+		  //h1 = w1 - i*w2
+		  val h1_0r_t = w(pos+6*nsite_) + w(pos+13*nsite_);		val h1_0i_t = w(pos+7*nsite_) - w(pos+12*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) + w(pos+15*nsite_);		val h1_1i_t = w(pos+9*nsite_) - w(pos+14*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)+ w(pos+17*nsite_);		val h1_2i_t = w(pos+11*nsite_)- w(pos+16*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_ux + i*Nx + j - 1,ht1(tid));
+		  pos = offset_ux_ + i - 1;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t+ 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t+ 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackXM(v.v(),i*Nx + j,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += i*h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2r;
+
+		  //w4 += i*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2r;
+		}
+
+		//MultYPKernel
+		i = tid + bid*Nxy_; if (tid_y < Ny_ - 1) {
+		  // ht1(tid).PackYP(w.v(),i*Nxy + j + Nx);
+		  var pos:Long = i + Nx_;
+
+		  //h0 = w0 + w3
+		  val h0_0r_t = w(pos+0*nsite_) + w(pos+18*nsite_);		val h0_0i_t = w(pos+1*nsite_) + w(pos+19*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) + w(pos+20*nsite_);		val h0_1i_t = w(pos+3*nsite_) + w(pos+21*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) + w(pos+22*nsite_);		val h0_2i_t = w(pos+5*nsite_) + w(pos+23*nsite_);
+
+		  //h1 = w1 - w2
+		  val h1_0r_t = w(pos+6*nsite_) - w(pos+12*nsite_);		val h1_0i_t = w(pos+7*nsite_) - w(pos+13*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) - w(pos+14*nsite_);		val h1_1i_t = w(pos+9*nsite_) - w(pos+15*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)- w(pos+16*nsite_);		val h1_2i_t = w(pos+11*nsite_)- w(pos+17*nsite_);
+
+		  // ht2(tid).MultU(u.v(),offset_uy + i*Nxy + j,ht1(tid));
+		  pos = offset_uy_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackYP(v.v(),i*Nxy + j,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) - cks*h1_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) - cks*h1_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) - cks*h1_2i;
+
+		  //w4 += cks*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h0_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h0_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h0_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2i;
+		}
+
+		//MultYMKernel
+		if (tid_y > 0) {
+		  // ht1(tid).PackYM(w.v(),i*Nxy + j);
+		  var pos:Long = i - Nx_;
+
+		  //h0 = w0 - w3
+		  val h0_0r_t = w(pos+0*nsite_) - w(pos+18*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+19*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) - w(pos+20*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+21*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) - w(pos+22*nsite_);		val h0_2i_t = w(pos+5*nsite_) - w(pos+23*nsite_);
+
+		  //h1 = w1 + w2
+		  val h1_0r_t = w(pos+6*nsite_) + w(pos+12*nsite_);		val h1_0i_t = w(pos+7*nsite_) + w(pos+13*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) + w(pos+14*nsite_);		val h1_1i_t = w(pos+9*nsite_) + w(pos+15*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)+ w(pos+16*nsite_);		val h1_2i_t = w(pos+11*nsite_)+ w(pos+17*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_uy + i*Nxy + j,ht1(tid));
+		  pos = offset_uy_ + i - Nx_;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t + 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t + 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackYM(v.v(),i*Nxy + j + Nx,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += cks*h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h1_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h1_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h1_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2i;
+
+		  //w4 += -h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) - cks*h0_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) - cks*h0_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) - cks*h0_2i;
+		}
+
+		// MultZPKernel
+		i = tid + bid*Nxy_; if (bid_z < Nz_ - 1) {
+		  // ht1(tid).PackZP(w.v(),i*Nxyz + j + Nxy);
+	          var pos:Long = i + Nxy_;
+
+		  //h0 = w0 + i*w2
+		  val h0_0r_t = w(pos+0*nsite_) - w(pos+13*nsite_);		val h0_0i_t = w(pos+1*nsite_) + w(pos+12*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) - w(pos+15*nsite_);		val h0_1i_t = w(pos+3*nsite_) + w(pos+14*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) - w(pos+17*nsite_);		val h0_2i_t = w(pos+5*nsite_) + w(pos+16*nsite_);
+
+		  //h1 = w1 - i*w3
+		  val h1_0r_t = w(pos+6*nsite_) + w(pos+19*nsite_);		val h1_0i_t = w(pos+7*nsite_) - w(pos+18*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) + w(pos+21*nsite_);		val h1_1i_t = w(pos+9*nsite_) - w(pos+20*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)+ w(pos+23*nsite_);		val h1_2i_t = w(pos+11*nsite_)- w(pos+22*nsite_);
+
+		  // ht2(tid).MultU(u.v(),offset_uz + i*Nxyz + j,ht1(tid));
+		  pos = offset_uz_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackZP(v.v(),i*Nxyz + j,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -i*h0
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h0_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) - cks*h0_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h0_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) - cks*h0_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h0_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) - cks*h0_2r;
+
+		  //w4 += i*h1
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h1_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h1_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h1_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h1_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h1_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h1_2r;
+		}
+
+ 		//MultZMKernel
+		if (bid_z > 0) {
+		  // ht1(tid).PackZM(w.v(),i*Nxyz + j);
+		  var pos:Long = i - Nxy_;
+
+		  //h0 = w0 - i*w3
+		  val h0_0r_t = w(pos+0*nsite_) + w(pos+13*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+12*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) + w(pos+15*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+14*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) + w(pos+17*nsite_);		val h0_2i_t = w(pos+5*nsite_) - w(pos+16*nsite_);
+
+		  //h1 = w1 + i*w2
+		  val h1_0r_t = w(pos+6*nsite_) - w(pos+19*nsite_);		val h1_0i_t = w(pos+7*nsite_) + w(pos+18*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) - w(pos+21*nsite_);		val h1_1i_t = w(pos+9*nsite_) + w(pos+20*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)- w(pos+23*nsite_);		val h1_2i_t = w(pos+11*nsite_)+ w(pos+22*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_uz + i*Nxyz + j,ht1(tid));
+		  pos = offset_uz_ + i - Nxy_;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t + 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t + 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackZM(v.v(),i*Nxyz + j + Nxy,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += i*h0
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h0_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h0_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h0_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h0_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h0_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h0_2r;
+
+		  //w4 += -i*h1
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h1_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) - cks*h1_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h1_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) - cks*h1_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h1_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) - cks*h1_2r;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def MultXKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_ux_ = offset_ux;
+
+	  val threads = Int.operator_as(Nxy_);
+	  val blocks = Int.operator_as(nsite_ / threads) + ((nsite_ % threads > 0) ? 1n : 0n);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams{
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {	  
+
+		var i:Long;
+
+		val tid_x = tid % Nx_;
+		val tid_y = tid / Nx_;
+		val bid_z = bid % Nz_;
+		val bid_t = bid / Nz_;
+
+		// MultXPKernel
+		i = tid + bid*Nxy_; if (tid_x < Nx_ - 1) {
+                  // dht1.PackXP(w,i*Nx + j + 1);
+		  var pos:Long = i + 1;
+
+		  //h0 = w0 + i*w3
+		  val h0_0r_t = w(pos+0*nsite_) - w(pos+19*nsite_);		val h0_0i_t = w(pos+1*nsite_) + w(pos+18*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) - w(pos+21*nsite_);		val h0_1i_t = w(pos+3*nsite_) + w(pos+20*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) - w(pos+23*nsite_);		val h0_2i_t = w(pos+5*nsite_) + w(pos+22*nsite_);
+
+		  //h1 = w1 + i*w2
+		  val h1_0r_t = w(pos+6*nsite_) - w(pos+13*nsite_);		val h1_0i_t = w(pos+7*nsite_) + w(pos+12*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) - w(pos+15*nsite_);		val h1_1i_t = w(pos+9*nsite_) + w(pos+14*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)- w(pos+17*nsite_);		val h1_2i_t = w(pos+11*nsite_)+ w(pos+16*nsite_);
+
+	          // dht2.MultU(v,offset_ux + i*Nx + j,dht1);
+		  pos = offset_ux_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r= 	u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i= 	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // dht2.UnpackXP(v,i*Nx + j,cks);		
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -i*h1
+		  v(pos+12*nsite_)= v(pos+12*nsite_)+ cks*h1_0i;		v(pos+13*nsite_)= v(pos+13*nsite_)- cks*h1_0r;
+		  v(pos+14*nsite_)= v(pos+14*nsite_)+ cks*h1_1i;		v(pos+15*nsite_)= v(pos+15*nsite_)- cks*h1_1r;
+		  v(pos+16*nsite_)= v(pos+16*nsite_)+ cks*h1_2i;		v(pos+17*nsite_)= v(pos+17*nsite_)- cks*h1_2r;
+
+		  //w4 += -i*h0
+		  v(pos+18*nsite_)= v(pos+18*nsite_)+ cks*h0_0i;		v(pos+19*nsite_)= v(pos+19*nsite_)- cks*h0_0r;
+		  v(pos+20*nsite_)= v(pos+20*nsite_)+ cks*h0_1i;		v(pos+21*nsite_)= v(pos+21*nsite_)- cks*h0_1r;
+		  v(pos+22*nsite_)= v(pos+22*nsite_)+ cks*h0_2i;		v(pos+23*nsite_)= v(pos+23*nsite_)- cks*h0_2r;
+		}
+
+
+		//MultXMKernel
+		if (tid_x > 0) {
+		  // ht1(tid).PackXM(w.v(),i*Nx + j - 1);
+		  var pos:Long = i - 1;
+
+		  //h0 = w0 - i*w3
+		  val h0_0r_t = w(pos+0*nsite_) + w(pos+19*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+18*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) + w(pos+21*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+20*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) + w(pos+23*nsite_);		val h0_2i_t = w(pos+5*nsite_) - w(pos+22*nsite_);
+
+		  //h1 = w1 - i*w2
+		  val h1_0r_t = w(pos+6*nsite_) + w(pos+13*nsite_);		val h1_0i_t = w(pos+7*nsite_) - w(pos+12*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) + w(pos+15*nsite_);		val h1_1i_t = w(pos+9*nsite_) - w(pos+14*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)+ w(pos+17*nsite_);		val h1_2i_t = w(pos+11*nsite_)- w(pos+16*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_ux + i*Nx + j - 1,ht1(tid));
+		  pos = offset_ux_ + i - 1;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t+ 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t+ 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackXM(v.v(),i*Nx + j,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += i*h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2r;
+
+		  //w4 += i*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2r;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def MultYKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_uy_ = offset_uy;
+
+	  val threads = Int.operator_as(Nxy_);
+	  val blocks = Int.operator_as(nsite_ / threads) + ((nsite_ % threads > 0) ? 1n : 0n);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams{
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {	  
+
+		var i:Long;
+
+		val tid_x = tid % Nx_;
+		val tid_y = tid / Nx_;
+		val bid_z = bid % Nz_;
+		val bid_t = bid / Nz_;
+
+		//MultYPKernel
+		i = tid + bid*Nxy_; if (tid_y < Ny_ - 1) {
+		  // ht1(tid).PackYP(w.v(),i*Nxy + j + Nx);
+		  var pos:Long = i + Nx_;
+
+		  //h0 = w0 + w3
+		  val h0_0r_t = w(pos+0*nsite_) + w(pos+18*nsite_);		val h0_0i_t = w(pos+1*nsite_) + w(pos+19*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) + w(pos+20*nsite_);		val h0_1i_t = w(pos+3*nsite_) + w(pos+21*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) + w(pos+22*nsite_);		val h0_2i_t = w(pos+5*nsite_) + w(pos+23*nsite_);
+
+		  //h1 = w1 - w2
+		  val h1_0r_t = w(pos+6*nsite_) - w(pos+12*nsite_);		val h1_0i_t = w(pos+7*nsite_) - w(pos+13*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) - w(pos+14*nsite_);		val h1_1i_t = w(pos+9*nsite_) - w(pos+15*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)- w(pos+16*nsite_);		val h1_2i_t = w(pos+11*nsite_)- w(pos+17*nsite_);
+
+		  // ht2(tid).MultU(u.v(),offset_uy + i*Nxy + j,ht1(tid));
+		  pos = offset_uy_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackYP(v.v(),i*Nxy + j,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h1_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) - cks*h1_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h1_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) - cks*h1_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h1_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) - cks*h1_2i;
+
+		  //w4 += cks*h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h0_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h0_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h0_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h0_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h0_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h0_2i;
+		}
+
+		//MultYMKernel
+		if (tid_y > 0) {
+		  // ht1(tid).PackYM(w.v(),i*Nxy + j);
+		  var pos:Long = i - Nx_;
+
+		  //h0 = w0 - w3
+		  val h0_0r_t = w(pos+0*nsite_) - w(pos+18*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+19*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) - w(pos+20*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+21*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) - w(pos+22*nsite_);		val h0_2i_t = w(pos+5*nsite_) - w(pos+23*nsite_);
+
+		  //h1 = w1 + w2
+		  val h1_0r_t = w(pos+6*nsite_) + w(pos+12*nsite_);		val h1_0i_t = w(pos+7*nsite_) + w(pos+13*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) + w(pos+14*nsite_);		val h1_1i_t = w(pos+9*nsite_) + w(pos+15*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)+ w(pos+16*nsite_);		val h1_2i_t = w(pos+11*nsite_)+ w(pos+17*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_uy + i*Nxy + j,ht1(tid));
+		  pos = offset_uy_ + i - Nx_;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t + 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t + 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackYM(v.v(),i*Nxy + j + Nx,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += cks*h1
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h1_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h1_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h1_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h1_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h1_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h1_2i;
+
+		  //w4 += -h0
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h0_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) - cks*h0_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h0_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) - cks*h0_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h0_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) - cks*h0_2i;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def MultZKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_uz_ = offset_uz;
+
+	  val threads = Int.operator_as(Nxy_);
+	  val blocks = Int.operator_as(nsite_ / threads) + ((nsite_ % threads > 0) ? 1n : 0n);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams{
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {	  
+
+		var i:Long;
+
+		val tid_x = tid % Nx_;
+		val tid_y = tid / Nx_;
+		val bid_z = bid % Nz_;
+		val bid_t = bid / Nz_;
+
+		// MultZPKernel
+		i = tid + bid*Nxy_; if (bid_z < Nz_ - 1) {
+		  // ht1(tid).PackZP(w.v(),i*Nxyz + j + Nxy);
+	          var pos:Long = i + Nxy_;
+
+		  //h0 = w0 + i*w2
+		  val h0_0r_t = w(pos+0*nsite_) - w(pos+13*nsite_);		val h0_0i_t = w(pos+1*nsite_) + w(pos+12*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) - w(pos+15*nsite_);		val h0_1i_t = w(pos+3*nsite_) + w(pos+14*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) - w(pos+17*nsite_);		val h0_2i_t = w(pos+5*nsite_) + w(pos+16*nsite_);
+
+		  //h1 = w1 - i*w3
+		  val h1_0r_t = w(pos+6*nsite_) + w(pos+19*nsite_);		val h1_0i_t = w(pos+7*nsite_) - w(pos+18*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) + w(pos+21*nsite_);		val h1_1i_t = w(pos+9*nsite_) - w(pos+20*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)+ w(pos+23*nsite_);		val h1_2i_t = w(pos+11*nsite_)- w(pos+22*nsite_);
+
+		  // ht2(tid).MultU(u.v(),offset_uz + i*Nxyz + j,ht1(tid));
+		  pos = offset_uz_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackZP(v.v(),i*Nxyz + j,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += -i*h0
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h0_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) - cks*h0_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h0_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) - cks*h0_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h0_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) - cks*h0_2r;
+
+		  //w4 += i*h1
+		  v(pos+18*nsite_) = v(pos+18*nsite_) - cks*h1_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h1_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) - cks*h1_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h1_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) - cks*h1_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h1_2r;
+		}
+
+ 		//MultZMKernel
+		if (bid_z > 0) {
+		  // ht1(tid).PackZM(w.v(),i*Nxyz + j);
+		  var pos:Long = i - Nxy_;
+
+		  //h0 = w0 - i*w3
+		  val h0_0r_t = w(pos+0*nsite_) + w(pos+13*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+12*nsite_);
+		  val h0_1r_t = w(pos+2*nsite_) + w(pos+15*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+14*nsite_);
+		  val h0_2r_t = w(pos+4*nsite_) + w(pos+17*nsite_);		val h0_2i_t = w(pos+5*nsite_) - w(pos+16*nsite_);
+
+		  //h1 = w1 + i*w2
+		  val h1_0r_t = w(pos+6*nsite_) - w(pos+19*nsite_);		val h1_0i_t = w(pos+7*nsite_) + w(pos+18*nsite_);
+		  val h1_1r_t = w(pos+8*nsite_) - w(pos+21*nsite_);		val h1_1i_t = w(pos+9*nsite_) + w(pos+20*nsite_);
+		  val h1_2r_t = w(pos+10*nsite_)- w(pos+23*nsite_);		val h1_2i_t = w(pos+11*nsite_)+ w(pos+22*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_uz + i*Nxyz + j,ht1(tid));
+		  pos = offset_uz_ + i - Nxy_;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t + 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t + 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackZM(v.v(),i*Nxyz + j + Nxy,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+
+		  //w3 += i*h0
+		  v(pos+12*nsite_) = v(pos+12*nsite_) - cks*h0_0i;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h0_0r;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) - cks*h0_1i;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h0_1r;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) - cks*h0_2i;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h0_2r;
+
+		  //w4 += -i*h1
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h1_0i;		v(pos+19*nsite_) = v(pos+19*nsite_) - cks*h1_0r;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h1_1i;		v(pos+21*nsite_) = v(pos+21*nsite_) - cks*h1_1r;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h1_2i;		v(pos+23*nsite_) = v(pos+23*nsite_) - cks*h1_2r;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def MultTKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
+	{
+	  val Nx_ = Nx;
+	  val Ny_ = Ny;
+	  val Nz_ = Nz;
+	  val Nt_ = Nt;
+	  val Nxy_ = Nxy;
+	  val Nxyz_ = Nxyz;
+	  val nsite_ = nsite;
+	  val Ndst_ = Ndst;
+
+	  val offset_ut_ = offset_ut;
+
+	  val threads = Int.operator_as(Nxy_);
+	  val blocks = Int.operator_as(nsite_ / threads) + ((nsite_ % threads > 0) ? 1n : 0n);
+
+	  finish async at (gpu) @CUDA @CUDADirectParams{
+	    finish for (bid in 0n..(blocks-1n)) async {
+              clocked finish for (tid in 0n..(threads-1n)) clocked async {	  
+
+		var i:Long;
+
+		val tid_x = tid % Nx_;
+		val tid_y = tid / Nx_;
+		val bid_z = bid % Nz_;
+		val bid_t = bid / Nz_;
+
+		//MultTPKernel
+		i = tid + bid*Nxy_; if (i < nsite_-Nxyz_) {
+		  var pos:Long = i + Nxyz_;
+
+		  //h0 = 2.0*w2
+		  val h0_0r_t = 2.0f*w(pos+12*nsite_);		val h0_0i_t = 2.0f*w(pos+13*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+14*nsite_);		val h0_1i_t = 2.0f*w(pos+15*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+16*nsite_);		val h0_2i_t = 2.0f*w(pos+17*nsite_);
+
+		  //h1 = 2.0*w3
+		  val h1_0r_t = 2.0f*w(pos+18*nsite_);		val h1_0i_t = 2.0f*w(pos+19*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+20*nsite_);		val h1_1i_t = 2.0f*w(pos+21*nsite_);
+		  val h1_2r_t = 2.0f*w(pos+22*nsite_);		val h1_2i_t = 2.0f*w(pos+23*nsite_);
+
+		  // ht2(tid).MultU(u.v(),offset_ut + i,ht1(tid));
+		  pos = offset_ut_ + i;
+
+		  val h0_0r = u(pos+0*Ndst_)*h0_0r_t - u(pos+1*Ndst_)*h0_0i_t + 
+		  u(pos+2*Ndst_)*h0_1r_t - u(pos+3*Ndst_)*h0_1i_t + 
+		  u(pos+4*Ndst_)*h0_2r_t - u(pos+5*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_)*h0_0i_t + u(pos+1*Ndst_)*h0_0r_t + 
+		  u(pos+2*Ndst_)*h0_1i_t + u(pos+3*Ndst_)*h0_1r_t + 
+		  u(pos+4*Ndst_)*h0_2i_t + u(pos+5*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_)*h1_0r_t - u(pos+1*Ndst_)*h1_0i_t + 
+		  u(pos+2*Ndst_)*h1_1r_t - u(pos+3*Ndst_)*h1_1i_t + 
+		  u(pos+4*Ndst_)*h1_2r_t - u(pos+5*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_)*h1_0i_t + u(pos+1*Ndst_)*h1_0r_t + 
+		  u(pos+2*Ndst_)*h1_1i_t + u(pos+3*Ndst_)*h1_1r_t + 
+		  u(pos+4*Ndst_)*h1_2i_t + u(pos+5*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+6*Ndst_) *h0_0r_t - u(pos+7*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t - u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+10*Ndst_)*h0_2r_t - u(pos+11*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+6*Ndst_) *h0_0i_t + u(pos+7*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t + u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+10*Ndst_)*h0_2i_t + u(pos+11*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+6*Ndst_) *h1_0r_t - u(pos+7*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t - u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+10*Ndst_)*h1_2r_t - u(pos+11*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+6*Ndst_) *h1_0i_t + u(pos+7*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t + u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+10*Ndst_)*h1_2i_t + u(pos+11*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+12*Ndst_)*h0_0r_t - u(pos+13*Ndst_)*h0_0i_t + 
+		  u(pos+14*Ndst_)*h0_1r_t - u(pos+15*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t - u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+12*Ndst_)*h0_0i_t + u(pos+13*Ndst_)*h0_0r_t + 
+		  u(pos+14*Ndst_)*h0_1i_t + u(pos+15*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t + u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+12*Ndst_)*h1_0r_t - u(pos+13*Ndst_)*h1_0i_t + 
+		  u(pos+14*Ndst_)*h1_1r_t - u(pos+15*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t - u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i =	u(pos+12*Ndst_)*h1_0i_t + u(pos+13*Ndst_)*h1_0r_t + 
+		  u(pos+14*Ndst_)*h1_1i_t + u(pos+15*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t + u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackTP(v.v(),i,cks);
+		  pos = i;
+
+		  v(pos+12*nsite_) = v(pos+12*nsite_) + cks*h0_0r;		v(pos+13*nsite_) = v(pos+13*nsite_) + cks*h0_0i;
+		  v(pos+14*nsite_) = v(pos+14*nsite_) + cks*h0_1r;		v(pos+15*nsite_) = v(pos+15*nsite_) + cks*h0_1i;
+		  v(pos+16*nsite_) = v(pos+16*nsite_) + cks*h0_2r;		v(pos+17*nsite_) = v(pos+17*nsite_) + cks*h0_2i;
+
+		  v(pos+18*nsite_) = v(pos+18*nsite_) + cks*h1_0r;		v(pos+19*nsite_) = v(pos+19*nsite_) + cks*h1_0i;
+		  v(pos+20*nsite_) = v(pos+20*nsite_) + cks*h1_1r;		v(pos+21*nsite_) = v(pos+21*nsite_) + cks*h1_1i;
+		  v(pos+22*nsite_) = v(pos+22*nsite_) + cks*h1_2r;		v(pos+23*nsite_) = v(pos+23*nsite_) + cks*h1_2i;
+		}
+
+		//MultTMKernel
+		if (i > Nxyz_) {
+		  var pos:Long = i - Nxyz_;
+
+		  //h0 = 2.0*w0
+		  val h0_0r_t = 2.0f*w(pos+0*nsite_);		val h0_0i_t = 2.0f*w(pos+1*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+2*nsite_);		val h0_1i_t = 2.0f*w(pos+3*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+4*nsite_);		val h0_2i_t = 2.0f*w(pos+5*nsite_);
+
+		  //h1 = 2.0*w1
+		  val h1_0r_t = 2.0f*w(pos+6*nsite_);		val h1_0i_t = 2.0f*w(pos+7*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+8*nsite_);		val h1_1i_t = 2.0f*w(pos+9*nsite_);
+		  val h1_2r_t = 2.0f*w(pos+10*nsite_);		val h1_2i_t = 2.0f*w(pos+11*nsite_);
+
+		  // ht2(tid).MultUt(u.v(),offset_ut + i,ht1(tid));
+		  pos = offset_ut_ + i - Nxyz_;
+
+		  val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
+		  u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
+		  u(pos+12*Ndst_)*h0_2r_t + u(pos+13*Ndst_)*h0_2i_t;
+		  val h0_0i = u(pos+0*Ndst_) *h0_0i_t - u(pos+1*Ndst_) *h0_0r_t + 
+		  u(pos+6*Ndst_) *h0_1i_t - u(pos+7*Ndst_) *h0_1r_t + 
+		  u(pos+12*Ndst_)*h0_2i_t - u(pos+13*Ndst_)*h0_2r_t;
+
+		  val h1_0r = u(pos+0*Ndst_) *h1_0r_t + u(pos+1*Ndst_) *h1_0i_t + 
+		  u(pos+6*Ndst_) *h1_1r_t + u(pos+7*Ndst_) *h1_1i_t + 
+		  u(pos+12*Ndst_)*h1_2r_t + u(pos+13*Ndst_)*h1_2i_t;
+		  val h1_0i = u(pos+0*Ndst_) *h1_0i_t - u(pos+1*Ndst_) *h1_0r_t + 
+		  u(pos+6*Ndst_) *h1_1i_t - u(pos+7*Ndst_) *h1_1r_t + 
+		  u(pos+12*Ndst_)*h1_2i_t - u(pos+13*Ndst_)*h1_2r_t;
+
+		  val h0_1r = u(pos+2*Ndst_) *h0_0r_t + u(pos+3*Ndst_) *h0_0i_t + 
+		  u(pos+8*Ndst_) *h0_1r_t + u(pos+9*Ndst_) *h0_1i_t + 
+		  u(pos+14*Ndst_)*h0_2r_t + u(pos+15*Ndst_)*h0_2i_t;
+		  val h0_1i = u(pos+2*Ndst_) *h0_0i_t - u(pos+3*Ndst_) *h0_0r_t + 
+		  u(pos+8*Ndst_) *h0_1i_t - u(pos+9*Ndst_) *h0_1r_t + 
+		  u(pos+14*Ndst_)*h0_2i_t - u(pos+15*Ndst_)*h0_2r_t;
+
+		  val h1_1r = u(pos+2*Ndst_) *h1_0r_t + u(pos+3*Ndst_) *h1_0i_t + 
+		  u(pos+8*Ndst_) *h1_1r_t + u(pos+9*Ndst_) *h1_1i_t + 
+		  u(pos+14*Ndst_)*h1_2r_t + u(pos+15*Ndst_)*h1_2i_t;
+		  val h1_1i = u(pos+2*Ndst_) *h1_0i_t - u(pos+3*Ndst_) *h1_0r_t + 
+		  u(pos+8*Ndst_) *h1_1i_t - u(pos+9*Ndst_) *h1_1r_t + 
+		  u(pos+14*Ndst_)*h1_2i_t - u(pos+15*Ndst_)*h1_2r_t;
+
+		  val h0_2r = u(pos+4*Ndst_) *h0_0r_t + u(pos+5*Ndst_) *h0_0i_t + 
+		  u(pos+10*Ndst_)*h0_1r_t + u(pos+11*Ndst_)*h0_1i_t + 
+		  u(pos+16*Ndst_)*h0_2r_t + u(pos+17*Ndst_)*h0_2i_t;
+		  val h0_2i = u(pos+4*Ndst_) *h0_0i_t - u(pos+5*Ndst_) *h0_0r_t + 
+		  u(pos+10*Ndst_)*h0_1i_t - u(pos+11*Ndst_)*h0_1r_t + 
+		  u(pos+16*Ndst_)*h0_2i_t - u(pos+17*Ndst_)*h0_2r_t;
+
+		  val h1_2r = u(pos+4*Ndst_) *h1_0r_t + u(pos+5*Ndst_) *h1_0i_t + 
+		  u(pos+10*Ndst_)*h1_1r_t + u(pos+11*Ndst_)*h1_1i_t + 
+		  u(pos+16*Ndst_)*h1_2r_t + u(pos+17*Ndst_)*h1_2i_t;
+		  val h1_2i = u(pos+4*Ndst_) *h1_0i_t - u(pos+5*Ndst_) *h1_0r_t + 
+		  u(pos+10*Ndst_)*h1_1i_t - u(pos+11*Ndst_)*h1_1r_t + 
+		  u(pos+16*Ndst_)*h1_2i_t - u(pos+17*Ndst_)*h1_2r_t;
+
+		  // ht2(tid).UnpackTM(v.v(),i + Nxyz,cks);
+		  pos = i;
+
+		  v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
+		  v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
+		  v(pos+4*nsite_) = v(pos+4*nsite_) + cks*h0_2r;		v(pos+5*nsite_) = v(pos+5*nsite_) + cks*h0_2i;
+
+		  v(pos+6*nsite_) = v(pos+6*nsite_) + cks*h1_0r;		v(pos+7*nsite_) = v(pos+7*nsite_) + cks*h1_0i;
+		  v(pos+8*nsite_) = v(pos+8*nsite_) + cks*h1_1r;		v(pos+9*nsite_) = v(pos+9*nsite_) + cks*h1_1i;
+		  v(pos+10*nsite_)= v(pos+10*nsite_)+ cks*h1_2r;		v(pos+11*nsite_)= v(pos+11*nsite_)+ cks*h1_2i;
+		}
+	      }
+	    }
+	  }
+	}
+
+	def MultXP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -2416,9 +4576,9 @@ public class Dslash extends Lattice {
 		}
 	}
 // rngX(tid) = new LongRange(tid * Ny*Nz*Nt / nid,(tid + 1) * Ny*Nz*Nt / nid-1);
-	// def MultXPKernel(v:CUDAWilsonVectorField, u:CUDASU3MatrixField, w:CUDAWilsonVectorField, cks:Double)
-	def MultXPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	// def MultXPKernel(v : CUDAWilsonVectorField, u : CUDASU3MatrixField, w : CUDAWilsonVectorField, cks : Double)
+	def MultXPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2533,7 +4693,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultXM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultXM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngX(tid)){
@@ -2546,8 +4706,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultXMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultXMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2570,11 +4730,13 @@ public class Dslash extends Lattice {
 		// for (var i:Long = gid; i < Ny_*Nz_*Nt_; i += gids) {		
 		val i = tid_y + bid*Ny_; {
 		  // for (j in 1..(Nx_-1)) {
-		  val j = tid_x; if (j != 0) {
+// 		  val j = tid_x; if (j != 0) {
+		  val j = tid_x; if (j != Nx_-1) {
 
 		    // ht1(tid).PackXM(w.v(),i*Nx + j - 1);
 		    // var pos:Long = (i*Nx_ + j - 1)*24;
-		    var pos:Long = i*Nx_ + j - 1;
+// 		    var pos:Long = i*Nx_ + j - 1;
+		    var pos:Long = i*Nx_ + j;
 		    //h0 = w0 - i*w3
 		    val h0_0r_t = w(pos+0*nsite_) + w(pos+19*nsite_);		val h0_0i_t = w(pos+1*nsite_) - w(pos+18*nsite_);
 		    val h0_1r_t = w(pos+2*nsite_) + w(pos+21*nsite_);		val h0_1i_t = w(pos+3*nsite_) - w(pos+20*nsite_);
@@ -2587,7 +4749,8 @@ public class Dslash extends Lattice {
 
 		    // ht2(tid).MultUt(u.v(),offset_ux + i*Nx + j - 1,ht1(tid));
 		    // pos = (offset_ux_ + i*Nx_ + j - 1)*18;
-		    pos = offset_ux_ + i*Nx_ + j - 1;
+// 		    pos = offset_ux_ + i*Nx_ + j - 1;
+		    pos = offset_ux_ + i*Nx_ + j;
 
 		    val h0_0r = u(pos+0*Ndst_) *h0_0r_t + u(pos+1*Ndst_) *h0_0i_t + 
 		    u(pos+6*Ndst_) *h0_1r_t + u(pos+7*Ndst_) *h0_1i_t + 
@@ -2633,7 +4796,8 @@ public class Dslash extends Lattice {
 
 		    // ht2(tid).UnpackXM(v.v(),i*Nx + j,cks);
 		    // pos = (i*Nx_ + j)*24;
-		    pos = i*Nx_ + j;  
+// 		    pos = i*Nx_ + j;  
+		    pos = i*Nx_ + j + 1;  
 
 		    v(pos+0*nsite_) = v(pos+0*nsite_) + cks*h0_0r;		v(pos+1*nsite_) = v(pos+1*nsite_) + cks*h0_0i;
 		    v(pos+2*nsite_) = v(pos+2*nsite_) + cks*h0_1r;		v(pos+3*nsite_) = v(pos+3*nsite_) + cks*h0_1i;
@@ -2659,7 +4823,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultYP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultYP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -2674,8 +4838,8 @@ public class Dslash extends Lattice {
 
   // rngYOut(tid) = new LongRange(io * Nt*Nz / no,(io + 1) * Nt*Nz / no-1);
   // rngYIn(tid)  = new LongRange(ii * (Nxy - Nx) / ni,(ii + 1) * (Nxy - Nx) / ni-1);
-	def MultYPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultYPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2785,7 +4949,7 @@ public class Dslash extends Lattice {
 	  }
 	}		    
 
-	def MultYM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultYM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngYOut(tid)){
@@ -2800,8 +4964,8 @@ public class Dslash extends Lattice {
 
   // rngYOut(tid) = new LongRange(io * Nt*Nz / no,(io + 1) * Nt*Nz / no-1);
   // rngYIn(tid)  = new LongRange(ii * (Nxy - Nx) / ni,(ii + 1) * (Nxy - Nx) / ni-1);
-	def MultYMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultYMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -2913,7 +5077,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultZP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultZP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -2928,8 +5092,8 @@ public class Dslash extends Lattice {
 
   // rngZOut(tid) = new LongRange(io * Nt / no,(io + 1) * Nt / no-1);
   // rngZIn(tid)  = new LongRange(ii * (Nxyz-Nxy) / ni,(ii + 1) * (Nxyz-Nxy) / ni-1);
-	def MultZPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultZPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3043,7 +5207,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultZM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultZM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngZOut(tid)){
@@ -3056,8 +5220,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultZMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultZMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3171,7 +5335,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultTP(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultTP(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngT(tid)){
@@ -3182,8 +5346,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultTPKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultTPKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3210,14 +5374,14 @@ public class Dslash extends Lattice {
 		  var pos:Long = i + Nxyz_;
 
 		  //h0 = 2.0*w2
-		  val h0_0r_t = 2.0*w(pos+12*nsite_);		val h0_0i_t = 2.0*w(pos+13*nsite_);
-		  val h0_1r_t = 2.0*w(pos+14*nsite_);		val h0_1i_t = 2.0*w(pos+15*nsite_);
-		  val h0_2r_t = 2.0*w(pos+16*nsite_);		val h0_2i_t = 2.0*w(pos+17*nsite_);
+		  val h0_0r_t = 2.0f*w(pos+12*nsite_);		val h0_0i_t = 2.0f*w(pos+13*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+14*nsite_);		val h0_1i_t = 2.0f*w(pos+15*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+16*nsite_);		val h0_2i_t = 2.0f*w(pos+17*nsite_);
 
 		  //h1 = 2.0*w3
-		  val h1_0r_t = 2.0*w(pos+18*nsite_);		val h1_0i_t = 2.0*w(pos+19*nsite_);
-		  val h1_1r_t = 2.0*w(pos+20*nsite_);		val h1_1i_t = 2.0*w(pos+21*nsite_);
-		  val h1_2r_t = 2.0*w(pos+22*nsite_);		val h1_2i_t = 2.0*w(pos+23*nsite_);
+		  val h1_0r_t = 2.0f*w(pos+18*nsite_);		val h1_0i_t = 2.0f*w(pos+19*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+20*nsite_);		val h1_1i_t = 2.0f*w(pos+21*nsite_);
+		  val h1_2r_t = 2.0f*w(pos+22*nsite_);		val h1_2i_t = 2.0f*w(pos+23*nsite_);
 
 		  // ht2(tid).MultU(u.v(),offset_ut + i,ht1(tid));
 		  // pos = (offset_ut_ + i)*18;
@@ -3282,7 +5446,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def MultTM(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double)
+	def MultTM(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField, cks : Double)
 	{
 		@Pragma(Pragma.FINISH_LOCAL) finish for(tid in 0..(nThreads-1)) async {
 			for(i in rngT(tid)){
@@ -3293,8 +5457,8 @@ public class Dslash extends Lattice {
 		}
 	}
 
-	def MultTMKernel(v:GlobalRail[Double]{home==gpu}, u:GlobalRail[Double]{home==gpu}, 
-			 w:GlobalRail[Double]{home==gpu}, cks:Double)
+	def MultTMKernel(v : GlobalRail[Double]{home==gpu}, u : GlobalRail[Double]{home==gpu}, 
+			 w : GlobalRail[Double]{home==gpu}, cks : Double)
 	{
 	  val Nx_ = Nx;
 	  val Ny_ = Ny;
@@ -3321,14 +5485,14 @@ public class Dslash extends Lattice {
 		  var pos:Long = i;
 
 		  //h0 = 2.0*w0
-		  val h0_0r_t = 2.0*w(pos+0*nsite_);		val h0_0i_t = 2.0*w(pos+1*nsite_);
-		  val h0_1r_t = 2.0*w(pos+2*nsite_);		val h0_1i_t = 2.0*w(pos+3*nsite_);
-		  val h0_2r_t = 2.0*w(pos+4*nsite_);		val h0_2i_t = 2.0*w(pos+5*nsite_);
+		  val h0_0r_t = 2.0f*w(pos+0*nsite_);		val h0_0i_t = 2.0f*w(pos+1*nsite_);
+		  val h0_1r_t = 2.0f*w(pos+2*nsite_);		val h0_1i_t = 2.0f*w(pos+3*nsite_);
+		  val h0_2r_t = 2.0f*w(pos+4*nsite_);		val h0_2i_t = 2.0f*w(pos+5*nsite_);
 
 		  //h1 = 2.0*w1
-		  val h1_0r_t = 2.0*w(pos+6*nsite_);		val h1_0i_t = 2.0*w(pos+7*nsite_);
-		  val h1_1r_t = 2.0*w(pos+8*nsite_);		val h1_1i_t = 2.0*w(pos+9*nsite_);
-		  val h1_2r_t = 2.0*w(pos+10*nsite_);		val h1_2i_t = 2.0*w(pos+11*nsite_);
+		  val h1_0r_t = 2.0f*w(pos+6*nsite_);		val h1_0i_t = 2.0f*w(pos+7*nsite_);
+		  val h1_1r_t = 2.0f*w(pos+8*nsite_);		val h1_1i_t = 2.0f*w(pos+9*nsite_);
+		  val h1_2r_t = 2.0f*w(pos+10*nsite_);		val h1_2i_t = 2.0f*w(pos+11*nsite_);
 
 		  // ht2(tid).MultUt(u.v(),offset_ut + i,ht1(tid));
 		  // pos = (offset_ut_ + i)*18;
@@ -3393,7 +5557,7 @@ public class Dslash extends Lattice {
 	  }
 	}
 
-	def Dopr_Get(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	def Dopr_Get(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField,cks : Double, bx : CUDALatticeComm)
 	{
 		Team.WORLD.barrier();
 
@@ -3472,104 +5636,36 @@ public class Dslash extends Lattice {
 		Team.WORLD.barrier();
 	}
 
-	def Dopr_Put_overlap(dv:CUDAWilsonVectorField, du:CUDASU3MatrixField, 
-			     dw:CUDAWilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	def Dopr_Get_overlap(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField, 
+			     dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
 	{
-		Team.WORLD.barrier();
+		// Team.WORLD.barrier();
 		//finish is placed for asyncronous copy
 		finish {
 		  //make boundary data
-		  if(bx.decomp(bx.TP) > 1){
-		    val iTP = bx.neighbors()(bx.TP);
-		    at (Place(iTP)) async {
-		      // MakeTPBnd(bx,w);
-		      // bx.Put(bx.TP);
-		      MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
-		      bx.PutDevice(bx.TP);
-		    }
+		  MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
+		  bx.SendDevice(bx.TP);
 
-		    val iTM = bx.neighbors()(bx.TM);
-		    at (Place(iTM)) async {
-		      // MakeTMBnd(bx,w,u);
-		      // bx.Put(bx.TM);
-		      MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
-		      bx.PutDevice(bx.TM);
-		    }
-		  } else {
-		    // MakeTPBnd(bx,w);
-		    // MakeTMBnd(bx,w,u);
-		    MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
-		    MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
-		  }
+		  MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
+		  bx.SendDevice(bx.TM);
 
-		  if(bx.decomp(bx.XP) > 1){
-		    val iXP = bx.neighbors()(bx.XP);
-		    at (Place(iXP)) async {
-		      // MakeXPBnd(bx,w);
-		      // bx.Put(bx.XP);
-		      MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
-		      bx.PutDevice(bx.XP);
-		    }
+		  MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
+		  bx.SendDevice(bx.XP);
 
-		    val iXM = bx.neighbors()(bx.XM);
-		    at (Place(iXM)) async {
-		      // MakeXMBnd(bx,w,u);
-		      // bx.Put(bx.XM);
-		      MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
-		      bx.PutDevice(bx.XM);
-		    }
-		  } else {
-		    // MakeXPBnd(bx,w);
-		    // MakeXMBnd(bx,w,u);
-		    MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
-		    MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
-		  }
+		  MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
+		  bx.SendDevice(bx.XM);
 
-		  if(bx.decomp(bx.YP) > 1){
-		    val iYP = bx.neighbors()(bx.YP);
-		    at (Place(iYP)) async {
-		      // MakeYPBnd(bx,w);
-		      // bx.Put(bx.YP);
-		      MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
-		      bx.PutDevice(bx.YP);
-		    }
+		  MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
+		  bx.SendDevice(bx.YP);
 
-		    val iYM = bx.neighbors()(bx.YM);
-		    at (Place(iYM)) async {
-		      // MakeYMBnd(bx,w,u);
-		      // bx.Put(bx.YM);
-		      MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
-		      bx.PutDevice(bx.YM);
-		    }
-		  } else {
-		    // MakeYPBnd(bx,w);
-		    // MakeYMBnd(bx,w,u);
-		    MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
-		    MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
-		  }
+		  MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
+		  bx.SendDevice(bx.YM);
 
-		  if(bx.decomp(bx.ZP) > 1){
-		    val iZP = bx.neighbors()(bx.ZP);
-		    at (Place(iZP)) async {
-		      // MakeZPBnd(bx,w);
-		      // bx.Put(bx.ZP);
-		      MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
-		      bx.PutDevice(bx.ZP);
-		    }
+		  MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
+		  bx.SendDevice(bx.ZP);
 
-		    val iZM = bx.neighbors()(bx.ZM);
-		    at (Place(iZM)) async {
-		      // MakeZMBnd(bx,w,u);
-		      // bx.Put(bx.ZM);
-		      MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
-		      bx.PutDevice(bx.ZM);
-		    }
-		  } else {
-		    // MakeZPBnd(bx,w);
-		    // MakeZMBnd(bx,w,u);
-		    MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
-		    MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
-		  }
+		  MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
+		  bx.SendDevice(bx.ZM);
 
 		  val startTime = System.nanoTime();
 
@@ -3599,46 +5695,32 @@ public class Dslash extends Lattice {
 		  val finishTime = System.nanoTime() - startTime; 
 		  // if (here.id() == 0) Console.OUT.println("bulk :" + finishTime / 1000 + " usec.");
 
-		  // v.Copy(w);
-
-		  //local calculations
-		  // MultTP(v,u,w,-cks);
-		  // MultTM(v,u,w,-cks);
-
-		  // MultXP(v,u,w,-cks);
-		  // MultXM(v,u,w,-cks);
-
-		  // MultYP(v,u,w,-cks);
-		  // MultYM(v,u,w,-cks);
-
-		  // MultZP(v,u,w,-cks);
-		  // MultZM(v,u,w,-cks);
 		}
 
 		//global barrier is needed to make sure boundary exchange finished (I dont know why this is needed????)
-		// Team.WORLD.barrier();
+		Team.WORLD.barrier();
 
 		val startTime = System.nanoTime();
 
 //debug
 		// bx.RecvToDevice();
 
-		bx.WaitDeviceRecv(bx.TP);
-		bx.WaitDeviceRecv(bx.TM);
-		bx.WaitDeviceRecv(bx.XP);
-		bx.WaitDeviceRecv(bx.XM);
-		bx.WaitDeviceRecv(bx.YP);
-		bx.WaitDeviceRecv(bx.YM);
-		bx.WaitDeviceRecv(bx.ZP);
-		bx.WaitDeviceRecv(bx.ZM);
 
+		bx.WaitDeviceRecv(bx.TP);
 		SetTPBndKernel(bx.RecvDeviceBuffer(bx.TP).v()(), dv.v()(), du.v()(), -cks);
+		bx.WaitDeviceRecv(bx.TM);
 		SetTMBndKernel(bx.RecvDeviceBuffer(bx.TM).v()(), dv.v()(), -cks);
+		bx.WaitDeviceRecv(bx.XP);
 		SetXPBndKernel(bx.RecvDeviceBuffer(bx.XP).v()(), dv.v()(), du.v()(), -cks);
+		bx.WaitDeviceRecv(bx.XM);
 		SetXMBndKernel(bx.RecvDeviceBuffer(bx.XM).v()(), dv.v()(), -cks);
+		bx.WaitDeviceRecv(bx.YP);
 		SetYPBndKernel(bx.RecvDeviceBuffer(bx.YP).v()(), dv.v()(), du.v()(), -cks);
+		bx.WaitDeviceRecv(bx.YM);
 		SetYMBndKernel(bx.RecvDeviceBuffer(bx.YM).v()(), dv.v()(), -cks);
+		bx.WaitDeviceRecv(bx.ZP);
 		SetZPBndKernel(bx.RecvDeviceBuffer(bx.ZP).v()(), dv.v()(), du.v()(), -cks);
+		bx.WaitDeviceRecv(bx.ZM);
 		SetZMBndKernel(bx.RecvDeviceBuffer(bx.ZM).v()(), dv.v()(), -cks);
 
 		// D2H
@@ -3672,14 +5754,245 @@ public class Dslash extends Lattice {
 		// bx.WaitRecv(bx.ZM);
 		// SetZMBnd(bx,v,-cks);
 
-		Team.WORLD.barrier();
+		// Team.WORLD.barrier();
 
 		val finishTime = System.nanoTime() - startTime;
 		// if (here.id() == 0) Console.OUT.println("set :" + finishTime / 1000 + " usec.");
 	}
 
-	def Dopr_Put(dv:CUDAWilsonVectorField, du:CUDASU3MatrixField, 
-		     dw:CUDAWilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	// def DoprH(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField,
+	// 	  dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	def Dopr_Put_overlap_uc_direct(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField, 
+			     dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	{
+		// Team.WORLD.barrier();
+	  //finish is placed for asyncronous copy
+	  finish {
+	    //make boundary data
+	    if(bx.decomp(bx.TP) > 1){
+	      async {
+		MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
+		bx.PutDevice(bx.TP);
+
+		MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.TM);
+	      }
+	    } else {
+	      MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
+	      MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
+	    }
+	    if(bx.decomp(bx.XP) > 1){
+	      async { 
+		MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
+		bx.PutDevice(bx.XP);
+
+		MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.XM);
+	      }
+	    } else {
+	      MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
+	      MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
+	    }
+	    if(bx.decomp(bx.YP) > 1){
+	      async {
+		MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
+		bx.PutDevice(bx.YP);
+
+		MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.YM);
+	      }
+	    } else {
+	      MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
+	      MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
+	    }
+	    if(bx.decomp(bx.ZP) > 1){
+	      async {
+		MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
+		bx.PutDevice(bx.ZP);
+
+		MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.ZM);
+	      }
+	    } else {
+	      MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
+	      MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
+	    }
+
+	    //local calculations
+// 	    MultKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultTPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultTMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultXPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultXMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultYPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultYMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultZPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultZMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	  }
+
+	  //global barrier is needed to make sure boundary exchange finished (I dont know why this is needed????)
+	  Team.WORLD.barrier();
+
+	  //debug
+	  bx.RecvToDevice();
+
+	  // bx.WaitDeviceRecv(bx.TP);
+	  // bx.WaitDeviceRecv(bx.TM);
+	  // SetTBndKernel(bx.RecvDeviceBuffer(bx.TP).v()(), bx.RecvDeviceBuffer(bx.TM).v()(), dv.v()(), du.v()(), -cks);
+
+	  // bx.WaitDeviceRecv(bx.XP);
+	  // bx.WaitDeviceRecv(bx.XM);
+	  // SetXBndKernel(bx.RecvDeviceBuffer(bx.XP).v()(), bx.RecvDeviceBuffer(bx.XM).v()(), dv.v()(), du.v()(), -cks);
+
+	  // bx.WaitDeviceRecv(bx.YP);
+	  // bx.WaitDeviceRecv(bx.YM);
+	  // SetYBndKernel(bx.RecvDeviceBuffer(bx.YP).v()(), bx.RecvDeviceBuffer(bx.YM).v()(), dv.v()(), du.v()(), -cks);
+
+	  // bx.WaitDeviceRecv(bx.ZP);
+	  // bx.WaitDeviceRecv(bx.ZM);
+	  SetTBndKernel(bx.RecvDeviceBuffer(bx.TP).v()(), bx.RecvDeviceBuffer(bx.TM).v()(), dv.v()(), du.v()(), -cks);
+	  SetXBndKernel(bx.RecvDeviceBuffer(bx.XP).v()(), bx.RecvDeviceBuffer(bx.XM).v()(), dv.v()(), du.v()(), -cks);
+	  SetYBndKernel(bx.RecvDeviceBuffer(bx.YP).v()(), bx.RecvDeviceBuffer(bx.YM).v()(), dv.v()(), du.v()(), -cks);
+	  SetZBndKernel(bx.RecvDeviceBuffer(bx.ZP).v()(), bx.RecvDeviceBuffer(bx.ZM).v()(), dv.v()(), du.v()(), -cks);
+
+	  // bx.WaitSend(bx.TP);
+	  // bx.WaitSend(bx.TM);
+	  // bx.WaitSend(bx.XP);
+	  // bx.WaitSend(bx.XM);
+	  // bx.WaitSend(bx.YP);
+	  // bx.WaitSend(bx.YM);
+	  // bx.WaitSend(bx.ZP);
+	  // bx.WaitSend(bx.ZM);
+
+	  // Team.WORLD.barrier();
+
+	  dv.MultGamma5(dv.v()());
+
+	}
+
+	def Dopr_Put_overlap(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField, 
+			     dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
+	{
+	  // Team.WORLD.barrier();
+
+	  //finish is placed for asyncronous copy
+	  finish {
+	    //make boundary data
+	    if(bx.decomp(bx.TP) > 1){
+	      val iTP = bx.neighbors()(bx.TP);
+	      at (Place(iTP)) async {
+
+		MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
+		bx.PutDevice(bx.TP);
+	      }
+	      val iTM = bx.neighbors()(bx.TM);
+	      at (Place(iTM)) async {
+		MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.TM);
+	      }
+	    } else {
+	      MakeTPBndKernel(bx.SendDeviceBuffer(bx.TP).v()(), dw.v()());
+	      MakeTMBndKernel(bx.SendDeviceBuffer(bx.TM).v()(), dw.v()(), du.v()());
+	    }
+	    if(bx.decomp(bx.XP) > 1){
+	      val iXP = bx.neighbors()(bx.XP);
+	      at (Place(iXP)) async {
+		MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
+		bx.PutDevice(bx.XP);
+	      }
+	      val iXM = bx.neighbors()(bx.XM);
+	      at (Place(iXM)) async {
+		MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.XM);
+	      }
+	    } else {
+	      MakeXPBndKernel(bx.SendDeviceBuffer(bx.XP).v()(), dw.v()());
+	      MakeXMBndKernel(bx.SendDeviceBuffer(bx.XM).v()(), dw.v()(), du.v()());
+	    }
+	    if(bx.decomp(bx.YP) > 1){
+	      val iYP = bx.neighbors()(bx.YP);
+	      at (Place(iYP)) async {
+		MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
+		bx.PutDevice(bx.YP);
+	      }
+	      val iYM = bx.neighbors()(bx.YM);
+	      at (Place(iYM)) async {
+		MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.YM);
+	      }
+	    } else {
+	      MakeYPBndKernel(bx.SendDeviceBuffer(bx.YP).v()(), dw.v()());
+	      MakeYMBndKernel(bx.SendDeviceBuffer(bx.YM).v()(), dw.v()(), du.v()());
+	    }
+	    if(bx.decomp(bx.ZP) > 1){
+	      val iZP = bx.neighbors()(bx.ZP);
+	      at (Place(iZP)) async {
+		MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
+		bx.PutDevice(bx.ZP);
+	      }
+	      val iZM = bx.neighbors()(bx.ZM);
+	      at (Place(iZM)) async {
+		MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
+		bx.PutDevice(bx.ZM);
+	      }
+	    } else {
+	      MakeZPBndKernel(bx.SendDeviceBuffer(bx.ZP).v()(), dw.v()());
+	      MakeZMBndKernel(bx.SendDeviceBuffer(bx.ZM).v()(), dw.v()(), du.v()());
+	    }
+
+	    //local calculations
+// 	    MultKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    dv.Copy(dv.v()(), dw.v()());
+
+// 	    MultTKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+// 	    MultXKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+// 	    MultYKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+// 	    MultZKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultTPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultTMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultXPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultXMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultYPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultYMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+
+	    MultZPKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	    MultZMKernel(dv.v()(),du.v()(),dw.v()(),-cks);
+	  }
+
+	  //global barrier is needed to make sure boundary exchange finished (I dont know why this is needed????)
+	  // Team.WORLD.barrier();
+
+	  //debug
+	  bx.RecvToDevice();
+
+	  //set boundary part
+	  SetTBndKernel(bx.RecvDeviceBuffer(bx.TP).v()(), bx.RecvDeviceBuffer(bx.TM).v()(), dv.v()(), du.v()(), -cks);
+	  SetXBndKernel(bx.RecvDeviceBuffer(bx.XP).v()(), bx.RecvDeviceBuffer(bx.XM).v()(), dv.v()(), du.v()(), -cks);
+	  SetYBndKernel(bx.RecvDeviceBuffer(bx.YP).v()(), bx.RecvDeviceBuffer(bx.YM).v()(), dv.v()(), du.v()(), -cks);
+	  SetZBndKernel(bx.RecvDeviceBuffer(bx.ZP).v()(), bx.RecvDeviceBuffer(bx.ZM).v()(), dv.v()(), du.v()(), -cks);
+// 	  SetTPBndKernel(bx.RecvDeviceBuffer(bx.TP).v()(), dv.v()(), du.v()(), -cks);
+// 	  SetTMBndKernel(bx.RecvDeviceBuffer(bx.TM).v()(), dv.v()(), -cks);
+// 	  SetXPBndKernel(bx.RecvDeviceBuffer(bx.XP).v()(), dv.v()(), du.v()(), -cks);
+// 	  SetXMBndKernel(bx.RecvDeviceBuffer(bx.XM).v()(), dv.v()(), -cks);
+// 	  SetYPBndKernel(bx.RecvDeviceBuffer(bx.YP).v()(), dv.v()(), du.v()(), -cks);
+// 	  SetYMBndKernel(bx.RecvDeviceBuffer(bx.YM).v()(), dv.v()(), -cks);
+// 	  SetZPBndKernel(bx.RecvDeviceBuffer(bx.ZP).v()(), dv.v()(), du.v()(), -cks);
+// 	  SetZMBndKernel(bx.RecvDeviceBuffer(bx.ZM).v()(), dv.v()(), -cks);
+
+	  // Team.WORLD.barrier();
+
+	}
+
+	def Dopr_Put(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField, 
+		     dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
 	{
 	  Team.WORLD.barrier();
 
@@ -3911,7 +6224,7 @@ public class Dslash extends Lattice {
 	  Team.WORLD.barrier();
 	}
 
-	def Dopr_Put(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	def Dopr_Put(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField,cks : Double, bx : CUDALatticeComm)
 	{
 		Team.WORLD.barrier();
 
@@ -4048,7 +6361,7 @@ public class Dslash extends Lattice {
 		Team.WORLD.barrier();
 	}
 
-	def Dopr_Put_uc(v:WilsonVectorField, u:SU3MatrixField, w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	def Dopr_Put_uc(v : WilsonVectorField, u : SU3MatrixField, w : WilsonVectorField,cks : Double, bx : CUDALatticeComm)
 	{
 		val flagRef = GlobalRail(bx.recvFlag());
 
@@ -4177,24 +6490,23 @@ public class Dslash extends Lattice {
 	}
 
 
-	def DoprH(v:WilsonVectorField, u:SU3MatrixField,
-		  w:WilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	def DoprH(v : WilsonVectorField, u : SU3MatrixField,
+		  w : WilsonVectorField, cks : Double, bx : CUDALatticeComm)
 	{
 	  Dopr_Put(v,u,w,cks,bx);
 	  v.MultGamma5();
 	}
 
-	def DoprH(dv:CUDAWilsonVectorField, du:CUDASU3MatrixField,
-		  dw:CUDAWilsonVectorField, cks:Double, bx:CUDALatticeComm)
+	def DoprH(dv : CUDAWilsonVectorField, du : CUDASU3MatrixField,
+		  dw : CUDAWilsonVectorField, cks : Double, bx : CUDALatticeComm)
 	{
-	  val startTime = System.nanoTime();
+	  // val startTime = System.nanoTime();
+	  // Dopr_Get_overlap(dv,du,dw,cks,bx);
+	  // Dopr_Put_overlap_uc_direct(dv,du,dw,cks,bx);
 	  Dopr_Put_overlap(dv,du,dw,cks,bx);
-	  // Dopr_Put(dv,du,dw,cks,bx);
-	  // if (here.id() == 0) Console.OUT.println("Dopr :" + (System.nanoTime() - startTime) / 1000 + " usec.");
-	  val startTime2 = System.nanoTime();
+
 	  dv.MultGamma5(dv.v()());
-	  // if (here.id() == 0) Console.OUT.println("Gamma5 :" + (System.nanoTime() - startTime2) / 1000 + " usec.");
-
 	}
-
 }
+
+
