@@ -77,7 +77,7 @@ public class MC_Comm {
 
         for (i in 0..5) {
             val to = displ(i);
-            val packed = grefPs(i);
+            val packed = grefPs(i)();
             for (j in 0..(numRecvs(i)-1)) {
                 particles(j + to) = new Particle(packed(j));
             }

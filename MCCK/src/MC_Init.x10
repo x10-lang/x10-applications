@@ -132,7 +132,7 @@ public class MC_Init {
                    yh = j;
                    zh = k;
                 }
-                p = p.next();
+                p = Place.places().next(p);
              }
           }
        }
