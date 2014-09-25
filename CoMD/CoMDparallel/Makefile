@@ -5,8 +5,9 @@ X10RT = mpi
 X10FLAG = -O -NO_CHECKS -VERBOSE_CHECKS -x10rt ${X10RT} -report postcompile=1
 
 BINDIR = bin
-ManagedX10BIN = ${BINDIR}/CoMD.jar
-NativeX10BIN = ${BINDIR}/CoMD
+BUILDDIR = build
+ManagedX10BIN = bin/CoMD.jar
+NativeX10BIN = bin/CoMD
 
 all:	build
 
@@ -15,10 +16,10 @@ build:	${NativeX10BIN} ${ManagedX10BIN}
 run:	run-cpp run-java 
 
 ${ManagedX10BIN}:	src/comd/*.x10
-	cd src && x10c ${X10FLAG} -o ../${ManagedX10BIN} -d ../${BINDIR} comd/CoMD.x10
+	cd src && x10c ${X10FLAG} -o ../${ManagedX10BIN} -d ../${BUILDDIR} comd/CoMD.x10
 
 ${NativeX10BIN}:	src/comd/*.x10
-	cd src && x10c++ ${X10FLAG} -o ../${NativeX10BIN} -d ../${BINDIR} comd/CoMD.x10
+	cd src && x10c++ ${X10FLAG} -o ../${NativeX10BIN} -d ../${BUILDDIR} comd/CoMD.x10
 
 run-java:	${ManagedX10BIN}
 	x10 -cp ${ManagedX10BIN} comd.CoMD ${APPFLAG}
@@ -36,4 +37,5 @@ run-eam:	${NativeX10BIN}
 
 .PHONY: clean
 clean:
-	rm -rf ${BINDIR}/*
+	rm -rf ${BUILDDIR} ${ManagedX10BIN} ${NativeX10BIN}
+
