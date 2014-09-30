@@ -25,7 +25,6 @@ import x10.util.concurrent.AtomicDouble;
 *************************************************************/
 
 public class Jacobi {
-   
     static val MSIZE = 1000;
 
     static val relax = 1.0;
@@ -46,7 +45,7 @@ public class Jacobi {
         val mits=5000;
 
         val jb = new Jacobi(m, n);
-        Console.OUT.println("Running using "+jb.P+" threads...");
+        Console.OUT.println("Jacobi iteration using "+jb.P+" threads...");
 
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
@@ -67,7 +66,7 @@ public class Jacobi {
         this.n = n;
         this.u = new Array_2[double](n,m);
         this.uold = new Array_2[double](n,m);
-	this.f = new Array_2[double](n, m, (i:long,j:long) => {
+        this.f = new Array_2[double](n, m, (i:long,j:long) => {
             val xx = (-1.0 + dx * (i-1)) as int;
             val yy = (-1.0 + dy * (j-1)) as int;
             -1.0*alpha *(1.0-xx*xx)*(1.0-yy*yy) -2.0*(1.0-xx*xx)-2.0*(1.0-yy*yy)
@@ -103,29 +102,37 @@ public class Jacobi {
         val ay = 1.0/(dy*dy); /* Y-direction coef */
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
-        val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
+        val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P,i));
+        val j_is = new Rail[DenseIterationSpace_1](P, (j:long)=>BlockingUtils.partitionBlock(1,m-2,P,j));
         val error = new AtomicDouble(10.0 * tol);
         var k:long = 1;
 
         while ((k<=mits)&&(error.get()>tol)) {
-            Array.copy(u, uold);
+            Array.swap(u, uold);
 
-	    finish {
-                for (block in i_is) {
-                    async {
-		        var my_error:double = 0.0;
-                        for ([i] in block) {
-                            for (j in 1..(m-2)) {
-                                val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
-                                             ay*(uold(i, j-1) + uold(i, j+1)) + 
-                                             b * uold(i, j) - f(i, j))/b;  
-                                u(i, j) = uold(i, j) - omega * resid;  
-                                my_error += resid*resid;   
-                            }
-                        }
-                        error.getAndAdd(my_error);
-                     }
-                 }
+            val body = (min_i:Long, max_i:Long, min_j:Long, max_j:Long) => {
+                var my_error:double = 0.0;
+                for (i in min_i..max_i) {
+                    for (j in min_j..max_j) {
+                        val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
+                                     ay*(uold(i, j-1) + uold(i, j+1)) + 
+                                     b * uold(i, j) - f(i, j))/b;  
+                        u(i, j) = uold(i, j) - omega * resid;  
+                        my_error += resid*resid;   
+                    }
+                }
+                error.getAndAdd(my_error);
+            };
+
+            // sequential
+            // body(1, n-2, 1, m-2);
+
+            finish for (t1 in 0..(Runtime.NTHREADS-1)) {
+                val i_block = i_is(t1);
+                for (t2 in 0..(Runtime.NTHREADS-1)) {
+                    val j_block = j_is(t2);
+                    async body(i_block.min, i_block.max, j_block.min, j_block.max);
+                }
             }
 
             k = k + 1;

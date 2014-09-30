@@ -24,7 +24,6 @@ import x10.array.*;
 *************************************************************/
 
 public class JacobiSeq {
-   
     static val MSIZE = 1000;
 
     static val relax = 1.0;
@@ -43,7 +42,7 @@ public class JacobiSeq {
         val mits=5000;
 
         val jb = new JacobiSeq(m, n);
-        Console.OUT.println("Running sequantially...");
+        Console.OUT.println("Sequential Jacobi iteration...");
 
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
@@ -104,7 +103,7 @@ public class JacobiSeq {
         var k:long = 1;
 
         while ((k<=mits)&&(error>tol)) {
-            Array.copy(u, uold);
+            Array.swap(u, uold);
 
             for (i in 1..(n-2)) {
                 for (j in 1..(m-2)) {

@@ -24,7 +24,6 @@ import x10.array.*;
 *************************************************************/
 
 public class JacobiCF {
-   
     static val MSIZE = 1000;
 
     static val relax = 1.0;
@@ -45,7 +44,7 @@ public class JacobiCF {
         val mits=5000;
 
         val jb = new JacobiCF(m, n);
-        Console.OUT.println("Running using "+jb.P+" threads...");
+        Console.OUT.println("Jacobi iteration using "+jb.P+" threads...");
 
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
@@ -66,7 +65,7 @@ public class JacobiCF {
         this.n = n;
         this.u = new Array_2[double](n,m);
         this.uold = new Array_2[double](n,m);
-	this.f = new Array_2[double](n, m, (i:long,j:long) => {
+        this.f = new Array_2[double](n, m, (i:long,j:long) => {
             val xx = (-1.0 + dx * (i-1)) as int;
             val yy = (-1.0 + dy * (j-1)) as int;
             -1.0*alpha *(1.0-xx*xx)*(1.0-yy*yy) -2.0*(1.0-xx*xx)-2.0*(1.0-yy*yy)
@@ -107,12 +106,12 @@ public class JacobiCF {
         var k:long = 1;
 
         while ((k<=mits)&&(error>tol)) {
-            Array.copy(u, uold);
+            Array.swap(u, uold);
 
-	    error = finish(Reducible.SumReducer[Double]()) {
+            error = finish(Reducible.SumReducer[Double]()) {
                  for (block in i_is) {
                      async {
-		         var my_error:double = 0.0;
+                        var my_error:double = 0.0;
                          for ([i] in block) {
                              for (j in 1..(m-2)) {
                                  val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +

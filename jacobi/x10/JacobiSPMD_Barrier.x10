@@ -25,7 +25,6 @@ import x10.util.concurrent.AtomicDouble;
 *************************************************************/
 
 public class JacobiSPMD_Barrier {
-   
     static val MSIZE = 1000;
 
     static val relax = 1.0;
@@ -46,7 +45,7 @@ public class JacobiSPMD_Barrier {
         val mits=5000;
 
         val jb = new JacobiSPMD_Barrier(m, n);
-        Console.OUT.println("Running using "+jb.P+" threads...");
+        Console.OUT.println("Jacobi iteration using "+jb.P+" threads...");
 
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
@@ -67,7 +66,7 @@ public class JacobiSPMD_Barrier {
         this.n = n;
         this.u = new Array_2[double](n,m);
         this.uold = new Array_2[double](n,m);
-	this.f = new Array_2[double](n, m, (i:long,j:long) => {
+        this.f = new Array_2[double](n, m, (i:long,j:long) => {
             val xx = (-1.0 + dx * (i-1)) as int;
             val yy = (-1.0 + dy * (j-1)) as int;
             -1.0*alpha *(1.0-xx*xx)*(1.0-yy*yy) -2.0*(1.0-xx*xx)-2.0*(1.0-yy*yy)
@@ -103,28 +102,25 @@ public class JacobiSPMD_Barrier {
         val ay = 1.0/(dy*dy); /* Y-direction coef */
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
-	val residual = new Cell[Double](10.0 * tol);
-	val error = new AtomicDouble(0.0);
+        val residual = new Cell[Double](10.0 * tol);
+        val error = new AtomicDouble(0.0);
         val k = new Cell[Long](1);
 
         val barrier = new x10.util.concurrent.SPMDBarrier(P as int);
 
-	finish {
+        finish {
             val is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
-	    var id:int = 0n;
+            var id:int = 0n;
             for (block in is) {
                 val myId = id++;            
                 async {
                     barrier.register();
                     while ((k()<=mits)&&(residual()>tol)) {
-		        // copy my portion of new solution to old
-                        for ([i] in block) {
-                            for (j in 0..(m-1)) {
-                                uold(i,j) = u(i,j);
-                            }
-                        }
+                        if (myId == 0n)
+                            Array.swap(u, uold);
+                        barrier.advance();
 		    
-		        var my_error:double = 0.0;
+                        var my_error:double = 0.0;
                         for ([i] in block) {
                             for (j in 1..(m-2)) {
                                 val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
@@ -143,7 +139,7 @@ public class JacobiSPMD_Barrier {
 			    error.set(0.0);
                             if (k()%500==0) { Console.OUT.println("Finished "+k()+" iteration."); }
                         }
-			barrier.advance();
+                        barrier.advance();
                     }
                 }
             }

@@ -46,7 +46,7 @@ public class JacobiOMP {
         val mits=5000;
 
         val jb = new JacobiOMP(m, n);
-        Console.OUT.println("Running using "+jb.P+" threads...");
+        Console.OUT.println("Jacobi iteration using "+jb.P+" threads...");
 
         val start = System.nanoTime();
         jb.jacobi(tol, mits);
@@ -117,11 +117,9 @@ public class JacobiOMP {
                 async {
                     barrier.register();
                     while ((k()<=mits)&&(residual()>tol)) {
-                        // copy my portion of new solution to old
-                        for ([i] in block) {
-                            for (j in 0..(m-1)) {
-                                uold(i,j) = u(i,j);
-                            }
+                        if (barrier.single()) {
+                            Array.swap(u, uold);
+                            barrier.multi();
                         }
 
                         var my_error:double = 0.0;
