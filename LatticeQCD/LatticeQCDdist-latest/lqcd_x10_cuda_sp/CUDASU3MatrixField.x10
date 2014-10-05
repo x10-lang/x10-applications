@@ -1,6 +1,5 @@
 import x10.io.File;
 import x10.io.FileNotFoundException;
-import x10.array.Array_1;
 
 import CUDAParallelComplexField;
 
@@ -116,6 +115,3 @@ public class CUDASU3MatrixField extends CUDAParallelComplexField {
 	}
 */
 }
-
-
-

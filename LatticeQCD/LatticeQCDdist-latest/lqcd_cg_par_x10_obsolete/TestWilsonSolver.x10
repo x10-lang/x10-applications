@@ -1,10 +1,7 @@
-
 import x10.io.File;
 import x10.io.FileNotFoundException;
 import x10.lang.Math;
 import x10.compiler.Inline;
-
-import x10.array.Array_1;
 
 import WilsonVectorField;
 import SU3MatrixField;
@@ -183,6 +180,3 @@ public final class TestWilsonSolver {
 	}
 
 }
-
-
-

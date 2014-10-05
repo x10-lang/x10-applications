@@ -1,6 +1,5 @@
 import x10.io.File;
 import x10.io.FileNotFoundException;
-import x10.array.Array_1;
 
 import ParallelComplexField;
 
@@ -119,6 +118,3 @@ public class SU3MatrixField extends ParallelComplexField {
 	  }
 	}
 }
-
-
-

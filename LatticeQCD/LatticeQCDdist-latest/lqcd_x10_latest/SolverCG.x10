@@ -1,8 +1,3 @@
-
-
-
-import x10.array.Array_1;
-
 import ParallelLattice;
 import WilsonVectorField;
 import SU3MatrixField;
@@ -145,10 +140,3 @@ public class SolverCG extends Lattice{
 	}
 
 }
-
-
-
-
-
-
-

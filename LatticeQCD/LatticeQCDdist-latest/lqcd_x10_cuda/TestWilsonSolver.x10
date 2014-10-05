@@ -5,7 +5,6 @@ import x10.compiler.*;
 
 import x10.util.CUDAUtilities;
 
-import x10.array.Array_1;
 
 public final class TestWilsonSolver {
 	// constants

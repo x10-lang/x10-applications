@@ -1,7 +1,3 @@
-
-
-import x10.array.Array_1;
-
 import ParallelComplexField;
 
 
@@ -123,7 +119,3 @@ public class WilsonVectorField extends ParallelComplexField {
 */
 
 }
-
-
-
-
