@@ -57,7 +57,7 @@ class LatticeComm extends ParallelLattice{
 				// at(Place(iDest)) async {
 				at(Place(iDest)) {
 					// finish{
-						Rail.asyncCopy[Double](bufRef,0,bufRecv(dir).v(),0,bufRecv(dir).size);
+						Rail.asyncCopy(bufRef,0,bufRecv(dir).v(),0,bufRecv(dir).size);
 					// }
 				}
 			// }

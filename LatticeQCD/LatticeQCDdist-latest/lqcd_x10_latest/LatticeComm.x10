@@ -88,10 +88,10 @@ class LatticeComm extends ParallelLattice{
 				at(Place(iDest)) async {
 					val size = bufRecv(dir).size;
 					finish{
-						Rail.asyncCopy[Double](bufRef,0,bufRecv(dir).v(),0,size);
+						Rail.asyncCopy(bufRef,0,bufRecv(dir).v(),0,size);
 					}
 			//		finish{
-			//			Rail.uncountedCopy[Double](bufRef,0,bufRecv(dir).v(),0,size,()=>{recvCount()(dir)+=size;});
+			//			Rail.uncountedCopy(bufRef,0,bufRecv(dir).v(),0,size,()=>{recvCount()(dir)+=size;});
 			//		}
 				}
 			}
@@ -101,7 +101,7 @@ class LatticeComm extends ParallelLattice{
 	def Put(dir : Long)
 	{
 		val size = bufSend(dir).size;
-		Rail.asyncCopy[Double](bufSend(dir).v(),0,refBuffers()(dir),0,size);
+		Rail.asyncCopy(bufSend(dir).v(),0,refBuffers()(dir),0,size);
 	}
 
 	def WaitRecv(dir : Long)
