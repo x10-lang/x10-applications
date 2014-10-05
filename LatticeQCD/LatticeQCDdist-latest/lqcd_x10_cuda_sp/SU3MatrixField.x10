@@ -56,7 +56,7 @@ public class SU3MatrixField extends ParallelComplexField {
 						if(x >= sx && x <= ex && y >= sy && y <= ey && z >= sz && z <= ez && t >= st && t <= et){
 							for(i in 0..3){
 								for(idf in 0..17){
-									d = Float.parseFloat(reader.readLine().trim());
+									d = Float.parse(reader.readLine().trim());
 									v()((is + i*nsite)*18 + idf) = d;
 								}
 							}
@@ -64,7 +64,7 @@ public class SU3MatrixField extends ParallelComplexField {
 						}
 						else{
 							for(i in 0..(4*18-1)){
-								d = Float.parseFloat(reader.readLine().trim());
+								d = Float.parse(reader.readLine().trim());
 							}
 						}
 					}
