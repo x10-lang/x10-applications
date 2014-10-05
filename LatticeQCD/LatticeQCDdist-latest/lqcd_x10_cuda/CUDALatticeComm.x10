@@ -86,7 +86,7 @@ class CUDALatticeComm extends LatticeComm {
 
 	    // D2H
 	    finish {
-	      Rail.asyncCopy[Double](dbufSend(dir).v()(), 0, bufSend(dir).v(), 0, bufSend(dir).size);
+	      Rail.asyncCopy(dbufSend(dir).v()(), 0, bufSend(dir).v(), 0, bufSend(dir).size);
 	    }
 
 	    Send(dir);
