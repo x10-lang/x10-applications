@@ -28,20 +28,17 @@ public class Histogram(plh:PlaceLocalHandle[Rail[Long]],
 	public def sink(s:Iterable[Pair[Long, Long]]): void {
 		for (kv in s)  {
 			plh2().add(kv);
-			Console.OUT.println(here + " sees: " + kv);
+			//Console.OUT.println(here + " sees: " + kv);
 		}
-		
 	}
 	
 	public def mapper(k:Long, v:Long, s:(Long,Long)=>void):void {
 		s(v,k);
 	}
 
-	public def reducer(a:Long, b:Iterable[Long], sink:ArrayList[Pair[Long, Long]]):
-		void {
+	public def reducer(a:Long, b:Iterable[Long], sink:ArrayList[Pair[Long, Long]]): void {
 		var sum:Long=0L; 
-		if (b !=null) 
-			for (x in b) sum += 1;
+		if (b !=null) for (x in b) sum += 1;
 		sink.add(Pair(a as Long, sum));
 	}
 	public static def test0(args:Rail[String]) {

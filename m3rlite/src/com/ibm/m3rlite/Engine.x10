@@ -51,15 +51,15 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 			incoming:NN[Rail[MyMap[K2,V2]]]){}
 	
 	public def run() {
-	
 		val plh = PlaceLocalHandle.make(Place.places(),
 				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
 						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
-		clocked finish for(p in Place.places()) at (p) clocked async {
-			val P = Place.numPlaces();
-			val job = plh().job; // local copy
-			val incoming = plh().incoming;
-			for (var i:Int=0n; ! job.stop(); i++) {
+		for (var i:Int=0n; ! job.stop(); i++) {
+			// map and communicate phase
+			finish for(p in Place.places()) at (p) async {
+				val P = Place.numPlaces();
+				val job = plh().job; // local copy
+				val incoming = plh().incoming;	
 				// Prepare and run the mapper
 				val results = new Rail[MyMap[K2,V2]](P, (Long) => new MyMap[K2,V2]());
 				val mSink = (k:K2,v:V2)=> {insert(results(job.partition(k) % P), k, v);};
@@ -68,39 +68,42 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 				// Map Phase: Call the user-supplied mapper
 				if (src != null)
 					for (kv in src) job.mapper(kv.first, kv.second, mSink);
-			
+				
 				// Transmit data to all places
 				for (q in Place.places()) { 
 					val v = results(q.id);
 					if (v.size() > 0)
 						at(q) plh().incoming(p.id)=v;
 				}
-				Clock.advanceAll();
-				
+			}
+		// reduce phase
+			finish for(p in Place.places()) at (p) async {	
+				val P = Place.numPlaces();
+				val job = plh().job; // local copy
+				val incoming = plh().incoming;	
 				// Now process all the incoming data, shuffling it together
 				// Note: the items associated with a key are not sorted.
 				var j:Long=0n;
 				for (; j < P && incoming(j)==null; j++);
 				if (j==P) { // received nothing as input
-					job.sink(null); continue;
-				} 
-				val a = incoming(j);
-				incoming(j)=null;
-				for (; ++j < P;) {
-					mergeInto(a, incoming(j));
+					job.sink(null); //continue;
+				} else {
+					val a = incoming(j);
 					incoming(j)=null;
+					for (; ++j < P;) {
+						mergeInto(a, incoming(j));
+						incoming(j)=null;
+					}
+					
+					// Now reduce
+					val output = new ArrayList[Pair[K3,V3]]();
+					
+					// Reduce phase: Call the user-suplied reducer
+					for (k in a.keySet()) job.reducer(k,a(k), output);
+					
+					// Sink the result to the job.
+					job.sink(output);
 				}
-				
-				// Now reduce
-				val output = new ArrayList[Pair[K3,V3]]();
-				
-				// Reduce phase: Call the user-suplied reducer
-				for (k in a.keySet()) job.reducer(k,a(k), output);
-				
-				// Sink the result to the job.
-				job.sink(output);
-				
-				Clock.advanceAll(); // Wait for everyone to finish the last phase
 			}
 		}
 	}

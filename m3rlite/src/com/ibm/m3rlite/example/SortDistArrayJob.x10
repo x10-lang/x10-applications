@@ -32,7 +32,8 @@ implements Job[Long,Long,Long,Pair[Long, Long],Long,Rail[Pair[Long,Long]]] {
 	
 	//Utility variables for collecting the sub-results
 	var keyRail:GlobalRef[Rail[Long]] = GlobalRef[Rail[Long]](new Rail[Long](Place.numPlaces()));
-	var hashM:GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]] = GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]](new HashMap[Long, Rail[Pair[Long,Long]]](Place.numPlaces()));
+	var hashM:GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]] = 
+		GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]](new HashMap[Long, Rail[Pair[Long,Long]]](Place.numPlaces()));
 	
 	public def sink(s:Iterable[Pair[Long, Rail[Pair[Long,Long]]]]): void {
 		//Collect at Place(0) all the ordered sub-arrays
@@ -70,8 +71,8 @@ implements Job[Long,Long,Long,Pair[Long, Long],Long,Rail[Pair[Long,Long]]] {
 		s(v / (span/ (Place.numPlaces()-1)), Pair[Long, Long](v,k));		
 	}
 
-	public def reducer(a:Long, b:Iterable[Pair[Long, Long]], sink:ArrayList[Pair[Long, Rail[Pair[Long,Long]]]]):
-		void {
+	public def reducer(a:Long, b:Iterable[Pair[Long, Long]], 
+			sink:ArrayList[Pair[Long, Rail[Pair[Long,Long]]]]): void {
 		if (b !=null) {
 			var size:Long = 0;
 			for (x in b) size++;
@@ -81,8 +82,6 @@ implements Job[Long,Long,Long,Pair[Long, Long],Long,Rail[Pair[Long,Long]]] {
 			RailUtils.sort(r, (i:Pair[Long,Long],j:Pair[Long,Long])=>(i.first-j.first) as Int);
 			sink.add(Pair(r(0).first, r));
 		}
-		
-		
 	}
 	public static def test0(args:Rail[String]) {
 		val N = args.size > 0 ? Long.parseLong(args(0)) : 20;
