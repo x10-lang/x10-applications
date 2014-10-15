@@ -66,6 +66,7 @@ implements Job[Long,Long,Long,Pair[Long, Long],Long,Rail[Pair[Long,Long]]] {
 	
 	public def mapper(k:Long, v:Long, s:(Long,Pair[Long, Long])=>void):void {
 		val span = max-min;
+		//TODO: Fix for #places=1
 		s(v / (span/ (Place.numPlaces()-1)), Pair[Long, Long](v,k));		
 	}
 
@@ -108,7 +109,7 @@ implements Job[Long,Long,Long,Pair[Long, Long],Long,Rail[Pair[Long,Long]]] {
 			z.printStackTrace();
 		}
 	
-		//Completed array Initializazion
+		//Completed array Initialization
 		val job=new SortDistArrayJob(originArray, new DistArray_Block_1[Long](N));
 		
 		//Find min and max values
