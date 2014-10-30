@@ -28,7 +28,7 @@ import x10.util.ArrayList;
  * 
  * @author vj
  */
-public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
+public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 	static type NN[T]{T haszero} = T{self!=null};
 	static type MyMap[K2,V2] = HashMap[K2,ArrayList[V2]];
 	
@@ -50,35 +50,47 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 	static class State[K1,V1,K2,V2,K3,V3](job:NN[Job[K1,V1,K2,V2,K3,V3]], 
 			incoming:NN[Rail[MyMap[K2,V2]]]){}
 	
+	// resiliency support
+	val livePlaces = new ArrayList[Place]();
+	transient var restore_needed:Boolean = false; // not used now
+	public def numLivePlaces() = livePlaces.size();
+	public def placeIndex(p:Place) = livePlaces.indexOf(p);
+	
 	public def run() {
+		for (p in Place.places()) {
+			at (p) Console.OUT.println(here+" running in "+Runtime.getName());
+			livePlaces.add(p); // livePlaces should be sorted
+		}
+		
 		val plh = PlaceLocalHandle.make(Place.places(),
 				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
 						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
 		for (var i:Int=0n; ! job.stop(); i++) {
+		  try {
 			// map and communicate phase
-			finish for(p in Place.places()) at (p) async {
-				val P = Place.numPlaces();
+			finish for(p in livePlaces) at (p) async {
+				val P = numLivePlaces();
 				val job = plh().job; // local copy
 				val incoming = plh().incoming;	
 				// Prepare and run the mapper
 				val results = new Rail[MyMap[K2,V2]](P, (Long) => new MyMap[K2,V2]());
 				val mSink = (k:K2,v:V2)=> {insert(results(job.partition(k) % P), k, v);};
-				val src = job.source();
+				val src = job.source(); // job.source(placeIndex(here), numLivePlaces())
 				
 				// Map Phase: Call the user-supplied mapper
 				if (src != null)
 					for (kv in src) job.mapper(kv.first, kv.second, mSink);
 				
 				// Transmit data to all places
-				for (q in Place.places()) { 
-					val v = results(q.id);
+				for (q in livePlaces) {
+					val v = results(placeIndex(q));
 					if (v.size() > 0)
-						at(q) plh().incoming(p.id)=v;
+						at(q) plh().incoming(placeIndex(p))=v;
 				}
 			}
-		// reduce phase
-			finish for(p in Place.places()) at (p) async {	
-				val P = Place.numPlaces();
+			// reduce phase
+			finish for(p in livePlaces) at (p) async {	
+				val P = numLivePlaces();
 				val job = plh().job; // local copy
 				val incoming = plh().incoming;	
 				// Now process all the incoming data, shuffling it together
@@ -105,6 +117,33 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 					job.sink(output);
 				}
 			}
+		  } catch (e:Exception) {
+			processException(e, 0);
+		  }
 		}
+	}
+	
+	/**
+	 * Process Exception(s)
+	 * l is the nest level of MultipleExceptions (for pretty print)
+	 */
+	private def processException(e:CheckedThrowable, l:Long) {
+	    if (e instanceof DeadPlaceException) {
+	        val deadPlace = (e as DeadPlaceException).place;
+	        Console.OUT.println(new String(new Rail[Char](l,' ')) + "DeadPlaceException thrown from " + deadPlace);
+	        livePlaces.remove(deadPlace); // may be removed multiple times
+	        restore_needed = true;
+	    } else if (e instanceof MultipleExceptions) {
+	        val exceptions = (e as MultipleExceptions).exceptions();
+	        Console.OUT.println(new String(new Rail[Char](l,' ')) + "MultipleExceptions size=" + exceptions.size);
+	        val deadPlaceExceptions = (e as MultipleExceptions).getExceptionsOfType[DeadPlaceException]();
+	        for (dpe in deadPlaceExceptions) {
+	            processException(dpe, l+1);
+	        }
+	        val filtered = (e as MultipleExceptions).filterExceptionsOfType[DeadPlaceException]();
+	        if (filtered != null) throw filtered;
+	    } else {
+	        Console.ERR.println("unhandled exception " + e);
+	    }
 	}
 }
