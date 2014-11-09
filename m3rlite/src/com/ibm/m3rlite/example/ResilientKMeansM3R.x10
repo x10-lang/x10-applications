@@ -171,7 +171,13 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     }
 
     public static def testWithSimple(args:Rail[String]) {
-        val N  = 8, NC = 4, ND = 1;
+        val N  : Long = (args.size > 0) ? Long.parseLong(args(0)) : 8;
+        val NC : Long = (args.size > 1) ? Long.parseLong(args(1)) : 4;
+        val ND : Long = 1;
+        Console.OUT.println("N = " + N);
+        Console.OUT.println("num of Clusters = " + NC);
+        Console.OUT.println("dimension = " + ND);
+
         val d = new Rail[Double](ND*N, (i:Long)=>i as Double); // 0 1 2 3 4 5 6 7
         val clusters = calc_kmeans(N, NC, ND, d);
         for (var i:Long = 0; i < NC; i++)
@@ -187,8 +193,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     }
 
     public static def main(args:Rail[String]) {
-//	testWithSimple(args);
-	testWithSimple2(args);
+	testWithSimple(args); // 1000000 8 for larger test
 //	testWithRandom(args);
     }
 }
