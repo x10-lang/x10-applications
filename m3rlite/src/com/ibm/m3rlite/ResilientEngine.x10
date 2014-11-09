@@ -103,6 +103,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 					val a = incoming(j);
 					incoming(j)=null;
 					for (; ++j < P;) {
+					    if (incoming(j)!=null)//@@@@
 						mergeInto(a, incoming(j));
 						incoming(j)=null;
 					}
