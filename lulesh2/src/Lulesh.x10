@@ -81,7 +81,7 @@ public class Lulesh {
             Console.OUT.printf("Running problem size %d^3 per domain until completion\n", opts.nx);
             Console.OUT.printf("Num places: %d\n", Place.numPlaces());
             Console.OUT.printf("Num threads: %d\n", Runtime.NTHREADS);
-            Console.OUT.printf("Total number of elements: %lld\n\n", Place.numPlaces()*opts.nx*opts.nx*opts.nx);
+            Console.OUT.printf("Total number of elements: %d\n\n", Place.numPlaces()*opts.nx*opts.nx*opts.nx);
             Console.OUT.printf("To run other sizes, use -s <integer>.\n");
             Console.OUT.printf("To run a fixed number of iterations, use -i <integer>.\n");
             Console.OUT.printf("To run a more or less balanced region set, use -b <integer>.\n");
@@ -1795,9 +1795,9 @@ public class Lulesh {
 
         var elemId:Long = 0;
         Console.OUT.printf("Run completed:  \n");
-        Console.OUT.printf("   Problem size        =  %i \n",    nx);
-        Console.OUT.printf("   Place.numPlaces()    =  %i \n",    Place.numPlaces());
-        Console.OUT.printf("   Iteration count     =  %i \n",    domain.cycle);
+        Console.OUT.printf("   Problem size        =  %d \n",    nx);
+        Console.OUT.printf("   Number of places    =  %d \n",    Place.numPlaces());
+        Console.OUT.printf("   Iteration count     =  %d \n",    domain.cycle);
         Console.OUT.printf("   Final Origin Energy = %12.6e \n", domain.e(elemId));
 
         var maxAbsDiff:Double = 0.0;
