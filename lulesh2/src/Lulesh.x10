@@ -10,11 +10,14 @@
  */
 
 import x10.array.Array_2;
+import x10.compiler.Foreach;
 import x10.compiler.Ifdef;
 import x10.compiler.Inline;
 import x10.compiler.StackAllocate;
+import x10.compiler.StackAllocateUninitialized;
 import x10.util.Team;
 import x10.util.Timer;
+import x10.util.WorkerLocalHandle;
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
@@ -55,6 +58,8 @@ public class Lulesh {
     protected val forceGhostMgr:GhostManager;
     /** Manager for position gradient updates between plane neighbors */
     protected val gradientGhostMgr:GhostManager;
+
+    private val gamma = new Array_2[Double](4,8);
 
     private static val EXIT_CODE_INCORRECT_USAGE = 2n;
 
@@ -108,6 +113,40 @@ public class Lulesh {
         this.gradientGhostMgr = new GhostManager(
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 () => domainPlh().loc.createNeighborList(true, true, true));
+
+        // initialize hourglass gamma
+        gamma(0,0) =  1.0;
+        gamma(0,1) =  1.0;
+        gamma(0,2) = -1.0;
+        gamma(0,3) = -1.0;
+        gamma(0,4) = -1.0;
+        gamma(0,5) = -1.0;
+        gamma(0,6) =  1.0;
+        gamma(0,7) =  1.0;
+        gamma(1,0) =  1.0;
+        gamma(1,1) = -1.0;
+        gamma(1,2) = -1.0;
+        gamma(1,3) =  1.0;
+        gamma(1,4) = -1.0;
+        gamma(1,5) =  1.0;
+        gamma(1,6) =  1.0;
+        gamma(1,7) = -1.0;
+        gamma(2,0) =  1.0;
+        gamma(2,1) = -1.0;
+        gamma(2,2) =  1.0;
+        gamma(2,3) = -1.0;
+        gamma(2,4) =  1.0;
+        gamma(2,5) = -1.0;
+        gamma(2,6) =  1.0;
+        gamma(2,7) = -1.0;
+        gamma(3,0) = -1.0;
+        gamma(3,1) =  1.0;
+        gamma(3,2) = -1.0;
+        gamma(3,3) =  1.0;
+        gamma(3,4) =  1.0;
+        gamma(3,5) = -1.0;
+        gamma(3,6) =  1.0;
+        gamma(3,7) = -1.0;
     }
 
     public def run() {
@@ -144,78 +183,6 @@ public class Lulesh {
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
         verifyAndWriteFinalOutput(elapsedTime, domainPlh(), opts.nx);
-    }
-
-    public static @Inline final def calcElemVolume(x:Rail[Double], y:Rail[Double], z:Rail[Double]):Double {
-        val dx61 = x(6) - x(1);
-        val dy61 = y(6) - y(1);
-        val dz61 = z(6) - z(1);
-
-        val dx70 = x(7) - x(0);
-        val dy70 = y(7) - y(0);
-        val dz70 = z(7) - z(0);
-
-        val dx63 = x(6) - x(3);
-        val dy63 = y(6) - y(3);
-        val dz63 = z(6) - z(3);
-
-        val dx20 = x(2) - x(0);
-        val dy20 = y(2) - y(0);
-        val dz20 = z(2) - z(0);
-
-        val dx50 = x(5) - x(0);
-        val dy50 = y(5) - y(0);
-        val dz50 = z(5) - z(0);
-
-        val dx64 = x(6) - x(4);
-        val dy64 = y(6) - y(4);
-        val dz64 = z(6) - z(4);
-
-        val dx31 = x(3) - x(1);
-        val dy31 = y(3) - y(1);
-        val dz31 = z(3) - z(1);
-
-        val dx72 = x(7) - x(2);
-        val dy72 = y(7) - y(2);
-        val dz72 = z(7) - z(2);
-
-        val dx43 = x(4) - x(3);
-        val dy43 = y(4) - y(3);
-        val dz43 = z(4) - z(3);
-
-        val dx57 = x(5) - x(7);
-        val dy57 = y(5) - y(7);
-        val dz57 = z(5) - z(7);
-
-        val dx14 = x(1) - x(4);
-        val dy14 = y(1) - y(4);
-        val dz14 = z(1) - z(4);
-
-        val dx25 = x(2) - x(5);
-        val dy25 = y(2) - y(5);
-        val dz25 = z(2) - z(5);
-
-        val tripleProduct = 
-            (x1:Double, y1:Double, z1:Double, 
-             x2:Double, y2:Double, z2:Double, 
-             x3:Double, y3:Double, z3:Double) => 
-            {
-                (x1)*((y2)*(z3) - (z2)*(y3)) 
-              + (x2)*((z1)*(y3) - (y1)*(z3))
-              + (x3)*((y1)*(z2) - (z1)*(y2))
-            };
-
-        val volume = tripleProduct(dx31 + dx72, dx63, dx20,
-                                   dy31 + dy72, dy63, dy20,
-                                   dz31 + dz72, dz63, dz20)
-                   + tripleProduct(dx43 + dx57, dx64, dx70,
-                                   dy43 + dy57, dy64, dy70,
-                                   dz43 + dz57, dz64, dz70)
-                   + tripleProduct(dx14 + dx25, dx61, dx50,
-                                   dy14 + dy25, dy61, dy50,
-                                   dz14 + dz25, dz61, dz50);
-
-        return volume / 12.0;
     }
 
     /* Work Routines */
@@ -272,7 +239,6 @@ public class Lulesh {
         lagrangeNodal(domain);
 
         lagrangeElements(domain);
-
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
         val perEdge = domain.sizeX+1;
         posVelGhostMgr.updateBoundaryData(domainPlh, 
@@ -331,7 +297,7 @@ public class Lulesh {
 
         applyMaterialPropertiesForElems(domain, vnew);
 
-        updateVolumesForElems(domain, vnew, domain.v_cut, domain.numElem);
+        updateVolumesForElems(domain, vnew);
     }
 
     def calcTimeConstraintsForElems(domain:Domain) {
@@ -351,12 +317,16 @@ public class Lulesh {
     }
 
     protected def calcForceForNodes(domain:Domain) {
-        // TODO parallel loop
-        for (i in 0..(domain.numNode-1)) {
+        domain.fx.clear();
+        domain.fy.clear();
+        domain.fz.clear();
+        /*
+        Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.fx(i) = 0.0;
             domain.fy(i) = 0.0;
             domain.fz(i) = 0.0;
-        }
+        });
+        */
 
         calcVolumeForceForElems(domain);
 
@@ -378,14 +348,13 @@ public class Lulesh {
             val sigzz  = new Rail[Double](numElem);
             val determ = new Rail[Double](numElem);
 
-            initStressTermsForElems(domain, sigxx, sigyy, sigzz, numElem);
+            initStressTermsForElems(domain, sigxx, sigyy, sigzz);
 
-            integrateStressForElems(domain, sigxx, sigyy, sigzz, determ, numElem,
-                                    domain.numNode);
+            integrateStressForElems(domain, sigxx, sigyy, sigzz, determ);
 
             // check for negative element volume
-            // TODO parallel loop
             for (k in 0..(numElem-1)) {
+                // TODO parallel loop
                 if (determ(k) <= 0.0) {
                     throw new VolumeException(k, determ(k));
                 }
@@ -397,12 +366,11 @@ public class Lulesh {
 
     /** Sum contributions to total stress tensor */
     protected def initStressTermsForElems(domain:Domain, sigxx:Rail[Double], 
-                                sigyy:Rail[Double], sigzz:Rail[Double],
-                                numElem:Long) {
+                                sigyy:Rail[Double], sigzz:Rail[Double]) {
         // pull in the stresses appropriate to the hydro integration
 
-        // TODO parallel loop
-        for (i in 0..(numElem-1)) {
+        for (i in 0..(domain.numElem-1)) {
+        //Foreach.block(0, domain.numElem-1, (i:Long)=> {
             sigxx(i) = sigyy(i) = sigzz(i) = -domain.p(i) - domain.q(i);
         }
     }
@@ -413,38 +381,40 @@ public class Lulesh {
      */
     def integrateStressForElems(domain:Domain, sigxx:Rail[Double], 
                                 sigyy:Rail[Double], sigzz:Rail[Double],
-                                determ:Rail[Double], numElem:Long, 
-                                numNode:Long) {
+                                determ:Rail[Double]) {
 
-        val fx_local = new Rail[Double](8);
-        val fy_local = new Rail[Double](8);
-        val fz_local = new Rail[Double](8);
-        // TODO these should be stack-allocated inside the loop over k
-        val B = new Array_2[Double](3, 8); // shape function derivatives
-        val x_local = new Rail[Double](8);
-        val y_local = new Rail[Double](8);
-        val z_local = new Rail[Double](8);
+        Foreach.bisect(0, domain.numElem-1,
+        (min_k:Long, max_k:Long) => {
+            /** shape function derivatives */
+            @StackAllocate val bStore = @StackAllocateUninitialized new Rail[Double](24);
+            val B = Array_2.makeView[Double](bStore, 3, 8);
+            @StackAllocate val x_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val y_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val z_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val fx_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val fy_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val fz_local = @StackAllocate new Rail[Double](8);
 
-        // TODO parallel loop
-        for (k in 0..(numElem-1)) {
-            collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
+            for (k in min_k..max_k) {
+                collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
 
-            determ(k) = calcElemShapeFunctionDerivatives(x_local, y_local, 
-                                                         z_local, B);
+                determ(k) = calcElemShapeFunctionDerivatives(x_local, y_local, 
+                                                             z_local, B);
 
-            calcElemNodeNormals(B, x_local, y_local, z_local);
+                calcElemNodeNormals(B, x_local, y_local, z_local);
 
-            sumElemStressesToNodeForces(B, sigxx(k), sigyy(k), sigzz(k),
-                                        fx_local, fy_local, fz_local);
+                sumElemStressesToNodeForces(B, sigxx(k), sigyy(k), sigzz(k),
+                                            fx_local, fy_local, fz_local);
 
-            // copy nodal force contributions to global force arrray.
-            for (lnode in 0..7) {
-                val gnode = domain.nodeList(k*8 + lnode);
-                domain.fx(gnode) += fx_local(lnode);
-                domain.fy(gnode) += fy_local(lnode);
-                domain.fz(gnode) += fz_local(lnode);
+                // copy nodal force contributions to global force array.
+                for (lnode in 0..7) {
+                    val gnode = domain.nodeList(k*8 + lnode);
+                    domain.fx(gnode) += fx_local(lnode);
+                    domain.fy(gnode) += fy_local(lnode);
+                    domain.fz(gnode) += fz_local(lnode);
+                }
             }
-        }
+        });
     }
 
     /**
@@ -590,44 +560,47 @@ public class Lulesh {
         val x8n  = new Rail[Double](numElem8);
         val y8n  = new Rail[Double](numElem8);
         val z8n  = new Rail[Double](numElem8);
-        // TODO these should be stack-allocated inside the loop over i
-        val x1 = new Rail[Double](8);
-        val y1 = new Rail[Double](8);
-        val z1 = new Rail[Double](8);
-        val pfx = new Rail[Double](8);
-        val pfy = new Rail[Double](8);
-        val pfz = new Rail[Double](8);
 
-        // TODO parallel loop
-        for (i in 0..(numElem-1)) {
-            collectDomainNodesToElemNodes(domain, i, x1, y1, z1);
+        Foreach.bisect(0, numElem-1,
+        (min_i:Long, max_i:Long) => {
+            @StackAllocate val x1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val y1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val z1 = @StackAllocateUninitialized new Rail[Double](8);
+            for (i in min_i..max_i) {
+                @StackAllocate val pfx = @StackAllocate new Rail[Double](8);
+                @StackAllocate val pfy = @StackAllocate new Rail[Double](8);
+                @StackAllocate val pfz = @StackAllocate new Rail[Double](8);
 
-            calcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
+                collectDomainNodesToElemNodes(domain, i, x1, y1, z1);
 
-            /* load into temporary storage for FB Hour Glass control */
-            for (ii in 0..7){
-                val jj = 8*i+ii;
+                calcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
 
-                dvdx(jj) = pfx(ii);
-                dvdy(jj) = pfy(ii);
-                dvdz(jj) = pfz(ii);
-                x8n(jj)  = x1(ii);
-                y8n(jj)  = y1(ii);
-                z8n(jj)  = z1(ii);
+                /* load into temporary storage for FB Hour Glass control */
+                for (ii in 0..7) {
+                    val jj = 8*i+ii;
+
+                    dvdx(jj) = pfx(ii);
+                    dvdy(jj) = pfy(ii);
+                    dvdz(jj) = pfz(ii);
+                    x8n(jj)  = x1(ii);
+                    y8n(jj)  = y1(ii);
+                    z8n(jj)  = z1(ii);
+                }
+
+                determ(i) = domain.volo(i) * domain.v(i);
+
+                /* Do a check for negative volumes */
+                if (domain.v(i) <= 0.0) {
+                    throw new VolumeException(i, domain.v(i));
+                }
             }
-
-            determ(i) = domain.volo(i) * domain.v(i);
-
-            /* Do a check for negative volumes */
-            if (domain.v(i) <= 0.0) {
-                throw new VolumeException(i, domain.v(i));
-            }
-        }
+        } );
 
         if (hgcoef > 0.0) {
             calcFBHourglassForceForElems(domain,
-                                        determ, x8n, y8n, z8n, dvdx, dvdy, dvdz,
-                                        hgcoef, numElem, domain.numNode);
+                                        determ, x8n, y8n, z8n, 
+                                        dvdx, dvdy, dvdz,
+                                        hgcoef);
         }
     }
 
@@ -670,179 +643,143 @@ public class Lulesh {
     }
 
     /** 
-      * Calculates the Flanagan-Belytschko anti-hourglass force. 
-      * @see "D. P. Flanagan and T. Belytschko. A uniform strain hexahedron 
-      * and quadrilateral with orthogonal hourglass control. Int. J. Num. 
-      * Methods in Engineering, pages 679–706, March 1981."
-      */
+     * Calculates the Flanagan-Belytschko anti-hourglass force. 
+     * @see "D. P. Flanagan and T. Belytschko. A uniform strain hexahedron 
+     * and quadrilateral with orthogonal hourglass control. Int. J. Num. 
+     * Methods in Engineering, pages 679–706, March 1981."
+     */
     protected def calcFBHourglassForceForElems(domain:Domain,
            determ:Rail[Double],
            x8n:Rail[Double], y8n:Rail[Double], z8n:Rail[Double],
            dvdx:Rail[Double], dvdy:Rail[Double], dvdz:Rail[Double],
-           hourg:Double, numElem:Long,
-           numNode:Long) {
-
-        val numElem8 = numElem * 8;
-
-        val gamma = new Array_2[Double](4,8);
-        gamma(0,0) =  1.0;
-        gamma(0,1) =  1.0;
-        gamma(0,2) = -1.0;
-        gamma(0,3) = -1.0;
-        gamma(0,4) = -1.0;
-        gamma(0,5) = -1.0;
-        gamma(0,6) =  1.0;
-        gamma(0,7) =  1.0;
-        gamma(1,0) =  1.0;
-        gamma(1,1) = -1.0;
-        gamma(1,2) = -1.0;
-        gamma(1,3) =  1.0;
-        gamma(1,4) = -1.0;
-        gamma(1,5) =  1.0;
-        gamma(1,6) =  1.0;
-        gamma(1,7) = -1.0;
-        gamma(2,0) =  1.0;
-        gamma(2,1) = -1.0;
-        gamma(2,2) =  1.0;
-        gamma(2,3) = -1.0;
-        gamma(2,4) =  1.0;
-        gamma(2,5) = -1.0;
-        gamma(2,6) =  1.0;
-        gamma(2,7) = -1.0;
-        gamma(3,0) = -1.0;
-        gamma(3,1) =  1.0;
-        gamma(3,2) = -1.0;
-        gamma(3,3) =  1.0;
-        gamma(3,4) =  1.0;
-        gamma(3,5) = -1.0;
-        gamma(3,6) =  1.0;
-        gamma(3,7) = -1.0;
+           hourg:Double) {
 
         // compute the hourglass modes
 
-        // TODO these should be stack-allocated inside the loop over i2
-        val hourgam = new Array_2[Double](8,4);
-        val xd1 = new Rail[Double](8);
-        val yd1 = new Rail[Double](8);
-        val zd1 = new Rail[Double](8);
-        val hgfx = new Rail[Double](8);
-        val hgfy = new Rail[Double](8);
-        val hgfz = new Rail[Double](8);
+        Foreach.bisect(0, domain.numElem-1,
+        (min_i:Long, max_i:Long) => {
+            @StackAllocate val hourgamStore = @StackAllocateUninitialized new Rail[Double](32);
+            val hourgam = Array_2.makeView[Double](hourgamStore, 8, 4);
+            @StackAllocate val xd1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val yd1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val zd1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val hgfx = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val hgfy = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val hgfz = @StackAllocateUninitialized new Rail[Double](8);
+            for (i2 in min_i..max_i) {
+                val i3 = 8*i2;
+                val volinv = 1.0 / determ(i2);
+                for (i1 in 0..3) {
 
-        // TODO parallel loop
-        for (i2 in 0..(numElem-1)) {
-            val i3 = 8*i2;
-            val volinv = 1.0 / determ(i2);
-            for (i1 in 0..3) {
+                    val hourmod = (a8n:Rail[Double]) => {
+                        a8n(i3)   * gamma(i1,0) + a8n(i3+1) * gamma(i1,1) +
+                        a8n(i3+2) * gamma(i1,2) + a8n(i3+3) * gamma(i1,3) +
+                        a8n(i3+4) * gamma(i1,4) + a8n(i3+5) * gamma(i1,5) +
+                        a8n(i3+6) * gamma(i1,6) + a8n(i3+7) * gamma(i1,7)
+                    };
 
-                val hourmod = (a8n:Rail[Double]) => {
-                    a8n(i3)   * gamma(i1,0) + a8n(i3+1) * gamma(i1,1) +
-                    a8n(i3+2) * gamma(i1,2) + a8n(i3+3) * gamma(i1,3) +
-                    a8n(i3+4) * gamma(i1,4) + a8n(i3+5) * gamma(i1,5) +
-                    a8n(i3+6) * gamma(i1,6) + a8n(i3+7) * gamma(i1,7)
-                };
+                    val hourmodx = hourmod(x8n);
+                    val hourmody = hourmod(y8n);
+                    val hourmodz = hourmod(z8n);
 
-                val hourmodx = hourmod(x8n);
-                val hourmody = hourmod(y8n);
-                val hourmodz = hourmod(z8n);
+                    val setHourgam = (idx:Long) => {
+                        hourgam(idx,i1) = gamma(i1,idx) 
+                            - volinv * (dvdx(i3+idx) * hourmodx
+                                      + dvdy(i3+idx) * hourmody
+                                      + dvdz(i3+idx) * hourmodz);
+                    };
 
-                val setHourgam = (idx:Long) => {
-                    hourgam(idx,i1) = gamma(i1,idx) 
-                        - volinv * (dvdx(i3+idx) * hourmodx
-                                  + dvdy(i3+idx) * hourmody
-                                  + dvdz(i3+idx) * hourmodz);
-                };
+                    // TODO can re-roll this loop?
+                    setHourgam(0);
+                    setHourgam(1);
+                    setHourgam(2);
+                    setHourgam(3);
+                    setHourgam(4);
+                    setHourgam(5);
+                    setHourgam(6);
+                    setHourgam(7);
+                }
 
-                // TODO can re-roll this loop?
-                setHourgam(0);
-                setHourgam(1);
-                setHourgam(2);
-                setHourgam(3);
-                setHourgam(4);
-                setHourgam(5);
-                setHourgam(6);
-                setHourgam(7);
+                /* compute forces */
+                /* store forces into h arrays (force arrays) */
+                val ss1 = domain.ss(i2);
+                val mass1 = domain.elemMass(i2);
+                val volume13 = Math.cbrt(determ(i2));
+
+                val n0si2 = domain.nodeList(i3+0);
+                val n1si2 = domain.nodeList(i3+1);
+                val n2si2 = domain.nodeList(i3+2);
+                val n3si2 = domain.nodeList(i3+3);
+                val n4si2 = domain.nodeList(i3+4);
+                val n5si2 = domain.nodeList(i3+5);
+                val n6si2 = domain.nodeList(i3+6);
+                val n7si2 = domain.nodeList(i3+7);
+
+                xd1(0) = domain.xd(n0si2);
+                xd1(1) = domain.xd(n1si2);
+                xd1(2) = domain.xd(n2si2);
+                xd1(3) = domain.xd(n3si2);
+                xd1(4) = domain.xd(n4si2);
+                xd1(5) = domain.xd(n5si2);
+                xd1(6) = domain.xd(n6si2);
+                xd1(7) = domain.xd(n7si2);
+
+                yd1(0) = domain.yd(n0si2);
+                yd1(1) = domain.yd(n1si2);
+                yd1(2) = domain.yd(n2si2);
+                yd1(3) = domain.yd(n3si2);
+                yd1(4) = domain.yd(n4si2);
+                yd1(5) = domain.yd(n5si2);
+                yd1(6) = domain.yd(n6si2);
+                yd1(7) = domain.yd(n7si2);
+
+                zd1(0) = domain.zd(n0si2);
+                zd1(1) = domain.zd(n1si2);
+                zd1(2) = domain.zd(n2si2);
+                zd1(3) = domain.zd(n3si2);
+                zd1(4) = domain.zd(n4si2);
+                zd1(5) = domain.zd(n5si2);
+                zd1(6) = domain.zd(n6si2);
+                zd1(7) = domain.zd(n7si2);
+
+                val coefficient = -hourg * 0.01 * ss1 * mass1 / volume13;
+
+                calcElemFBHourglassForce(xd1, yd1, zd1, hourgam,
+                      coefficient, hgfx, hgfy, hgfz);
+
+                domain.fx(n0si2) += hgfx(0);
+                domain.fy(n0si2) += hgfy(0);
+                domain.fz(n0si2) += hgfz(0);
+
+                domain.fx(n1si2) += hgfx(1);
+                domain.fy(n1si2) += hgfy(1);
+                domain.fz(n1si2) += hgfz(1);
+
+                domain.fx(n2si2) += hgfx(2);
+                domain.fy(n2si2) += hgfy(2);
+                domain.fz(n2si2) += hgfz(2);
+
+                domain.fx(n3si2) += hgfx(3);
+                domain.fy(n3si2) += hgfy(3);
+                domain.fz(n3si2) += hgfz(3);
+
+                domain.fx(n4si2) += hgfx(4);
+                domain.fy(n4si2) += hgfy(4);
+                domain.fz(n4si2) += hgfz(4);
+
+                domain.fx(n5si2) += hgfx(5);
+                domain.fy(n5si2) += hgfy(5);
+                domain.fz(n5si2) += hgfz(5);
+
+                domain.fx(n6si2) += hgfx(6);
+                domain.fy(n6si2) += hgfy(6);
+                domain.fz(n6si2) += hgfz(6);
+
+                domain.fx(n7si2) += hgfx(7);
+                domain.fy(n7si2) += hgfy(7);
+                domain.fz(n7si2) += hgfz(7);
             }
-
-            /* compute forces */
-            /* store forces into h arrays (force arrays) */
-            val ss1 = domain.ss(i2);
-            val mass1 = domain.elemMass(i2);
-            val volume13 = Math.cbrt(determ(i2));
-
-            val n0si2 = domain.nodeList(i3+0);
-            val n1si2 = domain.nodeList(i3+1);
-            val n2si2 = domain.nodeList(i3+2);
-            val n3si2 = domain.nodeList(i3+3);
-            val n4si2 = domain.nodeList(i3+4);
-            val n5si2 = domain.nodeList(i3+5);
-            val n6si2 = domain.nodeList(i3+6);
-            val n7si2 = domain.nodeList(i3+7);
-
-            xd1(0) = domain.xd(n0si2);
-            xd1(1) = domain.xd(n1si2);
-            xd1(2) = domain.xd(n2si2);
-            xd1(3) = domain.xd(n3si2);
-            xd1(4) = domain.xd(n4si2);
-            xd1(5) = domain.xd(n5si2);
-            xd1(6) = domain.xd(n6si2);
-            xd1(7) = domain.xd(n7si2);
-
-            yd1(0) = domain.yd(n0si2);
-            yd1(1) = domain.yd(n1si2);
-            yd1(2) = domain.yd(n2si2);
-            yd1(3) = domain.yd(n3si2);
-            yd1(4) = domain.yd(n4si2);
-            yd1(5) = domain.yd(n5si2);
-            yd1(6) = domain.yd(n6si2);
-            yd1(7) = domain.yd(n7si2);
-
-            zd1(0) = domain.zd(n0si2);
-            zd1(1) = domain.zd(n1si2);
-            zd1(2) = domain.zd(n2si2);
-            zd1(3) = domain.zd(n3si2);
-            zd1(4) = domain.zd(n4si2);
-            zd1(5) = domain.zd(n5si2);
-            zd1(6) = domain.zd(n6si2);
-            zd1(7) = domain.zd(n7si2);
-
-            val coefficient = -hourg * 0.01 * ss1 * mass1 / volume13;
-
-            calcElemFBHourglassForce(xd1, yd1, zd1, hourgam,
-                  coefficient, hgfx, hgfy, hgfz);
-
-            domain.fx(n0si2) += hgfx(0);
-            domain.fy(n0si2) += hgfy(0);
-            domain.fz(n0si2) += hgfz(0);
-
-            domain.fx(n1si2) += hgfx(1);
-            domain.fy(n1si2) += hgfy(1);
-            domain.fz(n1si2) += hgfz(1);
-
-            domain.fx(n2si2) += hgfx(2);
-            domain.fy(n2si2) += hgfy(2);
-            domain.fz(n2si2) += hgfz(2);
-
-            domain.fx(n3si2) += hgfx(3);
-            domain.fy(n3si2) += hgfy(3);
-            domain.fz(n3si2) += hgfz(3);
-
-            domain.fx(n4si2) += hgfx(4);
-            domain.fy(n4si2) += hgfy(4);
-            domain.fz(n4si2) += hgfz(4);
-
-            domain.fx(n5si2) += hgfx(5);
-            domain.fy(n5si2) += hgfy(5);
-            domain.fz(n5si2) += hgfz(5);
-
-            domain.fx(n6si2) += hgfx(6);
-            domain.fy(n6si2) += hgfy(6);
-            domain.fz(n6si2) += hgfz(6);
-
-            domain.fx(n7si2) += hgfx(7);
-            domain.fy(n7si2) += hgfy(7);
-            domain.fz(n7si2) += hgfz(7);
-        }
+        } );
     }
 
     private @Inline final def calcElemFBHourglassForce(
@@ -871,8 +808,8 @@ public class Lulesh {
     }
 
     def calcAccelerationForNodes(domain:Domain) {
-        // TODO parallel for
         for (i in 0..(domain.numNode-1)) {
+        //Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.xdd(i) = domain.fx(i) / domain.nodalMass(i);
             domain.ydd(i) = domain.fy(i) / domain.nodalMass(i);
             domain.zdd(i) = domain.fz(i) / domain.nodalMass(i);
@@ -884,21 +821,24 @@ public class Lulesh {
         val numNodeBC = (size+1)*(size+1);
 
         if (!domain.symmXempty()) {
-            // TODO parallel for
-            for (i in 0..(numNodeBC-1))
+            for (i in 0..(numNodeBC-1)) {
+            //Foreach.block(0, numNodeBC-1, (i:Long)=> {
                 domain.xdd(domain.symmX(i)) = 0.0;
+            }
         }
 
         if (!domain.symmYempty()) {
-            // TODO parallel for
-            for (i in 0..(numNodeBC-1))
+            for (i in 0..(numNodeBC-1)) {
+            //Foreach.block(0, numNodeBC-1, (i:Long)=> {
                 domain.ydd(domain.symmY(i)) = 0.0;
+            }
         }
 
         if (!domain.symmZempty()) {
-            // TODO parallel for
-            for (i in 0..(numNodeBC-1))
+            for (i in 0..(numNodeBC-1)) {
+            //Foreach.block(0, numNodeBC-1, (i:Long)=> {
                 domain.zdd(domain.symmZ(i)) = 0.0;
+            }
         }
     }
 
@@ -907,8 +847,8 @@ public class Lulesh {
      * avoid spurious mesh motion due to floating point roundoff error.
      */
     def calcVelocityForNodes(domain:Domain, dt:Double, u_cut:Double) {
-        // TODO parallel for
         for (i in 0..(domain.numNode-1)) {
+        //Foreach.block(0, domain.numNode-1, (i:Long)=> {
             var xdtmp:Double = domain.xd(i) + domain.xdd(i) * dt;
             if (Math.abs(xdtmp) < u_cut) xdtmp = 0.0;
             domain.xd(i) = xdtmp;
@@ -924,8 +864,8 @@ public class Lulesh {
     }
 
     def calcPositionForNodes(domain:Domain, dt:Double) {
-        // TODO parallel for
         for (i in 0..(domain.numNode-1)) {
+        //Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.x(i) += domain.xd(i) * dt;
             domain.y(i) += domain.yd(i) * dt;
             domain.z(i) += domain.zd(i) * dt;
@@ -942,8 +882,8 @@ public class Lulesh {
             calcKinematicsForElems(domain, vnew, deltatime);
 
             // element loop to do some stuff not included in the elemlib function.
-            // TODO parallel for
-            for (k in 0..(numElem-1)) {
+            //for (k in 0..(numElem-1)) {
+            Foreach.bisect(0, numElem-1, (k:Long)=> {
                 // calc strain rate and apply as constraint (only done in FB element)
                 val vdov = domain.dxx(k) + domain.dyy(k) + domain.dzz(k);
                 val vdovthird = vdov / 3.0;
@@ -958,57 +898,61 @@ public class Lulesh {
                 if (vnew(k) <= 0.0)  {
                     throw new VolumeException(k, vnew(k));
                 }
-            }
+            });
             domain.deallocateStrains();
         }
     }
 
     def calcKinematicsForElems(domain:Domain, vnew:Rail[Double], deltaTime:Double) {
-        // TODO these should be stack-allocated inside the loop over k
-        val B = new Array_2[Double](3,8); /** shape function derivatives */
-        val D = new Rail[Double](6);
-        val x_local = new Rail[Double](8);
-        val y_local = new Rail[Double](8);
-        val z_local = new Rail[Double](8);
-        val xd_local = new Rail[Double](8);
-        val yd_local = new Rail[Double](8);
-        val zd_local = new Rail[Double](8);
-        // TODO parallel loop
-        for (k in 0..(domain.numElem-1)) {
-            collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
+        Foreach.bisect(0, domain.numElem-1,
+        (min_k:Long, max_k:Long) => {
+            /** shape function derivatives */
+            @StackAllocate val bStore = @StackAllocate new Rail[Double](24);
+            val B = Array_2.makeView[Double](bStore, 3, 8);
+            @StackAllocate val D = @StackAllocate new Rail[Double](6);
+            @StackAllocate val x_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val y_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val z_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val xd_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val yd_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val zd_local = @StackAllocate new Rail[Double](8);
 
-            // volume calculations
-            val volume = calcElemVolume(x_local, y_local, z_local);
-            val relativeVolume = volume / domain.volo(k);
-            vnew(k) = relativeVolume;
-            domain.delv(k) = relativeVolume - domain.v(k);
+            for (k in min_k..max_k) {
+                collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
 
-            domain.arealg(k) = calcElemCharacteristicLength(x_local, y_local, z_local, volume);
+                // volume calculations
+                val volume = Domain.calcElemVolume(x_local, y_local, z_local);
+                val relativeVolume = volume / domain.volo(k);
+                vnew(k) = relativeVolume;
+                domain.delv(k) = relativeVolume - domain.v(k);
 
-            // get nodal velocities from global array and copy into local arrays.
-            for (lnode in 0..7) {
-                val gnode = domain.nodeList(k*8 + lnode);
-                xd_local(lnode) = domain.xd(gnode);
-                yd_local(lnode) = domain.yd(gnode);
-                zd_local(lnode) = domain.zd(gnode);
+                domain.arealg(k) = calcElemCharacteristicLength(x_local, y_local, z_local, volume);
+
+                // get nodal velocities from global array and copy into local arrays.
+                for (lnode in 0..7) {
+                    val gnode = domain.nodeList(k*8 + lnode);
+                    xd_local(lnode) = domain.xd(gnode);
+                    yd_local(lnode) = domain.yd(gnode);
+                    zd_local(lnode) = domain.zd(gnode);
+                }
+
+                val dt2 = 0.5 * deltaTime;
+                for (j in 0..7) {
+                    x_local(j) -= dt2 * xd_local(j);
+                    y_local(j) -= dt2 * yd_local(j);
+                    z_local(j) -= dt2 * zd_local(j);
+                }
+
+                val detJ = calcElemShapeFunctionDerivatives(x_local, y_local, z_local, B);
+
+                calcElemVelocityGradient(xd_local, yd_local, zd_local, B, detJ, D);
+
+                // put velocity gradient quantities into their global arrays
+                domain.dxx(k) = D(0);
+                domain.dyy(k) = D(1);
+                domain.dzz(k) = D(2);
             }
-
-            val dt2 = 0.5 * deltaTime;
-            for (j in 0..7) {
-                x_local(j) -= dt2 * xd_local(j);
-                y_local(j) -= dt2 * yd_local(j);
-                z_local(j) -= dt2 * zd_local(j);
-            }
-
-            val detJ = calcElemShapeFunctionDerivatives(x_local, y_local, z_local, B);
-
-            calcElemVelocityGradient(xd_local, yd_local, zd_local, B, detJ, D);
-
-            // put velocity gradient quantities into their global arrays
-            domain.dxx(k) = D(0);
-            domain.dyy(k) = D(1);
-            domain.dzz(k) = D(2);
-        }
+        } );
     }
 
     private @Inline final def calcElemCharacteristicLength(
@@ -1120,9 +1064,7 @@ public class Lulesh {
     }
 
     def calcMonotonicQGradientsForElems(domain:Domain, vnew:Rail[Double]) {
-        val numElem = domain.numElem;
-        // TODO parallel for
-        for (i in 0..(numElem-1)) {
+        Foreach.block(0, domain.numElem-1, (i:Long)=> {
             val ptiny = 1.e-36;
 
             val n0 = domain.nodeList(i*8+0);
@@ -1256,7 +1198,7 @@ public class Lulesh {
             dzv = -0.25 * ((zv0+zv1+zv5+zv4) - (zv3+zv2+zv6+zv7));
 
             domain.delv_eta(i) = ax*dxv + ay*dyv + az*dzv;
-        }
+        });
     }
 
     /** calculate the monotonic q for all regions */
@@ -1277,8 +1219,7 @@ public class Lulesh {
         val qqc_monoq = domain.qqc_monoq;
         val regElemList = domain.regElemList(r);
 
-        // TODO parallel for
-        for (ielem in 0..(domain.regElemSize(r)-1)) {
+        Foreach.bisect(0, domain.regElemSize(r)-1, (ielem:Long)=> {
             val i = regElemList(ielem);
             val bcMask = domain.elemBC(i);
             var delvm:Double = 0.0, delvp:Double = 0.0;
@@ -1430,7 +1371,7 @@ public class Lulesh {
 
             domain.qq(i) = qquad;
             domain.ql(i) = qlin;
-        }
+        });
     }
 
     /** Update pressure and internal energy variables for the new timestep. */
@@ -1444,15 +1385,15 @@ public class Lulesh {
 
             // Bound the updated relative volumes with eosvmin/max
             if (eosvmin != 0.0) {
-                // TODO parallel loop
                 for (i in 0..(numElem-1)) {
+                //Foreach.block(0, numElem-1, (i:Long)=> {
                     if (vnew(i) < eosvmin) vnew(i) = eosvmin;
                 }
             }
 
             if (eosvmax != 0.0) {
-                // TODO parallel loop
                 for (i in 0..(numElem-1)) {
+                //Foreach.block(0, numElem-1, (i:Long)=> {
                     if (vnew(i) > eosvmax) vnew(i) = eosvmax;
                 }
             }
@@ -1460,8 +1401,8 @@ public class Lulesh {
             // This check may not make perfect sense in LULESH, but
             // it's representative of something in the full code -
             // just leave it in, please
-            // TODO parallel loop
             for (i in 0..(numElem-1)) {
+            //Foreach.block(0, numElem-1, (i:Long)=> {
                 var vc:Double = domain.v(i);
                 if (eosvmin != 0.0) {
                     if (vc < eosvmin) vc = eosvmin;
@@ -1531,8 +1472,8 @@ public class Lulesh {
         //loop to add load imbalance based on region number 
         for(j in 0..(rep-1)) {
             /* compress data, minimal set */
-            // TODO parallel for
             for (i in 0..(numElemReg-1)) {
+            //Foreach.block(0, numElemReg-1, (i:Long)=> {
                 val elem = regElemList(i);
                 e_old(i) = domain.e(elem);
                 delvc(i) = domain.delv(elem);
@@ -1542,8 +1483,8 @@ public class Lulesh {
                 ql_old(i) = domain.ql(elem);
             }
 
-            // TODO parallel for
             for (i in 0..(numElemReg-1)) {
+            //Foreach.block(0, numElemReg-1, (i:Long)=> {
                 val elem = regElemList(i);
                 compression(i) = 1.0 / vnewc(elem) - 1.0;
                 val vchalf = vnewc(elem) - delvc(i) * 0.5;
@@ -1552,8 +1493,8 @@ public class Lulesh {
 
             /* Check for v > eosvmax or v < eosvmin */
             if ( eosvmin != 0.0 ) {
-            // TODO parallel for
                 for (i in 0..(numElemReg-1)) {
+                //Foreach.block(0, numElemReg-1, (i:Long)=> {
                     val elem = regElemList(i);
                     if (vnewc(elem) <= eosvmin) { /* impossible due to calling func? */
                         compHalfStep(i) = compression(i);
@@ -1561,8 +1502,8 @@ public class Lulesh {
                 }
 
                 if (eosvmax != 0.0 ) {
-                    // TODO parallel for
                     for (i in 0..(numElemReg-1)) {
+                    //Foreach.block(0, numElemReg-1, (i:Long)=> {
                        val elem = regElemList(i);
                        if (vnewc(elem) >= eosvmax) { /* impossible due to calling func? */
                           p_old(i)        = 0.0;
@@ -1572,10 +1513,12 @@ public class Lulesh {
                     }
                  }
 
-                // TODO parallel for
-                for (i in 0..(numElemReg-1)) {
+                work.clear(0, numElemReg);
+                /*
+                Foreach.block(0, numElemReg-1, (i:Long)=> {
                     work(i) = 0.0; 
-                }
+                });
+                */
             }
 
             calcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
@@ -1586,8 +1529,9 @@ public class Lulesh {
                              numElemReg, regElemList);
         }
 
-        // TODO parallel for
+        
         for (i in 0..(numElemReg-1)) {
+        //Foreach.block(0, numElemReg-1, (i:Long)=> {
             val elem = regElemList(i);
             domain.p(elem) = p_new(i);
             domain.e(elem) = e_new(i);
@@ -1613,8 +1557,8 @@ public class Lulesh {
                 length:Long, regElemList:Rail[Long]) {
         val pHalfStep = new Rail[Double](length);
 
-        // TODO parallel for
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             e_new(i) = e_old(i) - 0.5 * delvc(i) * (p_old(i) + q_old(i))
                      + 0.5 * work(i);
 
@@ -1626,8 +1570,8 @@ public class Lulesh {
         calcPressureForElems(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
                             pmin, p_cut, eosvmax, length, regElemList);
 
-        // TODO parallel for
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             val vhalf = 1.0 / (1.0 + compHalfStep(i));
 
             if (delvc(i) > 0.0) {
@@ -1651,8 +1595,8 @@ public class Lulesh {
                      * (3.0*(p_old(i)+q_old(i)) - 4.0*(pHalfStep(i)+q_new(i)));
         }
 
-        // TODO parallel for
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             e_new(i) += 0.5 * work(i);
 
             if (Math.abs(e_new(i)) < e_cut) {
@@ -1666,8 +1610,8 @@ public class Lulesh {
         calcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                             pmin, p_cut, eosvmax, length, regElemList);
 
-        // TODO parallel for
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             val sixth = 1.0 / 6.0;
             val elem = regElemList(i);
             var q_tilde:Double;
@@ -1703,8 +1647,8 @@ public class Lulesh {
         calcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                             pmin, p_cut, eosvmax, length, regElemList);
 
-        // TODO parallel for
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             val elem = regElemList(i);
 
             if (delvc(i) <= 0.0) {
@@ -1731,15 +1675,16 @@ public class Lulesh {
                 vnewc:Rail[Double], pmin:Double,
                 p_cut:Double,eosvmax:Double,
                 length:Long, regElemList:Rail[Long]) {
-        // TODO parallel for
+
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             val c1s = 2.0 / 3.0;
             bvc(i) = c1s * (compression(i) + 1.0);
             pbvc(i) = c1s;
         }
 
-        // TODO parallel for
         for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             val elem = regElemList(i);
           
             p_new(i) = bvc(i) * e_old(i);
@@ -1759,9 +1704,9 @@ public class Lulesh {
                             rho0:Double, enewc:Rail[Double],
                             pnewc:Rail[Double], pbvc:Rail[Double],
                             bvc:Rail[Double], ss4o3:Double,
-                            len:Long, regElemList:Rail[Long]) {
-        // TODO parallel for
-        for (i in 0..(len-1)) {
+                            length:Long, regElemList:Rail[Long]) {
+        for (i in 0..(length-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
             val elem = regElemList(i);
             var ssTmp:Double = (pbvc(i) * enewc(i) + vnewc(elem) * 
                                 vnewc(elem) * bvc(i) * pnewc(i)) / rho0;
@@ -1774,70 +1719,70 @@ public class Lulesh {
         }
     }
 
-    def updateVolumesForElems(domain:Domain, vnew:Rail[Double], 
-                              v_cut:Double, length:Long) {
-        if (length != 0) {
-            // TODO parallel for
-            for (i in 0..(length-1)) {
-                var tmpV:Double = vnew(i);
-                // cutoff to avoid spurious volume change due to rounding error
-                if (Math.abs(tmpV - 1.0) < v_cut) tmpV = 1.0;
-                domain.v(i) = tmpV;
-            }
+    def updateVolumesForElems(domain:Domain, vnew:Rail[Double]) {
+        for (i in 0..(domain.numElem-1)) {
+        //Foreach.block(0, length-1, (i:Long)=> {
+            var tmpV:Double = vnew(i);
+            // cutoff to avoid spurious volume change due to rounding error
+            if (Math.abs(tmpV - 1.0) < domain.v_cut) tmpV = 1.0;
+            domain.v(i) = tmpV;
         }
     }
 
+    /**
+     * Calculate the Courant time constraint Delta t_{courant}.
+     * This constraint is calculated only in elements whose volumes are 
+     * changing; that is, vdov != 0.0.
+     */
     def calcCourantConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
         val qqc2 = 64.0 * domain.qqc * domain.qqc;
-        var dtcourant_tmp:Double = domain.dtcourant;
-        var courant_elem:Long  = -1;    
 
-        // TODO parallel reduction
-        for (i in 0..(length-1)) {
+        val dtcourant_new = Foreach.blockReduce(0, length-1,
+        (i:Long)=> {
             val indx = regElemList(i);
-            var dtf:Double = domain.ss(indx) * domain.ss(indx);
-            if (domain.vdov(indx) < 0.0) {
-                dtf = dtf
-                + qqc2 * domain.arealg(indx) * domain.arealg(indx)
-                * domain.vdov(indx) * domain.vdov(indx);
-            }
-            dtf = Math.sqrt(dtf);
-            dtf = domain.arealg(indx) / dtf;
-
-            if (domain.vdov(indx) != 0.0) {
-                if (dtf < dtcourant_tmp) {
-                    dtcourant_tmp = dtf;
-                    courant_elem  = indx;
+            var dtf:Double;
+            if (domain.vdov(indx) == 0.0) {
+                // only calculate time constraint for element whose volume is changing
+                dtf = Double.MAX_VALUE;
+            } else {
+                dtf = domain.ss(indx) * domain.ss(indx);
+                if (domain.vdov(indx) < 0.0) {
+                    dtf = dtf
+                    + qqc2 * domain.arealg(indx) * domain.arealg(indx)
+                    * domain.vdov(indx) * domain.vdov(indx);
                 }
+                dtf = Math.sqrt(dtf);
+                dtf = domain.arealg(indx) / dtf;
             }
-        }
+            dtf
+        },
+        (a:Double, b:Double) => Math.min(a,b), Double.MAX_VALUE);
 
-        if (courant_elem != -1) {
-            domain.dtcourant = dtcourant_tmp;
-        }
+        domain.dtcourant = Math.min(domain.dtcourant, dtcourant_new);
     }
 
+    /**
+     * Calculate the hydro timestep constraint Delta t_{hydro}.
+     * This constraint is calculated only in elements whose volumes are 
+     * changing. When an element is undergoing volume change, Delta t_{thydro}
+     * for the element is some maximum allowable element volume change 
+     * (prescribed) divided by vdov in the element.
+     */
     def calcHydroConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
-        var dthydro_tmp:Double = domain.dtcourant;
-        var hydro_elem:Long  = -1;
-
-        // TODO parallel reduction
-        for (i in 0..(length-1)) {
+        val dthydro_new = Foreach.blockReduce(0, length-1, (i:Long)=> {
             val indx = regElemList(i);
-
-            if (domain.vdov(indx) != 0.0) {
-                val dtdvov = domain.dvovmax / (Math.abs(domain.vdov(indx))+1.0e-20);
-
-                if (dthydro_tmp > dtdvov) {
-                    dthydro_tmp = dtdvov;
-                    hydro_elem  = indx;
-                }
+            var dthydro_tmp:Double;
+            if (domain.vdov(indx) == 0.0) {
+                // only calculate hydro time constraint for element whose volume is changing
+                dthydro_tmp = Double.MAX_VALUE;
+            } else {
+                dthydro_tmp = domain.dvovmax / (Math.abs(domain.vdov(indx))+1.0e-20);
             }
-        }
+            dthydro_tmp
+        },
+        (a:Double, b:Double) => Math.min(a,b), Double.MAX_VALUE);
 
-        if (hydro_elem != -1) {
-          domain.dthydro = dthydro_tmp;
-        }
+        domain.dthydro = Math.min(domain.dthydro, dthydro_new);
     }
 
     def verifyAndWriteFinalOutput(elapsedTime:Double, 

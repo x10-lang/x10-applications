@@ -75,7 +75,6 @@ public class GhostManager {
         val neighbors = localState().neighborListRecv;
         val received = localState().neighborsReceived;
         for (i in 0..(neighbors.size-1)) {
-
             if (neighborId == neighbors(i)) {
                 atomic received(i) = true;
                 break;

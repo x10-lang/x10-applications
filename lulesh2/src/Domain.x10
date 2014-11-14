@@ -9,8 +9,9 @@
  *  (C) Copyright IBM Corporation 2014.
  */
 
-import x10.regionarray.Region;
 import x10.compiler.NonEscaping;
+import x10.compiler.Inline;
+import x10.regionarray.Region;
 import x10.util.Random;
 
 /**
@@ -297,7 +298,7 @@ public class Domain {
             }
 
             // volume calculations
-            val volume = Lulesh.calcElemVolume(x_local, y_local, z_local);
+            val volume = Domain.calcElemVolume(x_local, y_local, z_local);
             volo(i) = volume;
             elemMass(i) = volume;
             for (j in 0..7) {
@@ -319,6 +320,78 @@ public class Domain {
         }
         // set initial deltatime based on analytic CFL calculation
         deltatime = (0.5 * Math.cbrt(volo(0))) / Math.sqrt(2.0 * einit);
+    }
+
+    public static @Inline final def calcElemVolume(x:Rail[Double], y:Rail[Double], z:Rail[Double]):Double {
+        val dx61 = x(6) - x(1);
+        val dy61 = y(6) - y(1);
+        val dz61 = z(6) - z(1);
+
+        val dx70 = x(7) - x(0);
+        val dy70 = y(7) - y(0);
+        val dz70 = z(7) - z(0);
+
+        val dx63 = x(6) - x(3);
+        val dy63 = y(6) - y(3);
+        val dz63 = z(6) - z(3);
+
+        val dx20 = x(2) - x(0);
+        val dy20 = y(2) - y(0);
+        val dz20 = z(2) - z(0);
+
+        val dx50 = x(5) - x(0);
+        val dy50 = y(5) - y(0);
+        val dz50 = z(5) - z(0);
+
+        val dx64 = x(6) - x(4);
+        val dy64 = y(6) - y(4);
+        val dz64 = z(6) - z(4);
+
+        val dx31 = x(3) - x(1);
+        val dy31 = y(3) - y(1);
+        val dz31 = z(3) - z(1);
+
+        val dx72 = x(7) - x(2);
+        val dy72 = y(7) - y(2);
+        val dz72 = z(7) - z(2);
+
+        val dx43 = x(4) - x(3);
+        val dy43 = y(4) - y(3);
+        val dz43 = z(4) - z(3);
+
+        val dx57 = x(5) - x(7);
+        val dy57 = y(5) - y(7);
+        val dz57 = z(5) - z(7);
+
+        val dx14 = x(1) - x(4);
+        val dy14 = y(1) - y(4);
+        val dz14 = z(1) - z(4);
+
+        val dx25 = x(2) - x(5);
+        val dy25 = y(2) - y(5);
+        val dz25 = z(2) - z(5);
+
+        val tripleProduct = 
+            (x1:Double, y1:Double, z1:Double, 
+             x2:Double, y2:Double, z2:Double, 
+             x3:Double, y3:Double, z3:Double) => 
+            {
+                (x1)*((y2)*(z3) - (z2)*(y3)) 
+              + (x2)*((z1)*(y3) - (y1)*(z3))
+              + (x3)*((y1)*(z2) - (z1)*(y2))
+            };
+
+        val volume = tripleProduct(dx31 + dx72, dx63, dx20,
+                                   dy31 + dy72, dy63, dy20,
+                                   dz31 + dz72, dz63, dz20)
+                   + tripleProduct(dx43 + dx57, dx64, dx70,
+                                   dy43 + dy57, dy64, dy70,
+                                   dz43 + dz57, dz64, dz70)
+                   + tripleProduct(dx14 + dx25, dx61, dx50,
+                                   dy14 + dy25, dy61, dy50,
+                                   dz14 + dz25, dz61, dz50);
+
+        return volume / 12.0;
     }
 
     /** 
@@ -591,9 +664,9 @@ public class Domain {
             var lastReg:Long = -1;
             var costDenominator:Int = 0n; // Total sum of all regions' weights
             val regBinEnd = new Rail[Int](numReg); // Chance of hitting a given region is (regBinEnd(i) - regBinEnd(i-1))/costDenominator
-            for (i in 0..(numReg-1)) {
+            for (i in 0n..(numReg-1n)) {
                 regElemSize(i) = 0;
-                costDenominator += Math.pow((i+1), balance);  
+                costDenominator += Math.pow((i+1n), balance);  
                 regBinEnd(i) = costDenominator;  
             }
             // Until all elements are assigned
