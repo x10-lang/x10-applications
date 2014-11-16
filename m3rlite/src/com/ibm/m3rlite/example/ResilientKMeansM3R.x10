@@ -41,6 +41,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     public def source() { // source(placeIndex:Long, numLivePlaces:Long)
         val h = here;
         val t = at (master) { val m = master.getLocalOrCopy();
+            if (here==h) m.clusters_new_count.set(0); // reset the count here
             new x10.util.Triple(m.engine.placeIndex(h), m.engine.numLivePlaces(), m.clusters)
         }; //TODO: dirty code
 	val placeIndex = t.first, numLivePlaces = t.second;
@@ -125,7 +126,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
                     }
                 }
                 DEBUG("diff="+d+" clusters="+c_new);
-                m.clusters_new_count.set(0);
+                // m.clusters_new_count.set(0); // move this to source, since this may not be executed if a place is dead
                 m.clusters_new = c_old; // swap the clusters and clusters_new
                 m.clusters = c_new;
                 m.diff = d;
