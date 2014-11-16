@@ -27,8 +27,20 @@ import x10.util.ArrayList;
  * should continue its execution.
  * 
  * @author vj
+ * @author kawatiya (for resiliency support)
  */
 public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
+	static def DEBUG(msg:String) { Console.OUT.println("M3RLite: "+msg); }
+	static val verbose  = getEnvLong("M3RLITE_VERBOSE");
+	static val nspares  = getEnvLong("M3RLITE_NSPARES");  // number of spare places
+	static val noshrink = getEnvLong("M3RLITE_NOSHRINK"); // don't shrink #places
+	static def getEnvLong(name:String) {
+		val env = System.getenv(name);
+		val v = (env!=null) ? Long.parseLong(env) : 0;
+		if (v>0 && here.id==0) Console.OUT.println(name + "=" + v);
+		return v;
+	}
+
 	static type NN[T]{T haszero} = T{self!=null};
 	static type MyMap[K2,V2] = HashMap[K2,ArrayList[V2]];
 	
@@ -52,21 +64,33 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	
 	// resiliency support
 	val livePlaces = new ArrayList[Place]();
-	transient var restore_needed:Boolean = false; // not used now
+	val sparePlaces = new ArrayList[Place]();
+	transient var restore_needed:Boolean = false;
 	public def numLivePlaces() = livePlaces.size();
 	public def placeIndex(p:Place) = livePlaces.indexOf(p);
 	
 	public def run() {
-		for (p in Place.places()) {
-			at (p) Console.OUT.println(here+" running in "+Runtime.getName());
-			livePlaces.add(p); // livePlaces should be sorted
-		}
-		
 		val plh = PlaceLocalHandle.make(Place.places(),
 				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
 						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
+
+		// resiliency support
+		var num_use:Long = Place.numPlaces() - nspares;
+		if (verbose>=1) DEBUG("use " + num_use +" places");
+		if (num_use <= 0) throw new Exception("Not enough places to run");
+		for (p in Place.places()) {
+			at (p) Console.OUT.println(here+" running in "+Runtime.getName());
+			if (num_use-- > 0) livePlaces.add(p); else sparePlaces.add(p);
+		}
+		if (verbose>=1)	DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
+
 		for (var i:Int=0n; ! job.stop(); i++) {
 		  try {
+			if (restore_needed) {
+				if (verbose>=1) DEBUG("New livePlaces: "+livePlaces);
+				restore_needed = false;
+			}
+
 			// map and communicate phase
 			finish for(p in livePlaces) at (p) async {
 				val P = numLivePlaces();
@@ -103,8 +127,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 					val a = incoming(j);
 					incoming(j)=null;
 					for (; ++j < P;) {
-					    if (incoming(j)!=null)//@@@@
-						mergeInto(a, incoming(j));
+						if (incoming(j)!=null) mergeInto(a, incoming(j));
 						incoming(j)=null;
 					}
 					
@@ -132,8 +155,18 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	    if (e instanceof DeadPlaceException) {
 	        val deadPlace = (e as DeadPlaceException).place;
 	        Console.OUT.println(new String(new Rail[Char](l,' ')) + "DeadPlaceException thrown from " + deadPlace);
-	        livePlaces.remove(deadPlace); // may be removed multiple times
-	        restore_needed = true;
+		sparePlaces.remove(deadPlace); // nothing may happen
+		val deadIndex = livePlaces.indexOf(deadPlace);
+		if (deadIndex >= 0) {
+			if (sparePlaces.size() > 0) {	// replace with a spare place
+				livePlaces.set(sparePlaces.removeFirst(), deadIndex);
+			} else if (noshrink == 0) {	// shrink livePlaces
+				livePlaces.remove(deadPlace);
+			} else {			// error
+				throw new Exception("No spare place to continue");
+			}
+		        restore_needed = true;
+		}
 	    } else if (e instanceof MultipleExceptions) {
 	        val exceptions = (e as MultipleExceptions).exceptions();
 	        Console.OUT.println(new String(new Rail[Char](l,' ')) + "MultipleExceptions size=" + exceptions.size);
