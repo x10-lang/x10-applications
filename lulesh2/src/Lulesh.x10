@@ -166,7 +166,6 @@ public class Lulesh {
             //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemSize(i));
 
             while((domain.time < domain.stopTime) && (domain.cycle < opts.its)) {
-
                 timeIncrement(domain);
 
                 lagrangeLeapFrog(domain);
@@ -383,7 +382,13 @@ public class Lulesh {
                                 sigyy:Rail[Double], sigzz:Rail[Double],
                                 determ:Rail[Double]) {
 
-        Foreach.bisect(0, domain.numElem-1,
+        val numElem = domain.numElem;
+        val numElem8 = numElem * 8;
+        val fx_elem = new Rail[Double](numElem8);
+        val fy_elem = new Rail[Double](numElem8);
+        val fz_elem = new Rail[Double](numElem8);
+
+        Foreach.block(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
             @StackAllocate val bStore = @StackAllocateUninitialized new Rail[Double](24);
@@ -391,9 +396,6 @@ public class Lulesh {
             @StackAllocate val x_local = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val y_local = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val z_local = @StackAllocateUninitialized new Rail[Double](8);
-            @StackAllocate val fx_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val fy_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val fz_local = @StackAllocate new Rail[Double](8);
 
             for (k in min_k..max_k) {
                 collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
@@ -404,17 +406,28 @@ public class Lulesh {
                 calcElemNodeNormals(B, x_local, y_local, z_local);
 
                 sumElemStressesToNodeForces(B, sigxx(k), sigyy(k), sigzz(k),
-                                            fx_local, fy_local, fz_local);
-
-                // copy nodal force contributions to global force array.
-                for (lnode in 0..7) {
-                    val gnode = domain.nodeList(k*8 + lnode);
-                    domain.fx(gnode) += fx_local(lnode);
-                    domain.fy(gnode) += fy_local(lnode);
-                    domain.fz(gnode) += fz_local(lnode);
-                }
+                                            fx_elem, fy_elem, fz_elem, k);
             }
         });
+
+        // copy the data out of the temporary
+        // arrays used above into the final forces field
+        for (gnode in 0..(domain.numNode-1)) {
+            val count = domain.nodeElemCount(gnode);
+            val elemStart = domain.nodeElemStart(gnode);
+            var fx_tmp:Double = 0.0;
+            var fy_tmp:Double = 0.0;
+            var fz_tmp:Double = 0.0;
+            for (i in 0..(count-1)) {
+                val elem = domain.nodeElemCornerList(elemStart+i);
+                fx_tmp += fx_elem(elem);
+                fy_tmp += fy_elem(elem);
+                fz_tmp += fz_elem(elem);
+            }
+            domain.fx(gnode) = fx_tmp;
+            domain.fy(gnode) = fy_tmp;
+            domain.fz(gnode) = fz_tmp;
+        }
     }
 
     /**
@@ -546,6 +559,17 @@ public class Lulesh {
         }
     }
 
+    private @Inline def sumElemStressesToNodeForces(B:Array_2[Double],
+                            stress_xx:Double, stress_yy:Double, stress_zz:Double,
+                            fx:Rail[Double], fy:Rail[Double], fz:Rail[Double],
+                            k:Long) {
+        for (i in 0..7) {
+            fx(k*8+i) = -( stress_xx * B(0,i) );
+            fy(k*8+i) = -( stress_yy * B(1,i) );
+            fz(k*8+i) = -( stress_zz * B(2,i) );
+        }
+    }
+
     /**
      * Compute a stiffness force for each element to damp spurious "hourglass"
      * energy modes.
@@ -656,8 +680,9 @@ public class Lulesh {
 
         // compute the hourglass modes
 
-        Foreach.bisect(0, domain.numElem-1,
-        (min_i:Long, max_i:Long) => {
+        //Foreach.bisect(0, domain.numElem-1,
+        //(min_i:Long, max_i:Long) => {
+        for (i2 in 0..(domain.numElem-1)) {
             @StackAllocate val hourgamStore = @StackAllocateUninitialized new Rail[Double](32);
             val hourgam = Array_2.makeView[Double](hourgamStore, 8, 4);
             @StackAllocate val xd1 = @StackAllocateUninitialized new Rail[Double](8);
@@ -666,7 +691,7 @@ public class Lulesh {
             @StackAllocate val hgfx = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfy = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfz = @StackAllocateUninitialized new Rail[Double](8);
-            for (i2 in min_i..max_i) {
+            //for (i2 in min_i..max_i) {
                 val i3 = 8*i2;
                 val volinv = 1.0 / determ(i2);
                 for (i1 in 0..3) {
@@ -778,8 +803,8 @@ public class Lulesh {
                 domain.fx(n7si2) += hgfx(7);
                 domain.fy(n7si2) += hgfy(7);
                 domain.fz(n7si2) += hgfz(7);
-            }
-        } );
+            //}
+        } //);
     }
 
     private @Inline final def calcElemFBHourglassForce(
@@ -882,7 +907,6 @@ public class Lulesh {
             calcKinematicsForElems(domain, vnew, deltatime);
 
             // element loop to do some stuff not included in the elemlib function.
-            //for (k in 0..(numElem-1)) {
             Foreach.bisect(0, numElem-1, (k:Long)=> {
                 // calc strain rate and apply as constraint (only done in FB element)
                 val vdov = domain.dxx(k) + domain.dyy(k) + domain.dzz(k);
@@ -898,7 +922,7 @@ public class Lulesh {
                 if (vnew(k) <= 0.0)  {
                     throw new VolumeException(k, vnew(k));
                 }
-            });
+            } );
             domain.deallocateStrains();
         }
     }
@@ -1063,7 +1087,7 @@ public class Lulesh {
         }
     }
 
-    def calcMonotonicQGradientsForElems(domain:Domain, vnew:Rail[Double]) {
+    def calcMonotonicQGradientsForElems(domain:Domain, vnew:Rail[Double]) { 
         Foreach.block(0, domain.numElem-1, (i:Long)=> {
             val ptiny = 1.e-36;
 
@@ -1198,7 +1222,7 @@ public class Lulesh {
             dzv = -0.25 * ((zv0+zv1+zv5+zv4) - (zv3+zv2+zv6+zv7));
 
             domain.delv_eta(i) = ax*dxv + ay*dyv + az*dzv;
-        });
+        } );
     }
 
     /** calculate the monotonic q for all regions */
@@ -1371,7 +1395,7 @@ public class Lulesh {
 
             domain.qq(i) = qquad;
             domain.ql(i) = qlin;
-        });
+        } );
     }
 
     /** Update pressure and internal energy variables for the new timestep. */

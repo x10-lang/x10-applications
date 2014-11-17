@@ -158,6 +158,8 @@ public class Domain {
     /** Element mass */
     public var elemMass:Rail[Double];
 
+    public var nodeElemStart:Rail[Long];
+    public var nodeElemCornerList:Rail[Long];
 
     // Region information
 
@@ -268,6 +270,8 @@ public class Domain {
 
         buildMesh(nx, edgeNodes, edgeElems);
 
+        setupNodeElementCounts();
+
         createRegionIndexSets(nr, balance);
 
         setupSymmetryPlanes(edgeNodes);
@@ -320,6 +324,10 @@ public class Domain {
         }
         // set initial deltatime based on analytic CFL calculation
         deltatime = (0.5 * Math.cbrt(volo(0))) / Math.sqrt(2.0 * einit);
+    }
+
+    public def nodeElemCount(idx:Long) {
+        return nodeElemStart(idx+1) - nodeElemStart(idx);
     }
 
     public static @Inline final def calcElemVolume(x:Rail[Double], y:Rail[Double], z:Rail[Double]):Double {
@@ -579,6 +587,48 @@ public class Domain {
                 ++nidx;
             }
             nidx += edgeNodes;
+        }
+    }
+
+
+    private def setupNodeElementCounts() {
+        // set up node-centered indexing of elements 
+        val nodeElemCountList = new Rail[Long](numNode);
+
+        for (i in 0..(numElem-1)) {
+            for (j in 0..7) {
+                nodeElemCountList(nodeList(i*8+j))++;
+            }
+        }
+
+        nodeElemStart = new Rail[Long](numNode+1);
+        nodeElemStart(0) = 0;
+
+        for (i in 1..numNode) {
+            // TODO scan
+            nodeElemStart(i) = nodeElemStart(i-1) + nodeElemCountList(i-1);
+        }
+           
+        nodeElemCornerList = new Rail[Long](nodeElemStart(numNode));
+
+        nodeElemCountList.clear();
+
+        for (i in 0..(numElem-1)) {
+            for (j in 0..7) {
+                val m = nodeList(i*8+j);
+                val k = i*8 + j;
+                val offset = nodeElemStart(m) + nodeElemCountList(m);
+                nodeElemCornerList(offset) = k;
+                nodeElemCountList(m)++;
+            }
+        }
+
+        val clSize = nodeElemStart(numNode);
+        for (i in 0..(clSize-1)) {
+            val clv = nodeElemCornerList(i);
+            if ((clv < 0) || (clv > numElem*8)) {
+                throw new Exception("setupThreadSupportStructures(): nodeElemCornerList entry out of range!\n");
+            }
         }
     }
 
