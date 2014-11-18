@@ -1,0 +1,21 @@
+=============================================
+How to run and test ResilientHMM
+=============================================
+
+0. Build Libray
+
+> make all
+
+m3rlite.example.jar and m3rlite.jar will be generated in lib/
+
+1. Running
+
+You can run a example of ResilientHMM.
+> X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM 2 6 100 10 0.001 testdata/sample.dat
+
+Options 
+./ResilientHMM <number of hidden states> <number of observation types> <number of input lines> <maximum iterations> <eps> <learning data>
+
+
+2. Learning data file format
+You can preapre your own learning data. Each line is separated with space, and it contains observation symbols, like that "1 2 3 4 5". 
