@@ -16,6 +16,8 @@ import com.ibm.m3rlite.ResilientEngine;
 import x10.util.Pair;
 import x10.util.ArrayList;
 import x10.util.logging.LogFactory;
+import x10.util.Option;
+import x10.util.OptionsParser;
 import x10.io.File;
 
 /**
@@ -33,13 +35,14 @@ import x10.io.File;
  * 
  * @author tchiba
  */
-public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileName:String) implements Job[Long,Rail[Int],Long,HMMModel,Long,HMMModel] {
+public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileName:String,iterativeMode:Boolean) implements Job[Long,Rail[Int],Long,HMMModel,Long,HMMModel] {
 	//val S:Int;			// number of states
 	//val O:Int;			// number of observations
 	//val N:Long;			// total number of lines
 	//val fileName:String;	// input file name
 	//val maxIter:Long;		// maximum iterations
 	//val eps:Double;		// if delta < eps, break iteration loop
+	//val iterativeMode:Boolean
 	
 	private static val logger = LogFactory.getLog[ResilientHMM]();
 	
@@ -72,7 +75,9 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		val h = here;
 		val t = at (master) {
 			val m = master.getLocalOrCopy();
-			if (h.id == 0) logger.info(String.format("source(): iteration=%1$d", [m.currentIter as Any]));
+			if (m.engine.placeIndex(h) == 0){
+				logger.info(String.format("source(): iteration=%1$d", [m.currentIter as Any]));
+			}
 			return new Pair[Long,Long](m.engine.placeIndex(h), m.engine.numLivePlaces());
 		};
 		
@@ -81,7 +86,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		val myplaceid = t.first;
 		val liveplaces = t.second;
 		
-		//logger.info(String.format("S=%1$d, O=%2$d, N=%3$d, filename=%4$s", 
+		//logger.trace(String.format("S=%1$d, O=%2$d, N=%3$d, filename=%4$s", 
 		//		[S as Any, O, N, fileName]));	
 		val start = (N/liveplaces) * myplaceid;
 		val end = myplaceid+1==liveplaces ? start + N/liveplaces + N%liveplaces : start + N/liveplaces;
@@ -105,7 +110,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			idx++;
 			i++;
 		}
-		logger.info(String.format("source(): active places=%2$d, range of place(%1$d):(start=%3$d,end=%4$d), len=%5$d", 
+		logger.trace(String.format("source(): active places=%2$d, range of place(%1$d):(start=%3$d,end=%4$d), len=%5$d", 
 				[myplaceid as Any, liveplaces, start, end, idx]));
 		
 		// initialize local parameter from master
@@ -138,18 +143,18 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 *  3). update(add-in) the result to local HMM. 
 	 */
 	public def mapper(k:Long, v:Obs, msink:(Long, HMMModel)=>void) {
-		//logger.info(String.format("k1=%1$d, v1=%2$s", [k as Any, v]));
+		//logger.trace(String.format("k1=%1$d, v1=%2$s", [k as Any, v]));
 		black.update(v,red);
 		
 		if (assignedLines-1 == k) {
-			logger.info(String.format("mapper(): complete to read training data (%1$d lines)", [(k+1) as Any]));
+			logger.trace(String.format("mapper(): complete to read training data (%1$d lines)", [(k+1) as Any]));
 			val numLivePlaces = at (master) {
 				val m = master.getLocalOrCopy();
 				return m.engine.numLivePlaces();
 			};
 			for (dest in 0..(numLivePlaces-1)) {
 				val t = here.id;
-				logger.info(String.format("mapper(): emit local hmm (%1$d -> %2$d)", [t as Any, dest]));
+				logger.trace(String.format("mapper(): emit local hmm (%1$d -> %2$d)", [t as Any, dest]));
 				msink(dest, red);
 			}
 		}
@@ -165,7 +170,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 */
 	public def reducer(k2:Long, v2:Iterable[HMMModel], output:ArrayList[Pair[Long, HMMModel]]) {
 		for (v in v2) {
-			logger.info(String.format("reducer(): process received hmm (k2=%1$d)", [k2 as Any]));
+			logger.trace(String.format("reducer(): process received hmm (k2=%1$d)", [k2 as Any]));
 			black.setToSum(black, v);
 		}
 		output.add(Pair(k2 as Long, black));
@@ -182,8 +187,13 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		black.normalize();
 		delta = copy.distance(black);
 		// write results to master
-		if (here.id == 0) at (master) {
-			logger.info(String.format("sink():  new delta value = %1$.5f", [delta as Any]));
+		val h = here;
+		val t = at (master) {
+			val m = master.getLocalOrCopy();
+			return m.engine.placeIndex(h);
+		};
+		if (t == 0) at (master) {
+			logger.trace(String.format("sink():  new delta value = %1$.5f", [delta as Any]));
 			master().delta = delta;
 			master().currentIter++;
 			master().black.setTo(black);
@@ -198,50 +208,82 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			return Pair[Long,Double](master().currentIter, master().delta);
 		};
 		if (t.first == maxIter) {
-			logger.info("stop(): stop iteration(maxIter)");
+			logger.trace("stop(): stop iteration(maxIter)");
 			return true;
 		}
-		if (t.second == Double.NaN || t.second <= eps){
-			logger.info("stop(): stop iteration(epsilon)");
-			return true;
+		// if iterativeMode is true, system does not check eps.
+		// it means computation will continue till maxIter
+		if (!iterativeMode) {
+			if (t.second == Double.NaN || t.second <= eps){
+				logger.trace("stop(): stop iteration(epsilon)");
+				return true;
+			}
 		}
 		return false;
 	}
 	
+	
 	public static def runTestCase1(args:Rail[String]):HMMModel {
-		val args0 = args.size > 0 ? args: ["10","6","100","10", "0.001","testdata/sample.dat"];
-		try{
-			val job = new ResilientHMM(
-					Int.parse(args0(0)), 
-					Int.parse(args0(1)), 
-					Long.parse(args0(2)), 
-					Long.parse(args0(3)),
-					Double.parse(args0(4)),
-					args0(5));
-			job.master = GlobalRef[ResilientHMM](job);
-			if (logger.isInfoEnabled()) {
-				val startHMM = job.black;
-				logger.info("initialized start random HMM");
-				startHMM.print(Console.OUT);
-			}
-			val engine = new ResilientEngine(job);
-			job.engine = engine;
-			engine.run();
-			return job.black;
-		} catch(e:Exception) {
-			e.printStackTrace();
+		val job = createJob(args);
+		job.master = GlobalRef[ResilientHMM](job);
+		if (logger.isInfoEnabled()) {
+			val startHMM = job.black;
+			logger.trace("initialized start random HMM");
+			startHMM.print(Console.OUT);
 		}
-		return null;
+		val engine = new ResilientEngine(job);
+		job.engine = engine;
+		engine.run();
+		return job.black;
+	}
+		
+	public static def createJob(args:Rail[String]):ResilientHMM {
+		val opts = new OptionsParser(args,
+				[
+				 Option("h", "help", "this information"),
+				 Option("i", "iterative", "ignore eps, only use iteration count(for resiliency test)")
+				], 
+				[
+				 Option("s", "states", "number of hidden states"),
+				 Option("o", "obs", "number of observations"),
+				 Option("n", "numline", "total number of learning data lines"),
+				 Option("m", "maxIters", "maximum iteration"),
+				 Option("e", "epsilon", "convergence criterion"),
+				 Option("f", "fileName", "input file name")
+				]);
+		if (opts("-h")) {
+			Console.OUT.println(opts.usage(""));
+			throw new Exception("");
+		}
+		//default value or user-specified value
+		val S = opts("-s", 2N);
+		val O = opts("-o", 6N);
+		val N = opts("-n", 100);
+		val maxIter = opts("-m", 10N);
+		val eps = opts("-e", 0.01D);
+		val fileName = opts("-f", "testdata/sample.dat");
+		val iterativeMode = opts("-i");
+		
+		logger.info(String.format("job parameter: S=%1$d,O=%2$d,N=%3$d,maxIter=%4$d,eps=%5$.5f,fileName=%6$s,iterativeMode=%7$s",
+				[S as Any,O,N,maxIter,eps,fileName,iterativeMode]));
+		val job = new ResilientHMM(S,O,N,maxIter,eps,fileName,iterativeMode);
+		return job;
 	}
 	
-    public static def main(args: Rail[String]) {
-    	logger.info("training phase is started.");
-    	val startTime = System.nanoTime();
-    	val learntHMM = runTestCase1(args);
-    	learntHMM.print(Console.OUT);  	
-    	val endTime = System.nanoTime();
-    	
-    	val elapsedTime = ((endTime-startTime)*1.0)/(1000*1000*1000);
-    	logger.info(String.format("training phase is finished. elapsed time = %1f (sec)", [elapsedTime as Any]));
-    }
+	
+	public static def main(args: Rail[String]) {
+		try{
+			logger.trace("training phase is started.");
+			val startTime = System.nanoTime();
+			val learntHMM = runTestCase1(args);
+			learntHMM.print(Console.OUT);  	
+			val endTime = System.nanoTime();
+			
+			val elapsedTime = ((endTime-startTime)*1.0)/(1000*1000*1000);
+			logger.info(String.format("training phase is finished. elapsed time = %1f (sec)", [elapsedTime as Any]));
+		}
+		catch(e:Exception) {
+			Console.ERR.println(e.getMessage());
+		}
+	}
 }

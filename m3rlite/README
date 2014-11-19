@@ -2,20 +2,30 @@
 How to run and test ResilientHMM
 =============================================
 
-0. Build Libray
-
+[Build Libray]
 > make all
 
 m3rlite.example.jar and m3rlite.jar will be generated in lib/
 
-1. Running
+[Running]
+You can try to run a example of ResilientHMM without any options for checking.  
+> X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM
 
-You can run a example of ResilientHMM.
-> X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM 2 6 100 10 0.001 testdata/sample.dat
+Also you can pass your parameters, and example is here. (see also Options, or run with "-h" option)
+> X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM -s 2 -o 6 -n 100 -m 10 -e 0.001 -f testdata/sample.dat
 
-Options 
-./ResilientHMM <number of hidden states> <number of observation types> <number of input lines> <maximum iterations> <eps> <learning data>
+[Options]
+   -h or --help: this information
+   -i or --iterative: ignore eps, only use iteration count(for resiliency test)
+   -s or --states (1 value): number of hidden states
+   -o or --obs (1 value): number of observations
+   -n or --numline (1 value): total number of learning data lines
+   -m or --maxIters (1 value): maximum iteration
+   -e or --epsilon (1 value): convergence criterion
+   -f or --fileName (1 value): input file name
 
 
-2. Learning data file format
+./ResilientHMM -s <number of hidden states> -o <number of observation types> -n <number of input lines> -m <maximum iterations> -e <eps> -f <learning data>
+
+[Learning data file format]
 You can preapre your own learning data. Each line is separated with space, and it contains observation symbols, like that "1 2 3 4 5". 
