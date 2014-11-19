@@ -219,8 +219,8 @@ public class HMMModel(S:Int, O:Int) {
 	public def forward(O:Obs, alpha:Matrix):void {
 		val min = O.range().min, max = O.range().max;
 		if (O(min) >= 144) {
-			if (logger.isDebugEnabled()) {
-				logger.debug(" golden obs=" + O);
+			if (logger.isTraceEnabled()) {
+				logger.trace(" golden obs=" + O);
 			}
 		}
 		for (i in states) alpha(min, i) = pi(i)*b(i,O(min));
@@ -311,8 +311,8 @@ public class HMMModel(S:Int, O:Int) {
 		
 		val alpha = forward(x), beta = backward(x), min = x.range().min;
 		val prob = likelihood(x, alpha);
-		if (logger.isDebugEnabled()) {
-			logger.debug("x=" + x + " prob=" + prob);
+		if (logger.isTraceEnabled()) {
+			logger.trace("x=" + x + " prob=" + prob);
 
 			for (i in x.range()) {
 				var sum:Double = 0.0;
@@ -328,7 +328,7 @@ public class HMMModel(S:Int, O:Int) {
 			gamma(ti) = alpha(ti) * beta(ti) / prob;
 		}
 		
-		if (logger.isDebugEnabled()) {
+		if (logger.isTraceEnabled()) {
 			print2(Console.ERR, alpha, " alpha:");
 			print2b(Console.ERR, beta, " beta:");
 			print2(Console.ERR, gamma, " gamma:");
@@ -359,7 +359,7 @@ public class HMMModel(S:Int, O:Int) {
 				temp.b(j,k) = sum1/sum2;
 			}
 		}
-		if (logger.isDebugEnabled()) {
+		if (logger.isTraceEnabled()) {
 			temp.print(Console.ERR, "update: model contribution for " + x);
 		}
 		result.addIn(temp);
@@ -379,8 +379,8 @@ public class HMMModel(S:Int, O:Int) {
 			
 			val alpha = forward(x), beta = backward(x), min = x.range().min;
 			val prob = likelihood(x, alpha);
-			if (logger.isDebugEnabled()) {
-				logger.debug("x=" + x + " prob=" + prob);
+			if (logger.isTraceEnabled()) {
+				logger.trace("x=" + x + " prob=" + prob);
 
 				for (i in x.range()) {
 					var sum:Double = 0.0;
@@ -396,7 +396,7 @@ public class HMMModel(S:Int, O:Int) {
 				gamma(ti) = alpha(ti) * beta(ti) / prob;
 			}
 			
-			if (logger.isDebugEnabled()) {
+			if (logger.isTraceEnabled()) {
 				print2(Console.ERR, alpha, " alpha:");
 				print2b(Console.ERR, beta, " beta:");
 				print2(Console.ERR, gamma, " gamma:");
@@ -427,7 +427,7 @@ public class HMMModel(S:Int, O:Int) {
 					temp.b(j,k) = sum1/sum2;
 				}
 			}
-			if (logger.isDebugEnabled()) {
+			if (logger.isTraceEnabled()) {
 				temp.print(Console.ERR, "update: model contribution for " + x);
 			}
 			result.addIn(temp);
