@@ -65,7 +65,6 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	public var red:HMMModel = HMMModel.makeRandomModel(S,O);
 	public val copy = new HMMModel(S,O);
 	var delta:Double = Double.MAX_VALUE;
-	//val epsilon:Double = 0.001D;
 
 	public def model() = black;
 	
@@ -73,6 +72,12 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	private var myRule:HashMap[String,ArrayList[Long]] = null;
 	private var isCheckedRule:Boolean = false;
 	
+	
+	/**
+	 * checkHere() is utility method for killing myself. 
+	 * It checks loaded scenario. If matched, calls killHere() and then
+	 * the place will be killed immediately. 
+	 */
 	private def checkHere(check:String) {
 		if (myRule != null){
 			val t = myRule.get(check);
@@ -80,10 +85,39 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			if( myRule.get(check).contains(current) ) {
 				logger.info(String.format("place(%1$d) is killed at %2$s phase", [here.id as Any, check]));
 				System.killHere();
-				throw new DeadPlaceException();
+				//throw new DeadPlaceException();
 			}
 		}
 	}
+	
+	/**
+	 * initialization, which is called only once in a job. 
+	 * 1. setup master data of learning data
+	 * 2. setup rule 
+	 */
+	private def initalize():void {
+		//initalize rule
+		val h = here;
+		this.myRule = at (master) {
+			if (master().rule == null) return null;
+			else return master().rule(h.id); //copy from master
+		};
+		//initalize data source
+		data = new Rail[Obs](N);
+		val file = new File(fileName);
+		var i:Long = 0;
+		for (line_ in file.lines()) {
+			val line = line_.trim();
+			if (line.length() == 0N) continue;
+			
+			val strs = line.split(" ");
+			data(i) = new Obs(strs.size, (j:Long)=>Int.parse(strs(j)));
+			i++;
+			if (i == N) break;
+		}
+		isCheckedRule = true;
+	}
+	
 	
 	/**
 	 * source() is called at first of iteration.
@@ -93,11 +127,8 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		val h = here;
 		// check once in job duration
 		if (!isCheckedRule) {
-			this.myRule = at (master) {
-				if (master().rule == null) return null;
-				else return master().rule(h.id); //copy from master
-			};
-			isCheckedRule = true;
+			logger.debug("source(): initialize");
+			initalize();
 		}
 		// here is stop check in source phase
 		// check whether this place should be killed or not
@@ -107,44 +138,23 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			val m = master.getLocalOrCopy();
 			if (m.engine.placeIndex(h) == 0){
 				logger.info(String.format("source(): iteration=%1$d, livePlaces=%2$d", [m.currentIter as Any, m.engine.numLivePlaces()]));
-				master().currentIter++;
 			}
 			return new Pair[Long,Long](m.engine.placeIndex(h), m.engine.numLivePlaces());
 		};
 		
-		// at first, training data is loaded
-		// TODO: for checking resiliency, loading(read file) occurs everytime...
+		// at first, decide my assignment. 
 		val myplaceid = t.first;
 		val liveplaces = t.second;
-		
-		//logger.debug(String.format("S=%1$d, O=%2$d, N=%3$d, filename=%4$s", 
-		//		[S as Any, O, N, fileName]));	
+			
 		val start = (N/liveplaces) * myplaceid;
 		val end = myplaceid+1==liveplaces ? start + N/liveplaces + N%liveplaces : start + N/liveplaces;
 		
-		data = new Rail[Obs](end-start);
 		assignedLines = end-start; // re-assign data in each iteration. 
-				
-		//read file and extract own range of data
-		val file = new File(fileName);
-		var i:Long = 0;
-		var idx:Long = 0;
-		for (line_ in file.lines()) {
-			if (i < start) { i++; continue;}
-			if (i >= end) { break;}
-			
-			val line = line_.trim();
-			if (line.length() == 0N) continue;
-			
-			val strs = line.split(" ");
-			data(idx) = new Obs(strs.size, (j:Long)=>Int.parse(strs(j)));
-			idx++;
-			i++;
-		}
-		logger.debug(String.format("source(): active places=%2$d, range of place(%1$d):(start=%3$d,end=%4$d), len=%5$d", 
-				[myplaceid as Any, liveplaces, start, end, idx]));
 		
-		// initialize local parameter from master
+		logger.debug(String.format("source():range of place(%1$d):(start=%2$d,end=%3$d),livePlaces=%4$d",
+				[myplaceid as Any, start, end, liveplaces]));
+		
+		// initialize(copy) local hmm parameter from master
 		red.setToZero();
 		val masterBlack = at (master) {
 			return master().black;
@@ -153,12 +163,14 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 				
 		return new Iterable[Pair[Long, Obs]]() {
 			public def iterator() = new Iterator[Pair[Long,Obs]]() {
-				var idata:Long = 0;
-				public def hasNext() = idata < end - start;
+				var idata:Long = start;
+				var cnt:Long = 0;
+				public def hasNext() = idata < end;
 				public def next() {
 					val pos = idata;
-					idata++;
-					return Pair[Long,Obs](pos, data(pos));
+					val current_cnt = cnt;
+					idata++; cnt++;
+					return Pair[Long,Obs](current_cnt, data(pos));
 				}
 			};
 		};
@@ -174,8 +186,10 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 *  3). update(add-in) the result to local HMM. 
 	 */
 	public def mapper(k:Long, v:Obs, msink:(Long, HMMModel)=>void) {
-		//logger.debug(String.format("k1=%1$d, v1=%2$s", [k as Any, v]));
+		logger.trace(String.format("k1=%1$d, v1=%2$s", [k as Any, v]));
 		black.update(v,red);
+		
+		checkHere("map");
 		
 		if (assignedLines-1 == k) {
 			logger.debug(String.format("mapper(): complete to read training data (%1$d lines)", [(k+1) as Any]));
@@ -204,6 +218,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			logger.debug(String.format("reducer(): process received hmm (k2=%1$d)", [k2 as Any]));
 			black.setToSum(black, v);
 		}
+		checkHere("reduce");
 		output.add(Pair(k2 as Long, black));
 	}
 	
@@ -223,13 +238,14 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			val m = master.getLocalOrCopy();
 			return m.engine.placeIndex(h);
 		};
+		// all reducer has same result, so it is enough to write this result
+		// by only one place. place(0) is elected. 
 		if (t == 0) at (master) {
 			logger.debug(String.format("sink():  new delta value = %1$.5f", [delta as Any]));
 			master().delta = delta;
-			//master().currentIter++;
+			master().currentIter++;
 			master().black.setTo(black);
 		}
-		//currentIter++;
 	}
 	
 	/**
@@ -254,14 +270,16 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		return false;
 	}
 	
-	
+	/**
+	 * 
+	 */
 	public static def runTestCase1(args:Rail[String]):HMMModel {
 		val job = createJob(args);
 		job.master = GlobalRef[ResilientHMM](job);
 		if (logger.isInfoEnabled()) {
 			val startHMM = job.black;
 			logger.debug("initialized start random HMM");
-			startHMM.print(Console.OUT);
+			startHMM.print(Console.ERR);
 		}
 		val engine = new ResilientEngine(job);
 		job.engine = engine;
@@ -290,10 +308,6 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	
 	public static def createJob(args:Rail[String]):ResilientHMM {
 		val opts = getConfig(args);
-		if (opts("-h")) {
-			Console.OUT.println(opts.usage(""));
-			throw new Exception("");
-		}
 		//default value or user-specified value
 		val S = opts("-s", 2N);
 		val O = opts("-o", 6N);
@@ -363,22 +377,11 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	
 	public static def main(args:Rail[String]) {
 		val conf = getConfig(args);
+		if (conf("-h")) {
+			Console.OUT.println(conf.usage(""));
+			return;
+		}
 		val scenario = conf("-t", "./test.scenario");
 		testWithScenario(scenario, args);
-		/*
-		try{
-			logger.debug("training phase is started.");
-			val startTime = System.nanoTime();
-			val learntHMM = runTestCase1(args);
-			learntHMM.print(Console.OUT);  	
-			val endTime = System.nanoTime();
-			
-			val elapsedTime = ((endTime-startTime)*1.0)/(1000*1000*1000);
-			logger.info(String.format("training phase is finished. elapsed time = %1f (sec)", [elapsedTime as Any]));
-		}
-		catch(e:Exception) {
-			Console.ERR.println(e.getMessage());
-		}
-		 */
 	}
 }
