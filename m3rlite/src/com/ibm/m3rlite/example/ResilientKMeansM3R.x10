@@ -140,14 +140,17 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
      * Test routines
      */
     public static def calc_kmeans(n:Long, nc:Long, nd: Long, d:Rail[Double]):Rail[Double] {
+        DEBUG("calc_kmeans");
         val job = new ResilientKMeansM3R(n, nc, nd, d);
         val engine = new ResilientEngine(job);
         job.engine = engine; // to make the engine accessible from job
         engine.run();
+	// Console.OUT.println("==== test to call run twice"); job.clusters = new Rail[Double](job.ND*job.NC, (i:Long)=>job.data()(i)); job.diff = Double.MAX_VALUE; engine.run();
         return job.clusters;
     }
 
     public static def testWithRandom(args:Rail[String]) {
+        DEBUG("testWithRandom");
         val N  : Long = (args.size > 0) ? Long.parseLong(args(0)) : 1000;
         val NC : Long = (args.size > 1) ? Long.parseLong(args(1)) : 10;
         val ND : Long = (args.size > 2) ? Long.parseLong(args(2)) : 2;
@@ -170,6 +173,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     }
 
     public static def testWithSimple(args:Rail[String]) {
+        DEBUG("testWithSimple");
         val N  : Long = (args.size > 0) ? Long.parseLong(args(0)) : 8;
         val NC : Long = (args.size > 1) ? Long.parseLong(args(1)) : 4;
         val ND : Long = 1;
@@ -184,6 +188,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     }
 
     public static def testWithSimple2(args:Rail[String]) {
+        DEBUG("testWithSimple2");
         val N  = 1000000, NC = 8, ND = 1;
         val d = new Rail[Double](ND*N, (i:Long)=>i as Double);
         val clusters = calc_kmeans(N, NC, ND, d);

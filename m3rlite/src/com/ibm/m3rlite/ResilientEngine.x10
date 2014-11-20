@@ -99,23 +99,49 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	public def numLivePlaces() = at (master) master().numLivePlaces0();
 	public def placeIndex(p:Place) = at (master) master().placeIndex0(p);
 
-	public def run() {
-		val plh = PlaceLocalHandle.make(Place.places(),
-				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
-						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
+	public def this(job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
+		property(job);
 
-		// resiliency support
+		// initialize livePlaces and sparePlaces lists
 		var num_use:Long = Place.numPlaces() - nspares;
-		if (verbose>=1) DEBUG("use " + num_use +" places");
-		if (num_use <= 0) throw new Exception("Not enough places to run");
+		if (verbose>=1) DEBUG("use " + num_use +" places for the computation");
+		if (num_use <= 0) throw new Exception("Too many spare places to run");
 		for (p in Place.places()) {
+		    try {
 			at (p) Console.OUT.println(here+" running in "+Runtime.getName());
 			if (num_use-- > 0) livePlaces.add(p); else sparePlaces.add(p);
+		    } catch (e:DeadPlaceException) {
+			Console.OUT.println(p+" is dead");
+		    }
 		}
-		if (verbose>=1)	DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
+		if (num_use > 0) throw new Exception("Not enough live places to run");
+	}
+	public def run() {
+		if (verbose>=1)	DEBUG("---- run called");
+		
+		// distribute the job to all non-dead places
+		var tmpPlh:PlaceLocalHandle[State[K1,V1,K2,V2,K3,V3]];
+		var inited:Boolean = false;
+		while (true) {
+		    try {
+			val places = livePlaces.clone();
+			places.addAll(sparePlaces); // livePlaces + sparePlaces
+			places.sort((p1:Place,p2:Place)=>(p1.id-p2.id) as Int);
+			if (verbose>=1)	DEBUG("places: "+places);
+			tmpPlh = PlaceLocalHandle.make(new SparsePlaceGroup(places.toRail()),
+				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
+						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
+			break;
+		    } catch (e:Exception) {
+			processException(e, 0);
+		    }
+		}
+		val plh = tmpPlh;
 
-		for (var i:Int=0n; ! job.stop(); i++) {
+		if (verbose>=1)	DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
+		for (var i:Int=1n; ! job.stop(); i++) {
 		  try {
+			if (verbose>=1) DEBUG("---- Iteration "+i);
 			if (restore_needed) {
 				if (verbose>=1) DEBUG("New livePlaces: "+livePlaces);
 				restore_needed = false;
@@ -175,6 +201,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			processException(e, 0);
 		  }
 		}
+		if (verbose>=1)	DEBUG("---- run returning");
 	}
 	
 	/**
