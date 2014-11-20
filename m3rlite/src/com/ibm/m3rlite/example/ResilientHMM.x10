@@ -52,8 +52,9 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	public static type Obs = HMMModel.Obs; // actual type is Rail[Int]
 	
 	/* variables */
-	var master:GlobalRef[ResilientHMM]; //master instance
-	transient var engine:ResilientEngine[Long,Obs,Long,HMMModel,Long,HMMModel];
+	@x10.compiler.NonEscaping
+	private val master = GlobalRef(this); // master instance
+	private var engine:ResilientEngine[Long,Obs,Long,HMMModel,Long,HMMModel];
 	
 	var data:Rail[Obs] = null;
 	var assignedLines:Long = 0;
@@ -134,22 +135,21 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		// check whether this place should be killed or not
 		checkHere("source");
 		
-		val t = at (master) {
-			val m = master.getLocalOrCopy();
-			if (m.engine.placeIndex(h) == 0){
-				logger.info(String.format("source(): iteration=%1$d, livePlaces=%2$d", [m.currentIter as Any, m.engine.numLivePlaces()]));
-			}
-			return new Pair[Long,Long](m.engine.placeIndex(h), m.engine.numLivePlaces());
-		};
-		
 		// at first, decide my assignment. 
-		val myplaceid = t.first;
-		val liveplaces = t.second;
+		val myplaceid = engine.placeIndex(h);
+		val liveplaces = engine.numLivePlaces();
+		if (myplaceid == 0){
+			val current = at (master) { 
+				val m = master.getLocalOrCopy();
+				return m.currentIter;
+			};
+			logger.info(String.format("source(): iteration=%1$d, livePlaces=%2$d", [current as Any, liveplaces]));
+		}
 			
 		val start = (N/liveplaces) * myplaceid;
 		val end = myplaceid+1==liveplaces ? start + N/liveplaces + N%liveplaces : start + N/liveplaces;
 		
-		assignedLines = end-start; // re-assign data in each iteration. 
+		assignedLines = end-start; // re-assign data range in each iteration. 
 		
 		logger.debug(String.format("source():range of place(%1$d):(start=%2$d,end=%3$d),livePlaces=%4$d",
 				[myplaceid as Any, start, end, liveplaces]));
@@ -193,10 +193,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		
 		if (assignedLines-1 == k) {
 			logger.debug(String.format("mapper(): complete to read training data (%1$d lines)", [(k+1) as Any]));
-			val numLivePlaces = at (master) {
-				val m = master.getLocalOrCopy();
-				return m.engine.numLivePlaces();
-			};
+			val numLivePlaces = engine.numLivePlaces();
 			for (dest in 0..(numLivePlaces-1)) {
 				val t = here.id;
 				logger.debug(String.format("mapper(): emit local hmm (%1$d -> %2$d)", [t as Any, dest]));
@@ -234,10 +231,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		delta = copy.distance(black);
 		// write results to master
 		val h = here;
-		val t = at (master) {
-			val m = master.getLocalOrCopy();
-			return m.engine.placeIndex(h);
-		};
+		val t = engine.placeIndex(h);
 		// all reducer has same result, so it is enough to write this result
 		// by only one place. place(0) is elected. 
 		if (t == 0) at (master) {
@@ -275,7 +269,6 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 */
 	public static def runTestCase1(args:Rail[String]):HMMModel {
 		val job = createJob(args);
-		job.master = GlobalRef[ResilientHMM](job);
 		if (logger.isInfoEnabled()) {
 			val startHMM = job.black;
 			logger.debug("initialized start random HMM");
@@ -358,7 +351,6 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	public static def doTest(rules:Rail[HashMap[String,ArrayList[Long]]], args:Rail[String]):void {
 		val job = createJob(args);
 		job.rule = rules;
-		job.master = GlobalRef[ResilientHMM](job);
 		if (logger.isInfoEnabled()) {
 			val startHMM = job.black;
 			logger.debug("initialized start random HMM");
