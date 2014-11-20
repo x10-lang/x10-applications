@@ -13,8 +13,8 @@ import x10.util.ArrayList;
  * function, a function that determines the termination of iterations, 
  * a Mapper and a Reducer. 
  * 
- * <p> The engine runs simultaneously in P places and uses a clock to synchronize
- * the work across many places. In each place, the engine uses the 
+ * <p> The engine runs simultaneously in P places and uses separate finishes to
+ * synchronize the work across many places. In each place, the engine uses the 
  * supplied DataSource to obtain (K1, V1) pairs, runs the supplied Mapper to 
  * obtain a sequence of (K2, V2) pairs, buckets the results into P partitions, and 
  * upon completion transmits to place q the (K2,V2) pairs bucketed for q. Once
@@ -27,6 +27,32 @@ import x10.util.ArrayList;
  * should continue its execution.
  * 
  * @author vj
+ *
+ * <p>
+ * About resiliency support.
+ * <br/>
+ * When a place is dead during an iterative map/reduce execution, next iteration
+ * will be done excluding the dead place.  The job can call numLivePlaces() and
+ * placeIndex(Place), to know the total places used for the calculation and the
+ * index of the specified place (0 to numLivePlaces-1).
+ * <br/>
+ * If an environment variable M3RLITE_NSPARES=n is specified, n places are reserved
+ * as spare places, which will replace the dead place.  The spare place has a job
+ * instance in its PLH, which was created at the initialization phase, so we may
+ * need some mechanism to support dynamic place addition. 
+ * <br/>
+ * If there is no spare places remaining, the dead place is just excluded and
+ * the iteration can continue on the reduced number of places.  This can be
+ * disabled by an environment variable M3RLITE_NOSHRINK=1.  In this case, the
+ * execution will fail when there is no remaining spare place.
+ * <br/>
+ * There is another environment variable to control the debug output, M3RLITE_VERBOSE=level
+ * <br/>
+ * The job for ResilientEngine should: (1) keep the source data resiliently
+ * (e.g. by using ResilientStore), (2) divide the source data appropriately using
+ * placeIndex() and numLivePlaces(), (3) not use Place.places() or numPlaces() during
+ * the execution, and (4) return false in stop() if all data are not processed.
+ *
  * @author kawatiya (for resiliency support)
  */
 public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
