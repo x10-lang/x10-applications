@@ -89,12 +89,16 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			incoming:NN[Rail[MyMap[K2,V2]]]){}
 	
 	// resiliency support
-	val livePlaces = new ArrayList[Place]();
-	val sparePlaces = new ArrayList[Place]();
-	transient var restore_needed:Boolean = false;
-	public def numLivePlaces() = livePlaces.size();
-	public def placeIndex(p:Place) = livePlaces.indexOf(p);
-	
+	private val livePlaces:ArrayList[Place] = new ArrayList[Place]();
+	transient private val sparePlaces:ArrayList[Place] = new ArrayList[Place]();
+	transient private var restore_needed:Boolean = false;
+	@x10.compiler.NonEscaping private val master = GlobalRef(this); // master instance //@@@@
+	private def numLivePlaces0() = livePlaces.size();
+	private def placeIndex0(p:Place) = livePlaces.indexOf(p);
+
+	public def numLivePlaces() = at (master) master().numLivePlaces0();
+	public def placeIndex(p:Place) = at (master) master().placeIndex0(p);
+
 	public def run() {
 		val plh = PlaceLocalHandle.make(Place.places(),
 				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
@@ -118,14 +122,14 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			}
 
 			// map and communicate phase
-			finish for(p in livePlaces) at (p) async {
-				val P = numLivePlaces();
+			finish for (p in livePlaces) at (p) async {
+				val P = numLivePlaces0();
 				val job = plh().job; // local copy
 				val incoming = plh().incoming;	
 				// Prepare and run the mapper
 				val results = new Rail[MyMap[K2,V2]](P, (Long) => new MyMap[K2,V2]());
 				val mSink = (k:K2,v:V2)=> {insert(results(job.partition(k) % P), k, v);};
-				val src = job.source(); // job.source(placeIndex(here), numLivePlaces())
+				val src = job.source(); // job.source(placeIndex0(here), numLivePlaces0())
 				
 				// Map Phase: Call the user-supplied mapper
 				if (src != null)
@@ -133,14 +137,14 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 				
 				// Transmit data to all places
 				for (q in livePlaces) {
-					val v = results(placeIndex(q));
+					val v = results(placeIndex0(q));
 					if (v.size() > 0)
-						at(q) plh().incoming(placeIndex(p))=v;
+						at(q) plh().incoming(placeIndex0(p))=v;
 				}
 			}
 			// reduce phase
 			finish for(p in livePlaces) at (p) async {	
-				val P = numLivePlaces();
+				val P = numLivePlaces0();
 				val job = plh().job; // local copy
 				val incoming = plh().incoming;	
 				// Now process all the incoming data, shuffling it together

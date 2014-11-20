@@ -17,8 +17,9 @@ import x10.util.concurrent.AtomicLong;
 public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Double]] {
     static def DEBUG(msg:String) { Console.OUT.println("Place "+here.id+": "+msg); }
 
-    var master:GlobalRef[ResilientKMeansM3R]; // master instance
-    transient var engine:ResilientEngine[Long,Long,Long,Long,Long,Rail[Double]];
+    @x10.compiler.NonEscaping
+    private val master = GlobalRef(this); // master instance
+    private var engine:ResilientEngine[Long,Long,Long,Long,Long,Rail[Double]];
 
     val N :Long; // Number of points
     val NC:Long; // Number of clusters
@@ -40,13 +41,11 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     // K1=0, V1=data ID
     public def source() { // source(placeIndex:Long, numLivePlaces:Long)
         val h = here;
-        val t = at (master) { val m = master.getLocalOrCopy();
-            if (here==h) m.clusters_new_count.set(0); // reset the count here
-            new x10.util.Triple(m.engine.placeIndex(h), m.engine.numLivePlaces(), m.clusters)
-        }; //TODO: dirty code
-	val placeIndex = t.first, numLivePlaces = t.second;
-        clusters = t.third; // set the latest cluster info into local job instance
-
+        clusters = at (master) { // set the latest cluster info into local job instance
+            if (here==h) master().clusters_new_count.set(0); // reset the count in master
+            master().clusters
+        };
+        val placeIndex = engine.placeIndex(h), numLivePlaces = engine.numLivePlaces();
         val startIndex = placeIndex * N / numLivePlaces;
         val endIndex = (placeIndex+1) * N / numLivePlaces;
         //DEBUG("source created (start="+startIndex+" end="+endIndex+")");
@@ -142,7 +141,6 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
      */
     public static def calc_kmeans(n:Long, nc:Long, nd: Long, d:Rail[Double]):Rail[Double] {
         val job = new ResilientKMeansM3R(n, nc, nd, d);
-        job.master = GlobalRef[ResilientKMeansM3R](job); // to make the master instance accessible
         val engine = new ResilientEngine(job);
         job.engine = engine; // to make the engine accessible from job
         engine.run();
