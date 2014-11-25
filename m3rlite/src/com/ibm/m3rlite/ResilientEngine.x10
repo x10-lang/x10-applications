@@ -127,7 +127,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			val places = livePlaces.clone();
 			places.addAll(sparePlaces); // livePlaces + sparePlaces
 			places.sort((p1:Place,p2:Place)=>(p1.id-p2.id) as Int);
-			if (verbose>=1)	DEBUG("places: "+places);
+			if (verbose>=2)	DEBUG("places: "+places);
 			tmpPlh = PlaceLocalHandle.make(new SparsePlaceGroup(places.toRail()),
 				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
 						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
@@ -138,12 +138,12 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		}
 		val plh = tmpPlh;
 
-		if (verbose>=1)	DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
+		if (verbose>=2)	DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
 		for (var i:Int=1n; ! job.stop(); i++) {
+			val t0 = System.nanoTime();
 		  try {
-			if (verbose>=1) DEBUG("---- Iteration "+i);
 			if (restore_needed) {
-				if (verbose>=1) DEBUG("New livePlaces: "+livePlaces);
+				if (verbose>=2) DEBUG("New livePlaces: "+livePlaces);
 				restore_needed = false;
 			}
 
@@ -200,6 +200,8 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		  } catch (e:Exception) {
 			processException(e, 0);
 		  }
+			val t1 = System.nanoTime();
+			if (verbose>=1) DEBUG("---- Iteration "+i+" finished in "+((t1-t0)/1000000.0)+"msec");
 		}
 		if (verbose>=1)	DEBUG("---- run returning");
 	}
@@ -211,7 +213,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	private def processException(e:CheckedThrowable, l:Long) {
 	    if (e instanceof DeadPlaceException) {
 	        val deadPlace = (e as DeadPlaceException).place;
-	        Console.OUT.println(new String(new Rail[Char](l,' ')) + "DeadPlaceException thrown from " + deadPlace);
+	        DEBUG(new String(new Rail[Char](l,' ')) + "DeadPlaceException thrown from " + deadPlace);
 		sparePlaces.remove(deadPlace); // nothing may happen
 		val deadIndex = livePlaces.indexOf(deadPlace);
 		if (deadIndex >= 0) {
@@ -226,7 +228,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		}
 	    } else if (e instanceof MultipleExceptions) {
 	        val exceptions = (e as MultipleExceptions).exceptions();
-	        Console.OUT.println(new String(new Rail[Char](l,' ')) + "MultipleExceptions size=" + exceptions.size);
+	        DEBUG(new String(new Rail[Char](l,' ')) + "MultipleExceptions size=" + exceptions.size);
 	        val deadPlaceExceptions = (e as MultipleExceptions).getExceptionsOfType[DeadPlaceException]();
 	        for (dpe in deadPlaceExceptions) {
 	            processException(dpe, l+1);
@@ -234,7 +236,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	        val filtered = (e as MultipleExceptions).filterExceptionsOfType[DeadPlaceException]();
 	        if (filtered != null) throw filtered;
 	    } else {
-	        Console.ERR.println("unhandled exception " + e);
+	        throw new Exception("Unhandled exception ", e);
 	    }
 	}
 }
