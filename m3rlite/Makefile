@@ -33,7 +33,14 @@ ${LIB}/m3rlite.jar: ${M3RLITE_SOURCES}
 ${LIB}/m3rlite.example.jar: ${LIB}/m3rlite.jar ${M3RLITE_EXAMPLE_SOURCES}
 	x10c ${ASSERT} ${OPT} -x10lib ${LIB}/m3rlite.properties -buildx10lib ${LIB} -o $@ ${M3RLITE_EXAMPLE_SOURCES}
 
-clean:
+native:
+	rm -rf ${TMP}
+	x10c++ ${ASSERT} ${OPT} -d ${TMP} -o ResilientHMM -MAIN_CLASS=com.ibm.m3rlite.example.ResilientHMM ${M3RLITE_EXAMPLE_SOURCES} ${M3RLITE_SOURCES}
+
+cleannative:
+	rm -rf ResilientHMM ${TMP}
+
+clean: cleannative
 	rm -rf ${LIB}
 
 help:

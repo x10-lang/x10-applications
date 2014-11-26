@@ -73,6 +73,9 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	private var myRule:HashMap[String,ArrayList[Long]] = null;
 	private var isCheckedRule:Boolean = false;
 	
+	private var sTime:Double = 0D;
+	private var wrapTime:Double = 0D;
+	
 	
 	/**
 	 * checkHere() is utility method for killing myself. 
@@ -84,7 +87,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			val t = myRule.get(check);
 			val current = at(master) { return master().currentIter; };
 			if( myRule.get(check).contains(current) ) {
-				logger.info(String.format("place(%1$d) is killed at %2$s phase", [here.id as Any, check]));
+				logger.info(String.format("place(%d) is killed at %s phase", [here.id as Any, check]));
 				System.killHere();
 				//throw new DeadPlaceException();
 			}
@@ -95,13 +98,18 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 * initialization, which is called only once in a job. 
 	 * 1. setup master data of learning data
 	 * 2. setup rule 
+	 * 
+	 * Constructor can be useful to setup, but if using spare place, 
+	 * a new place is needed to load own rule with the new virtual place id. 
 	 */
 	private def initalize():void {
 		//initalize rule
 		val h = here;
+		val myid = engine.placeIndex(h);
 		this.myRule = at (master) {
 			if (master().rule == null) return null;
-			else return master().rule(h.id); //copy from master
+			//else return master().rule(h.id); //copy from master
+			else return master().rule(myid); //copy from master
 		};
 		//initalize data source
 		data = new Rail[Obs](N);
@@ -125,10 +133,11 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 * it checks live places and decides assigned range of data if needed. 
 	 */
 	public def source():Iterable[Pair[Long,Obs]] {
+		sTime = System.nanoTime();
 		val h = here;
 		// check once in job duration
 		if (!isCheckedRule) {
-			logger.debug("source(): initialize");
+			logger.info("source(): initialize");
 			initalize();
 		}
 		// here is stop check in source phase
@@ -143,7 +152,8 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 				val m = master.getLocalOrCopy();
 				return m.currentIter;
 			};
-			logger.info(String.format("source(): iteration=%1$d, livePlaces=%2$d", [current as Any, liveplaces]));
+			logger.warn(String.format("%d,%f", [current as Any, wrapTime]));
+			logger.info(String.format("source(): iteration=%d, livePlaces=%d, comptime=%f (s)", [current as Any, liveplaces, wrapTime]));
 		}
 			
 		val start = (N/liveplaces) * myplaceid;
@@ -151,7 +161,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		
 		assignedLines = end-start; // re-assign data range in each iteration. 
 		
-		logger.debug(String.format("source():range of place(%1$d):(start=%2$d,end=%3$d),livePlaces=%4$d",
+		logger.debug(String.format("source():range of place(%d):(start=%d,end=%d),livePlaces=%d",
 				[myplaceid as Any, start, end, liveplaces]));
 		
 		// initialize(copy) local hmm parameter from master
@@ -160,16 +170,17 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			return master().black;
 		};
 		copy.setTo(masterBlack);
-				
+
+		val e2 = (System.nanoTime() - sTime)/(1000*1000*1000);
+		logger.info(String.format("source(): fin. elapsed=%f (s)", [e2 as Any]));
 		return new Iterable[Pair[Long, Obs]]() {
 			public def iterator() = new Iterator[Pair[Long,Obs]]() {
-				var idata:Long = start;
 				var cnt:Long = 0;
-				public def hasNext() = idata < end;
+				public def hasNext() = cnt < (end - start);
 				public def next() {
-					val pos = idata;
+					val pos = start + cnt;
 					val current_cnt = cnt;
-					idata++; cnt++;
+					cnt++;
 					return Pair[Long,Obs](current_cnt, data(pos));
 				}
 			};
@@ -186,17 +197,19 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 *  3). update(add-in) the result to local HMM. 
 	 */
 	public def mapper(k:Long, v:Obs, msink:(Long, HMMModel)=>void) {
-		logger.trace(String.format("k1=%1$d, v1=%2$s", [k as Any, v]));
+		val e = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+		logger.debug(String.format("map(%d): elapsed=%f (s)", [k as Any, e]));
 		black.update(v,red);
 		
 		checkHere("map");
 		
 		if (assignedLines-1 == k) {
-			logger.debug(String.format("mapper(): complete to read training data (%1$d lines)", [(k+1) as Any]));
+			val e2 = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+			logger.info(String.format("map(): fin. elapsed=%f (s)", [e2 as Any]));
 			val numLivePlaces = engine.numLivePlaces();
 			for (dest in 0..(numLivePlaces-1)) {
 				val t = here.id;
-				logger.debug(String.format("mapper(): emit local hmm (%1$d -> %2$d)", [t as Any, dest]));
+				logger.debug(String.format("map(): emit local hmm (%d -> %d)", [t as Any, dest]));
 				msink(dest, red);
 			}
 		}
@@ -211,12 +224,16 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 * reducer() appends received learnt HMM result to local learnt HMM
 	 */
 	public def reducer(k2:Long, v2:Iterable[HMMModel], output:ArrayList[Pair[Long, HMMModel]]) {
+		val s1 = System.nanoTime();
 		for (v in v2) {
-			logger.debug(String.format("reducer(): process received hmm (k2=%1$d)", [k2 as Any]));
+			logger.debug(String.format("reducer(): process received hmm (k2=%d)", [k2 as Any]));
 			black.setToSum(black, v);
 		}
 		checkHere("reduce");
 		output.add(Pair(k2 as Long, black));
+		val e1 = (System.nanoTime() - s1)/(1000D*1000D*1000D);
+		val e2 = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+		logger.info(String.format("reduce(): fin. %f(s), elapsed=%f(s)", [e1 as Any, e2]));
 	}
 	
 	/**
@@ -226,20 +243,26 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 *   - write the result HMM to master 
 	 */
 	public def sink(s:Iterable[Pair[Long, HMMModel]]) {
+		val s1 = System.nanoTime();
 		if (s == null) return;
 		black.normalize();
 		delta = copy.distance(black);
+		checkHere("sink");
 		// write results to master
 		val h = here;
 		val t = engine.placeIndex(h);
 		// all reducer has same result, so it is enough to write this result
 		// by only one place. place(0) is elected. 
 		if (t == 0) at (master) {
-			logger.debug(String.format("sink():  new delta value = %1$.5f", [delta as Any]));
-			master().delta = delta;
-			master().currentIter++;
-			master().black.setTo(black);
+			val m = master.getLocalOrCopy();
+			logger.debug(String.format("sink():  new delta value = %.5f", [delta as Any]));
+			m.delta = delta;
+			m.currentIter++;
+			m.black.setTo(black);
 		}
+		val e1 = (System.nanoTime() - s1)/(1000D*1000D*1000D);
+		wrapTime = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+		logger.info(String.format("sink(): fin. %f(s), elapsed=%f(s)", [e1 as Any, wrapTime]));
 	}
 	
 	/**
@@ -308,10 +331,11 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		val maxIter = opts("-m", 10N);
 		val eps = opts("-e", 0.01D);
 		val fileName = opts("-f", "testdata/sample.dat");
-		val iterativeMode = opts("-i");
+		val iterativeMode = opts("-i", false);
+		val iterativeModeBool = iterativeMode == true ? "True":"False";
 		
-		logger.info(String.format("job parameter: S=%1$d,O=%2$d,N=%3$d,maxIter=%4$d,eps=%5$.5f,fileName=%6$s,iterativeMode=%7$s",
-				[S as Any,O,N,maxIter,eps,fileName,iterativeMode]));
+		logger.info(String.format("job parameter: S=%d,O=%d,N=%d,maxIter=%d,eps=%.5f,fileName=%s,iterativeMode=%s",
+				[S as Any,O,N,maxIter,eps,fileName,iterativeModeBool]));
 		val job = new ResilientHMM(S,O,N,maxIter,eps,fileName,iterativeMode);
 		return job;
 	}
@@ -336,7 +360,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			val key = strs(1);
 			val value = Long.parse(strs(2));
 			
-			Console.OUT.println("dest="+dest+", key="+key+", value="+value);
+			Console.OUT.println("place("+dest+") is killed at iteration("+value+") of "+key+" phase");
 			if (dest >= places) throw new Exception("Error in parsing scenario file");
 			val myhashmap = rules(dest);
 			val mylist = myhashmap.remove(key);
@@ -354,7 +378,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		if (logger.isInfoEnabled()) {
 			val startHMM = job.black;
 			logger.debug("initialized start random HMM");
-			startHMM.print(Console.ERR);
+			//startHMM.print(Console.ERR);
 		}
 		val engine = new ResilientEngine(job);
 		job.engine = engine;
@@ -362,9 +386,9 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		val startTime = System.nanoTime();
 		engine.run();
 		val endTime = System.nanoTime();
-		job.black.print(Console.ERR);
+		//job.black.print(Console.ERR);
 		val elapsedTime = ((endTime-startTime)*1.0)/(1000*1000*1000);
-		logger.info(String.format("training phase is finished. elapsed time = %1f (sec)", [elapsedTime as Any]));
+		logger.info(String.format("training phase is finished. elapsed time = %f (sec)", [elapsedTime as Any]));
 	}
 	
 	public static def main(args:Rail[String]) {
