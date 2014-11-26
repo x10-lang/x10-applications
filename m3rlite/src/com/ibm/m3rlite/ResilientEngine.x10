@@ -145,6 +145,13 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			if (restore_needed) {
 				if (verbose>=2) DEBUG("New livePlaces: "+livePlaces);
 				restore_needed = false;
+
+				// clean up possible garbage in the incoming array
+				val P = numLivePlaces0();
+				finish for (p in livePlaces) at (p) async {
+					val incoming = plh().incoming;	
+					for (var j:Long=0; j < P; j++) incoming(j) = null;
+				}
 			}
 
 			// map and communicate phase
