@@ -3,12 +3,13 @@ import com.ibm.m3rlite.Job;
 import x10.util.Pair;
 import x10.util.Triple;
 import x10.util.ArrayList;
-import com.ibm.m3rlite.Engine;
+import com.ibm.m3rlite.ResilientEngine;
 
 import x10.util.Random;
 
 import x10.lang.Math;
 
+import x10.util.concurrent.AtomicLong;
 
 
 class DVector 
@@ -323,47 +324,6 @@ class DBlockSparseMatrix
 		Rail.copy(t_col,0,col,0,nv);
 	}
 
-	public def makeSubBlock(src : GlobalRef[DBlockSparseMatrix])
-	{
-		val n : Long = en - sn;
-		val m : Long = em - sm;
-		val t_value = new Rail[Double](n*m);
-		val t_col = new Rail[Long](n*m);
-		var nv : Long = 0;
-		var i : Long;
-		var j : Long;
-
-		for(i=sm;i<em;i++){
-			val ti : Long = i;
-			val sj : Long = at(src) src().ptr(ti);
-			val ej : Long = at(src) src().ptr(ti+1);
-			ptr(i-sm) = nv;
-			for(j=sj;j<ej;j++){
-				val tj : Long = j;
-				val tc : Long = at(src) src().col(tj);
-				if(tc >= sn && tc < en){
-					t_value(nv) = at(src) src().value(tj);
-					t_col(nv) = at(src) src().col(tj);
-					t_col(nv) -= sn;
-					nv++;
-				}
-			}
-			if(ptr(i-sm) == nv){
-				t_value(nv) = 0.0;
-				t_col(nv) = 0;
-				nv++;
-			}
-		}
-		ptr(m) = nv;
-
-		value = new Rail[Double](nv);
-		col = new Rail[Long](nv);
-
-		Rail.copy(t_value,0,value,0,nv);
-		Rail.copy(t_col,0,col,0,nv);
-
-	}
-
 	public def MV(v : DVector) : DVector
 	{
 		val m : Long = em-sm;
@@ -429,20 +389,18 @@ class BlockDist
 
 
 
-class SparseMV
+class ResilientSparseMV
 	implements Job[DBlockSparseMatrix,DVector,Triple[Long,Long,Long],DVector,Long,DVector]
 {
+    private val master = GlobalRef(this); // master instance
+	var engine:ResilientEngine[DBlockSparseMatrix,DVector,Triple[Long,Long,Long],DVector,Long,DVector];
 	val mat : DBlockSparseMatrix;
 	val inVec : DVector;
 	val outVec : DVector;
-	val dist : PlaceLocalHandle[BlockDist];
-	val matRef : GlobalRef[DBlockSparseMatrix];
-	val inVecRef : GlobalRef[DVector];
-	val outVecRef : GlobalRef[DVector];
 	var N : Long;
 	var M : Long;
-	var iStop:Long = 0;
-
+	val sourceCounter:AtomicLong = new AtomicLong();
+	val sinkCounter:AtomicLong = new AtomicLong();
 
 	public def this(n:Long, m:Long)
 	{
@@ -453,35 +411,77 @@ class SparseMV
 		inVec = new DVector(n);
 		outVec = new DVector(m);
 
-		matRef = GlobalRef[DBlockSparseMatrix](mat);
-		inVecRef = GlobalRef[DVector](inVec);
-		outVecRef = GlobalRef[DVector](outVec);
-
-		dist = PlaceLocalHandle.make[BlockDist](Place.places(), ()=>new BlockDist());
+		sourceCounter.set(0);
+		sinkCounter.set(0);
 	}
 
-	public def initDist()
+
+	public def stop():Boolean
 	{
-		finish for(p in Place.places()) at(p) async {
-			dist().set(N,M,p.id(),Place.numPlaces());
+		val src = sourceCounter.get();
+		val snk = sinkCounter.get();
+
+		sourceCounter.set(0);
+		sinkCounter.set(0);
+
+//		Console.OUT.println("  source = "+src+" sink="+snk);
+
+		return (src > 0 && src == snk);
+	}
+
+
+	public def makeSubSparseBlockMatrix(mt : DBlockSparseMatrix)
+	{
+		val n : Long = mt.en - mt.sn;
+		val m : Long = mt.em - mt.sm;
+		val t_value = new Rail[Double](n*m);
+		val t_col = new Rail[Long](n*m);
+		var nv : Long = 0;
+		var i : Long;
+		var j : Long;
+
+		for(i=mt.sm;i<mt.em;i++){
+			val ti : Long = i;
+			val sj : Long = at(master) master().mat.ptr(ti);
+			val ej : Long = at(master) master().mat.ptr(ti+1);
+			mt.ptr(i-mt.sm) = nv;
+			for(j=sj;j<ej;j++){
+				val tj : Long = j;
+				val tc : Long = at(master) master().mat.col(tj);
+				if(tc >= mt.sn && tc < mt.en){
+					t_value(nv) = at(master) master().mat.value(tj);
+					t_col(nv) = at(master) master().mat.col(tj);
+					t_col(nv) -= mt.sn;
+					nv++;
+				}
+			}
+			if(mt.ptr(i-mt.sm) == nv){
+				t_value(nv) = 0.0;
+				t_col(nv) = 0;
+				nv++;
+			}
 		}
+		mt.ptr(m) = nv;
+
+		mt.value = new Rail[Double](nv);
+		mt.col = new Rail[Long](nv);
+
+		Rail.copy(t_value,0,mt.value,0,nv);
+		Rail.copy(t_col,0,mt.col,0,nv);
+
 	}
-	public def reset()
-	{
-		iStop = 0;
-	}
-
-	public def stop():Boolean=iStop++>0;
-
-
+	
 	//(K1 = local matrix, V1 = local vector)
-//	public def source()= new Iterable[Pair[DBlockMatrix,DVector]]() {
-
 	public def source() {
 		var x : Long;
 		var y : Long;
+		val dist = new BlockDist();
 
-		val m : DBlockSparseMatrix = new DBlockSparseMatrix(N,M,dist().ipx,dist().ipy,dist().npx,dist().npy);
+		x = at(master) master().sourceCounter.incrementAndGet();
+
+		dist.set(N,M,engine.placeIndex(here),engine.numLivePlaces());
+
+		val m : DBlockSparseMatrix = new DBlockSparseMatrix(N,M,dist.ipx,dist.ipy,dist.npx,dist.npy);
 
 		val sx : Long = m.sn;
 		val sy : Long = m.sm;
@@ -489,13 +489,15 @@ class SparseMV
 		val ey : Long = m.em;
 		val v : DVector = new DVector(ex-sx);
 
+//		Console.OUT.println("["+engine.placeIndex(here)+"/"+engine.numLivePlaces()+"] "+sx+","+ex+" - "+sy+","+ey);
+
 		//copy global matrix to local matrix
-		m.makeSubBlock(matRef);
+		makeSubSparseBlockMatrix(m);
 
 		//copy global vector to local vector
 		for(x=sx;x<ex;x++){
 			val tx = x;
-			v.v(x-sx) = at(inVecRef) inVecRef().v(tx);
+			v.v(x-sx) = at(master) master().inVec.v(tx);
 		}
 
 		return new Iterable[Pair[DBlockSparseMatrix,DVector]](){
@@ -511,17 +513,23 @@ class SparseMV
 
 	public def sink(s:Iterable[Pair[Long, DVector]]): void {
 
+		var j : Long;
 		if (s !=null){
+			j = 0;
 			for (x in s){
 				var i : Long;
 
 				for(i=0;i<x.second.N;i++){
 					val t : Double = x.second.v(i);
 					val pos : Long = i + x.first;
-					at(outVecRef) outVecRef().v(pos) = t;
+					at(master) master().outVec.v(pos) = t;
 				}
+				j++;
 			}
+//			Console.OUT.println("  ["+engine.placeIndex(here)+"]  n sink = "+j);
 		}
+
+		val t = at(master) master().sinkCounter.incrementAndGet();
 	}
 
 	// (K2 = (starting row, number of rows, place id for reduce number), V2 = mv result)
@@ -529,6 +537,8 @@ class SparseMV
 		var i : Long;
 		var j : Long;
 		var res : DVector = k.MV(v);
+
+//		Console.OUT.println("  ["+engine.placeIndex(here)+"]  mapper :"+k.sm+","+(k.em-k.sm)+","+(k.ipm * k.pn));
 
 		s(Triple[Long,Long,Long](k.sm,k.em-k.sm,k.ipm * k.pn),res);
 	}
@@ -540,9 +550,13 @@ class SparseMV
 		if (b !=null){
 			var res : DVector = new DVector(a.second);
 
+			i = 0;
 			for (x in b){
 				res.add(x);
+				i++;
 			}
+
+//			Console.OUT.println("  ["+engine.placeIndex(here)+"]  n reduce = "+i+" :"+a.first+","+a.second+","+a.third);
 
 			sink.add(Pair(a.first as Long, res));
 		}
@@ -551,7 +565,7 @@ class SparseMV
 }
 
 
-public class cg
+public class ResilientCG
 {
 
 	public static def test0(args:Rail[String]){
@@ -559,7 +573,10 @@ public class cg
 		var i : Long;
 		var j : Long;
 
-		val h = new SparseMV(N,N);
+		val h = new ResilientSparseMV(N,N);
+		val eng = new ResilientEngine[DBlockSparseMatrix,DVector,Triple[Long,Long,Long],DVector,Long,DVector](h);
+		h.engine = eng;
+
 		val src = new DBlockMatrix(N,N);
 
 		val vIn = new DVector(N);
@@ -577,7 +594,7 @@ public class cg
 
 		Console.OUT.println("N = " + N);
 
-		h.initDist();
+//		h.initDist();
 
 		src.makeRandomPositiveSymmetricSparseMatrix();
 		h.mat.set(src);
@@ -589,12 +606,9 @@ public class cg
 		val snorm : Double = 1.0 / vIn.norm();
 		vx.copy(vIn);
 
-		val eng = new Engine(h);
 
 		h.inVec.copy(vx);
-//		new Engine(h).run();
 		eng.run();
-		h.reset();
 		vr.sub(vIn,h.outVec);
 
 		vp.copy(vr);
@@ -604,9 +618,7 @@ public class cg
 		//CG iteration
 		for(iter=0;iter<Niter;iter++){
 			h.inVec.copy(vp);
-//			new Engine(h).run();
 			eng.run();
-			h.reset();
 			pap = h.outVec.dot(vp);
 
 			cr = rrp/pap;
