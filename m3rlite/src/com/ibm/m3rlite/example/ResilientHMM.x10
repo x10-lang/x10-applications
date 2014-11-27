@@ -73,8 +73,13 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	private var myRule:HashMap[String,ArrayList[Long]] = null;
 	private var isCheckedRule:Boolean = false;
 	
-	private var sTime:Double = 0D;
-	private var wrapTime:Double = 0D;
+	// for checking elapsed time 
+	private var sTime:Double = 0D;    // updates at src() phase everytime
+	private var lap_time:Double = 0D; // updates at each phase
+	private var src_time:Double = 0D;
+	private var map_time:Double = 0D;
+	private var red_time:Double = 0D;
+	private var snk_time:Double = 0D;
 	
 	
 	/**
@@ -87,7 +92,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			val t = myRule.get(check);
 			val current = at(master) { return master().currentIter; };
 			if( myRule.get(check).contains(current) ) {
-				logger.info(String.format("place(%d) is killed at %s phase", [here.id as Any, check]));
+				logger.info(String.format("place(%d) is now killed at %s phase", [here.id as Any, check]));
 				System.killHere();
 				//throw new DeadPlaceException();
 			}
@@ -133,20 +138,15 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 * it checks live places and decides assigned range of data if needed. 
 	 */
 	public def source():Iterable[Pair[Long,Obs]] {
-		sTime = System.nanoTime();
+		sTime = System.nanoTime(); //base time 
 		val h = here;
-		// check once in job duration
-		if (!isCheckedRule) {
-			logger.info("source(): initialize");
-			initalize();
-		}
-		// here is stop check in source phase
-		// check whether this place should be killed or not
-		checkHere("source");
-		
+
 		// at first, decide my assignment. 
 		val myplaceid = engine.placeIndex(h);
 		val liveplaces = engine.numLivePlaces();
+		
+		val current = myplaceid == 0 ? at(master){return master().currentIter;}:-1;
+		/*
 		if (myplaceid == 0){
 			val current = at (master) { 
 				val m = master.getLocalOrCopy();
@@ -155,13 +155,30 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			logger.warn(String.format("%d,%f", [current as Any, wrapTime]));
 			logger.info(String.format("source(): iteration=%d, livePlaces=%d, comptime=%f (s)", [current as Any, liveplaces, wrapTime]));
 		}
+		*/
+		// initialize time variables
+		if (myplaceid == 0) {
+			logger.warn(String.format("ite=%d,src=%.3f,map=%.3f,red=%.3f,snk=%.3f,total=%.3f", 
+				[current as Any,src_time,map_time,red_time,snk_time,lap_time]));
+			src_time = 0D; map_time = 0D; red_time = 0D; snk_time = 0D;
+			lap_time = 0D;
+		}
+		
+		// check once in job duration
+		if (!isCheckedRule) {
+			logger.info("source(): initialize");
+			initalize();
+		}
+		// here is stop check in source phase
+		// check whether this place should be killed or not
+		checkHere("source");
 			
 		val start = (N/liveplaces) * myplaceid;
 		val end = myplaceid+1==liveplaces ? start + N/liveplaces + N%liveplaces : start + N/liveplaces;
 		
 		assignedLines = end-start; // re-assign data range in each iteration. 
 		
-		logger.debug(String.format("source():range of place(%d):(start=%d,end=%d),livePlaces=%d",
+		logger.info(String.format("source(%d):range:(start=%d,end=%d),livePlaces=%d",
 				[myplaceid as Any, start, end, liveplaces]));
 		
 		// initialize(copy) local hmm parameter from master
@@ -171,8 +188,10 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		};
 		copy.setTo(masterBlack);
 
-		val e2 = (System.nanoTime() - sTime)/(1000*1000*1000);
-		logger.info(String.format("source(): fin. elapsed=%f (s)", [e2 as Any]));
+		src_time = (System.nanoTime() - sTime)/(1000*1000*1000);
+		lap_time += src_time;
+		logger.info(String.format("source(%d): fin. src_time=%.3f,elapsed=%.3f(s)", 
+				[myplaceid as Any, src_time,lap_time]));
 		return new Iterable[Pair[Long, Obs]]() {
 			public def iterator() = new Iterator[Pair[Long,Obs]]() {
 				var cnt:Long = 0;
@@ -197,21 +216,26 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	 *  3). update(add-in) the result to local HMM. 
 	 */
 	public def mapper(k:Long, v:Obs, msink:(Long, HMMModel)=>void) {
-		val e = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
-		logger.debug(String.format("map(%d): elapsed=%f (s)", [k as Any, e]));
+		val s = System.nanoTime();
+		val e = (s - sTime)/(1000D*1000D*1000D);
+		logger.trace(String.format("map() (%d/%d): elapsed=%.3f(s)", 
+				[k as Any, assignedLines, e]));
 		black.update(v,red);
 		
 		checkHere("map");
 		
 		if (assignedLines-1 == k) {
-			val e2 = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
-			logger.info(String.format("map(): fin. elapsed=%f (s)", [e2 as Any]));
 			val numLivePlaces = engine.numLivePlaces();
+			val t = engine.placeIndex(here);
 			for (dest in 0..(numLivePlaces-1)) {
-				val t = here.id;
-				logger.debug(String.format("map(): emit local hmm (%d -> %d)", [t as Any, dest]));
+				logger.debug(String.format("map(): emit local hmm (%d->%d)", [t as Any, dest]));
 				msink(dest, red);
 			}
+			//map_time = (System.nanoTime() - s)/(1000D*1000D*1000D);
+			lap_time = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+			map_time = lap_time - src_time;
+			logger.info(String.format("map(): fin. map_time=%.3f,elapsed=%.3f(s)", 
+					[map_time as Any, lap_time]));
 		}
 	}
 	
@@ -231,9 +255,11 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 		}
 		checkHere("reduce");
 		output.add(Pair(k2 as Long, black));
-		val e1 = (System.nanoTime() - s1)/(1000D*1000D*1000D);
-		val e2 = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
-		logger.info(String.format("reduce(): fin. %f(s), elapsed=%f(s)", [e1 as Any, e2]));
+		//red_time = (System.nanoTime() - s1)/(1000D*1000D*1000D);
+		lap_time = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+		red_time = lap_time - map_time - src_time;
+		logger.info(String.format("reduce(): fin. red_time=%.3f,elapsed=%.3f(s)", 
+				[red_time as Any, lap_time]));
 	}
 	
 	/**
@@ -260,9 +286,10 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			m.currentIter++;
 			m.black.setTo(black);
 		}
-		val e1 = (System.nanoTime() - s1)/(1000D*1000D*1000D);
-		wrapTime = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
-		logger.info(String.format("sink(): fin. %f(s), elapsed=%f(s)", [e1 as Any, wrapTime]));
+		snk_time  = (System.nanoTime() - s1)/(1000D*1000D*1000D);
+		lap_time = (System.nanoTime() - sTime)/(1000D*1000D*1000D);
+		logger.info(String.format("sink(): fin. snk_time=%.3f, elapsed=%.3f(s)", 
+				[snk_time as Any, lap_time]));
 	}
 	
 	/**
@@ -360,7 +387,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 			val key = strs(1);
 			val value = Long.parse(strs(2));
 			
-			Console.OUT.println("place("+dest+") is killed at iteration("+value+") of "+key+" phase");
+			Console.OUT.println("place("+dest+") will be killed at iteration="+value+" of "+key+" phase");
 			if (dest >= places) throw new Exception("Error in parsing scenario file");
 			val myhashmap = rules(dest);
 			val mylist = myhashmap.remove(key);
