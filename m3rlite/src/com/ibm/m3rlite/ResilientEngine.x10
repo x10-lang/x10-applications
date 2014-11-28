@@ -117,8 +117,9 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		if (num_use > 0) throw new Exception("Not enough live places to run");
 	}
 	public def run() {
-		if (verbose>=1)	DEBUG("---- run called");
-		
+		var t0:Long = 0;
+		if (verbose>=1)	{ DEBUG("---- run called"); t0 = System.nanoTime(); }
+
 		// distribute the job to all non-dead places
 		var tmpPlh:PlaceLocalHandle[State[K1,V1,K2,V2,K3,V3]];
 		var inited:Boolean = false;
@@ -138,9 +139,9 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		}
 		val plh = tmpPlh;
 
-		if (verbose>=2)	DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
+		if (verbose>=2) DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
+		if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- livePlaces prepared in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
 		for (var i:Int=1n; ! job.stop(); i++) {
-			val t0 = System.nanoTime();
 		  try {
 			if (restore_needed) {
 				if (verbose>=2) DEBUG("New livePlaces: "+livePlaces);
@@ -207,8 +208,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		  } catch (e:Exception) {
 			processException(e, 0);
 		  }
-			val t1 = System.nanoTime();
-			if (verbose>=1) DEBUG("---- Iteration "+i+" finished in "+((t1-t0)/1000000.0)+"msec");
+			if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- Iteration "+i+" finished in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
 		}
 		if (verbose>=1)	DEBUG("---- run returning");
 	}
