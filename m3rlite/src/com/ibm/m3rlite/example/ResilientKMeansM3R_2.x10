@@ -14,7 +14,7 @@ import x10.util.concurrent.AtomicLong;
  * K3(Long): Cluster ID (in 0~NC-1)
  * V3(Rail[Double]): New center of the cluster (Double value x ND)
  */
-public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Double]] {
+public class ResilientKMeansM3R_2 implements Job[Long,Long,Long,Long,Long,Rail[Double]] {
     static def DEBUG(msg:String) { Console.OUT.println("Place "+here.id+": "+msg); }
 
     @x10.compiler.NonEscaping
@@ -141,7 +141,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
      */
     public static def calc_kmeans(n:Long, nc:Long, nd: Long, d:Rail[Double]):Rail[Double] {
         DEBUG("calc_kmeans");
-        val job = new ResilientKMeansM3R(n, nc, nd, d);
+        val job = new ResilientKMeansM3R_2(n, nc, nd, d);
         val engine = new ResilientEngine(job);
         job.engine = engine; // to make the engine accessible from job
         engine.run();
