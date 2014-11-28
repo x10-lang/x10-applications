@@ -153,8 +153,8 @@ public class Lulesh {
         finish for (place in Place.places()) at(place) async {
             val domain = domainPlh();
 
-            val perEdge = domain.sizeX+1;
-            massGhostMgr.combineBoundaries(domainPlh, (dom:Domain) => [dom.nodalMass], perEdge); 
+            val nodesPerSide = domain.sizeX+1;
+            massGhostMgr.combineBoundaries(domainPlh, (dom:Domain) => [dom.nodalMass], nodesPerSide); 
             massGhostMgr.waitForGhosts();
 
             Team.WORLD.barrier();
@@ -239,10 +239,10 @@ public class Lulesh {
 
         lagrangeElements(domain);
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
-        val perEdge = domain.sizeX+1;
+        val nodesPerSide = domain.sizeX+1;
         posVelGhostMgr.updateBoundaryData(domainPlh, 
             (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-            perEdge
+            nodesPerSide
         );
 }
 
@@ -274,10 +274,10 @@ public class Lulesh {
         calcPositionForNodes(domain, delt);
 
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {
-        val perEdge = domain.sizeX+1;
+        val nodesPerSide = domain.sizeX+1;
         posVelGhostMgr.updateBoundaryData(domainPlh,
             (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-            perEdge
+            nodesPerSide
         );
         posVelGhostMgr.waitForGhosts();
 }
@@ -329,10 +329,10 @@ public class Lulesh {
 
         calcVolumeForceForElems(domain);
 
-        val perEdge = domain.sizeX+1;
+        val nodesPerSide = domain.sizeX+1;
         forceGhostMgr.combineBoundaries(domainPlh, 
             (dom:Domain) => [dom.fx, dom.fy, dom.fz],
-            perEdge
+            nodesPerSide
         );
         forceGhostMgr.waitForGhosts();
     }
@@ -628,6 +628,17 @@ public class Lulesh {
         }
     }
 
+    /**
+     * Calculate the volume derivative of an element with respect to each of
+     * its eight nodal coordinates.
+     * @param dvdx on return, the volume derivative with respect to the x
+     *   coordinates of each of the eight nodes
+     * @param dvdy on return, the volume derivative with respect to y coords
+     * @param dvdz on return, the volume derivative with respect to z coords
+     * @param x the x coordinates of each of the eight nodes
+     * @param y the y coordinates of each of the eight nodes
+     * @param z the z coordinates of each of the eight nodes
+     */
     private @Inline final def calcElemVolumeDerivative(dvdx:Rail[Double],
                                  dvdy:Rail[Double],
                                  dvdz:Rail[Double],
@@ -1060,10 +1071,10 @@ public class Lulesh {
             /* Calculate velocity gradients */
             calcMonotonicQGradientsForElems(domain, vnew);
 
-            val perEdge = domain.sizeX;
+            val elementsPerSide = domain.sizeX;
             gradientGhostMgr.updatePlaneGhosts(domainPlh, 
                 (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
-                perEdge
+                elementsPerSide
             );
             gradientGhostMgr.waitForGhosts();
 
@@ -1853,7 +1864,16 @@ public class Lulesh {
         Console.OUT.printf("FOM                  = %10.8g (z/s)\n\n", 1000.0/grindTime2); // zones per second
     }
 
-    /** get nodal coordinates from global arrays and copy into local arrays */
+    /**
+     * Get nodal coordinates from global arrays and copy into local arrays.
+     * Nodes are numbered 0,1,2,3 travelling around the first face (-zeta)
+     * counterclockwise as seen looking from the opposite face (+zeta).
+     * By symmetry, the nodes of the other face directly opposite are numbered
+     * 4,5,6,7.  The natural coordinates xi, eta, zeta are defined as follows:
+     * xi:   -1 from center of face 0,3,7,4 to +1 on face 1,2,6,5
+     * eta:  -1 from center of face 0,1,5,4 to +1 on face 3,2,6,7
+     * zeta: -1 from center of face 0,1,2,3 to +1 on face 4,5,6,7
+     */
     private @Inline final def collectDomainNodesToElemNodes(domain:Domain,
                                    elemIdx:Long,
                                    elemX:Rail[Double],

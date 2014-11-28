@@ -446,9 +446,9 @@ public class Domain {
 
     public def gatherBoundaryData(destId:Long, 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
-                perEdge:Long):Rail[Double] {
+                sideLength:Long):Rail[Double] {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(destId, perEdge-1);
+        val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
         val transfer = new Rail[Double](boundaryRegion.size()*fields.size);
 
         var idx:Long = 0;
@@ -456,7 +456,7 @@ public class Domain {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
                 for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
                     for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        transfer(idx++) = field(x + y*perEdge + z*perEdge*perEdge);
+                        transfer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
                     }
                 }
             }
@@ -467,16 +467,16 @@ public class Domain {
 
     public def gatherGhosts(destId:Long, 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
-                perEdge:Long):Rail[Double] {
+                sideLength:Long):Rail[Double] {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(destId, perEdge-1);
+        val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
         val transfer = new Rail[Double](boundaryRegion.size()*fields.size);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
                 for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
                     for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        transfer(idx++) = field(x + y*perEdge + z*perEdge*perEdge);
+                        transfer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
                     }
                 }
             }
@@ -487,15 +487,15 @@ public class Domain {
 
     public def updateBoundaryData(sourceId:Long, data:Rail[Double], 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
-                perEdge:Long) {
+                sideLength:Long) {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(sourceId, perEdge-1);
+        val boundaryRegion = getBoundaryRegion(sourceId, sideLength-1);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
                 for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
                     for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        field(x + y*perEdge + z*perEdge*perEdge) = data(idx++);
+                        field(x + y*sideLength + z*sideLength*sideLength) = data(idx++);
                     }
                 }
             }
@@ -505,15 +505,15 @@ public class Domain {
 
     public def accumulateBoundaryData(sourceId:Long, data:Rail[Double], 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
-                perEdge:Long) {
+                sideLength:Long) {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(sourceId, perEdge-1);
+        val boundaryRegion = getBoundaryRegion(sourceId, sideLength-1);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
                 for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
                     for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        field(x + y*perEdge + z*perEdge*perEdge) += data(idx++);
+                        field(x + y*sideLength + z*sideLength*sideLength) += data(idx++);
                     }
                 }
             }
@@ -538,6 +538,14 @@ public class Domain {
         }
     }
 
+    /**
+     * "LULESH uses a block structured mesh accessed via an indirect reference
+     * pattern. Therefore, one can write a correct version of LULESH without
+     * any of the indirection arrays, increasing performance and code
+     * simplicity. However, ALE3D is a fully unstructured application so 
+     * accessing LULESH’s arrays in this manner would oversimplify LULESH."
+     * @see "I. Karlin et al. (2012)
+    */
     private @NonEscaping def buildMesh(nx:Long, edgeNodes:Long, edgeElems:Long) {
         // TODO use Array_2
         nodeList = new Rail[Long](8*numElem);

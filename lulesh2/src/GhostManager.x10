@@ -11,7 +11,7 @@
 
 import x10.compiler.Uncounted;
 
-/** Manages ghost cell updates of cell data for LULESH. */
+/** Manages updates of ghost data for LULESH. */
 public class GhostManager {
     static class LocalState {
         /** List of neighbors to which data must be sent. */
@@ -104,20 +104,24 @@ public class GhostManager {
     /**
      * Update boundary data at all neighboring places, overwriting with data
      * from this place's boundary region.
+     * @param domainPlh domain data at each place
+     * @param accessFields a closure which returns an array of the fields to be
+     *   updated as Rail[Rail[Double]]
+     * @param sideLength the length of each side of the boundary region
      */
     public def updateBoundaryData(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        perEdge:Long) {
+                        sideLength:Long) {
         atomic localState().currentPhase++;
         val sourceId = here.id;
         val sourceDom = domainPlh();
         val phase = localState().currentPhase;
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, perEdge);
+            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
-                domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, perEdge);
+                domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength);
                 setNeighborReceived(sourceId);
             }
 
@@ -131,18 +135,18 @@ public class GhostManager {
      */
     public def updatePlaneGhosts(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        perEdge:Long) {
+                        sideLength:Long) {
         atomic localState().currentPhase++;
         val sourceId = here.id;
         val sourceDom = domainPlh();
         val phase = localState().currentPhase;
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, perEdge);
+            val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
-                var ghostOffset:Long = perEdge*perEdge*perEdge;
-                val ghostRegionSize = (perEdge)*(perEdge);
+                var ghostOffset:Long = sideLength*sideLength*sideLength;
+                val ghostRegionSize = (sideLength)*(sideLength);
                 ghostOffset += getNeighborNumber(sourceId) * ghostRegionSize;
                 domainPlh().updateGhosts(ghosts, accessFields, ghostRegionSize, ghostOffset);
                 setNeighborReceived(sourceId);
@@ -156,17 +160,17 @@ public class GhostManager {
      */
     public def combineBoundaries(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        perEdge:Long) {
+                        sideLength:Long) {
         atomic localState().currentPhase++;
         val sourceId = here.id;
         val sourceDom = domainPlh();
         val phase = localState().currentPhase;
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, perEdge);
+            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
-                domainPlh().accumulateBoundaryData(sourceId, boundaryData, accessFields, perEdge);
+                domainPlh().accumulateBoundaryData(sourceId, boundaryData, accessFields, sideLength);
                 setNeighborReceived(sourceId);
             }
 
