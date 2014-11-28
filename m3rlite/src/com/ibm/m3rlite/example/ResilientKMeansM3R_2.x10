@@ -1,3 +1,13 @@
+/*
+ *  This file is part of the X10 project (http://x10-lang.org).
+ *
+ *  This file is licensed to You under the Eclipse Public License (EPL);
+ *  You may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.opensource.org/licenses/eclipse-1.0.php
+ *
+ *  (C) Copyright IBM Corporation 2006-2014.
+ */
 package com.ibm.m3rlite.example;
 
 import com.ibm.m3rlite.Job;
@@ -6,7 +16,15 @@ import x10.util.Pair;
 import x10.util.ArrayList;
 import x10.util.concurrent.AtomicLong;
 
-/*
+import x10.resilient.util.ResilientStoreForApp;
+
+/**
+ * KMeans for Resilient M3R Lite, this version uses ResilientDistArray for source and ResilientStore for sink
+ * compile: x10c -sourcepath ~/X10/trunk/x10.dist/samples/resiliency  com/ibm/m3rlite/example/ResilientKMeansM3R_2.x10
+ * execute: X10_RESILIENT_MODE=1 X10_NPLACES=4 M3RLITE_VERBOSE=1 x10 com.ibm.m3rlite.example.ResilientKMeansM3R_2 1000000 8
+ *
+ * @author kawatiya
+ *
  * K1(Long): 0
  * V1(Long): Data ID (in 0~N-1)
  * K2(Long): New cluster ID of the data (in 0 to NC-1)
@@ -27,22 +45,23 @@ public class ResilientKMeansM3R_2 implements Job[Long,Long,Long,Long,Long,Rail[D
     val data:PlaceLocalHandle[Rail[Double]]; // ND*N values (not changed)
 
     transient var clusters:Rail[Double]; // ND*NC values
-    transient var clusters_new:Rail[Double];
-    transient val clusters_new_count:AtomicLong = new AtomicLong(); // number of updated clusters
-    transient var diff:Double = Double.MAX_VALUE; // diff from the old clusters
+    val rs = ResilientStoreForApp.make[Long/*K3*/,Rail[Double]/*V3*/](); // resilient store to store cluster values
+  //transient var clusters_new:Rail[Double];
+  //transient val clusters_new_count:AtomicLong = new AtomicLong(); // number of updated clusters
+  //transient var diff:Double = Double.MAX_VALUE; // diff from the old clusters
 
     public def this(n:Long, nc:Long, nd: Long, d:Rail[Double]) {
         N = n; NC = nc; ND = nd;
         data = PlaceLocalHandle.make[Rail[Double]](Place.places(), ()=>d); // deliver points data to all places
         clusters = new Rail[Double](ND*NC, (i:Long)=>d(i)); // use the first NC points as the initial cluster values
-        clusters_new = new Rail[Double](ND*NC);
+      //clusters_new = new Rail[Double](ND*NC);
     }
 
     // K1=0, V1=data ID
     public def source() { // source(placeIndex:Long, numLivePlaces:Long)
         val h = here;
         clusters = at (master) { // set the latest cluster info into local job instance
-            if (here==h) master().clusters_new_count.set(0); // reset the count in master
+          //if (here==h) master().clusters_new_count.set(0); // reset the count in master
             master().clusters
         };
         val placeIndex = engine.placeIndex(h), numLivePlaces = engine.numLivePlaces();
@@ -100,41 +119,39 @@ public class ResilientKMeansM3R_2 implements Job[Long,Long,Long,Long,Long,Rail[D
     public def sink(s:Iterable[Pair[Long, Rail[Double]]]) {
         if (s == null) return; // no data to process
         //DEBUG("sink received "+s);
-        at (master) {
-            val m = master.getLocalOrCopy();
-            val c_new = m.clusters_new;
-            val c_new_count = m.clusters_new_count;
-            var c:Long = -1;
-            // set the new center of clusters to the master
-            for (kv in s) {
-                val k = kv.first;  // cluster ID
-                val v = kv.second; // center of the cluster
-                for (var j:Long = 0; j < ND; j++) c_new(k*ND + j) = v(j);
-                c = c_new_count.incrementAndGet();
-            }
-            assert c <= NC;
-
-            // the last comer does the convergency check
-            if (c == NC) {
-                var d:Double = 0.0;
-                val c_old = m.clusters;
-                for (var i:Long = 0; i < NC; i++) {
-                    for (var j:Long = 0; j < ND; j++) {
-                        var t:Double = c_new(i*ND + j) - c_old(i*ND + j);
-                        d += t*t;
-                    }
-                }
-                DEBUG("diff="+d+" clusters="+c_new);
-                // m.clusters_new_count.set(0); // move this to source, since this may not be executed if a place is dead
-                m.clusters_new = c_old; // swap the clusters and clusters_new
-                m.clusters = c_new;
-                m.diff = d;
-            }
+        for (kv in s) {
+            val k = kv.first;  // cluster ID
+            val v = kv.second; // center of the cluster
+            rs.save(k, v);
         }
     }
 
     // called only for the master
-    public def stop() = (diff < 1.0e-8); // converged
+    public def stop() {
+        val iterNum = engine.iterationNumber();
+        val iterFailed = engine.iterationFailed();
+        DEBUG("stop: iterNum="+iterNum+" iterFailed="+iterFailed);
+        if (iterNum == 0) return false; // first stop() call before the execution
+        if (engine.iterationFailed()) {
+            //@@@@
+            DEBUG("failed iteration, skipping");
+            return false;
+        } else {
+            var diff:Double = 0.0; // diff from the old clusters
+            // update the cluster values and calculate diff
+            for (var i:Long = 0; i < NC; i++) {
+                val v = rs.load(i) as Rail[Double]/*V3*/;
+                assert v != null;
+                for (var j:Long = 0; j < ND; j++) {
+                    var t:Double = v(j) - clusters(i*ND + j);
+                    diff += t*t;
+                    clusters(i*ND + j) = v(j);
+                }
+            }
+            DEBUG("diff="+diff+" clusters="+clusters);
+            return (diff < 1.0e-8); // converged
+        }
+    }
 
     /*
      * Test routines

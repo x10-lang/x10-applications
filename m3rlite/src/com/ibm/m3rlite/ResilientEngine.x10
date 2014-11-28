@@ -91,13 +91,17 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	// resiliency support
 	private val livePlaces:ArrayList[Place] = new ArrayList[Place]();
 	transient private val sparePlaces:ArrayList[Place] = new ArrayList[Place]();
-	transient private var restore_needed:Boolean = false;
+	transient private var iterationNumber:Long = 0;
+	transient private var iterationFailed:Boolean = false;
 	@x10.compiler.NonEscaping private val master = GlobalRef(this); // master instance //@@@@
 	private def numLivePlaces0() = livePlaces.size();
 	private def placeIndex0(p:Place) = livePlaces.indexOf(p);
-
+	// utility methods
 	public def numLivePlaces() = at (master) master().numLivePlaces0();
 	public def placeIndex(p:Place) = at (master) master().placeIndex0(p);
+	public def getLivePlaces() = at (master) master().livePlaces;
+	public def iterationNumber() = at (master) master().iterationNumber; // current iteration number (>=0)
+	public def iterationFailed() = at (master) master().iterationFailed; // last iteration failed, should be called from stop()
 
 	public def this(job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 		property(job);
@@ -141,11 +145,12 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 
 		if (verbose>=2) DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
 		if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- livePlaces prepared in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
-		for (var i:Int=1n; ! job.stop(); i++) {
+		while (!job.stop()) { //TODO: should stop be called before the first iteration?
+			iterationNumber++;
 		  try {
-			if (restore_needed) {
+			if (iterationFailed) {
 				if (verbose>=2) DEBUG("New livePlaces: "+livePlaces);
-				restore_needed = false;
+				iterationFailed = false;
 
 				// clean up possible garbage in the incoming array
 				val P = numLivePlaces0();
@@ -208,7 +213,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		  } catch (e:Exception) {
 			processException(e, 0);
 		  }
-			if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- Iteration "+i+" finished in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
+			if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- Iteration "+iterationNumber+" finished in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
 		}
 		if (verbose>=1)	DEBUG("---- run returning");
 	}
@@ -231,7 +236,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			} else {			// error
 				throw new Exception("No spare place to continue");
 			}
-		        restore_needed = true;
+		        iterationFailed = true;
 		}
 	    } else if (e instanceof MultipleExceptions) {
 	        val exceptions = (e as MultipleExceptions).exceptions();
