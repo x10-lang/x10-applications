@@ -14,12 +14,9 @@ import com.ibm.m3rlite.Job;
 import com.ibm.m3rlite.ResilientEngine;
 import x10.util.Pair;
 import x10.util.ArrayList;
-import x10.util.concurrent.AtomicLong;
 
 /**
  * KMeans for Resilient M3R Lite, this version uses ResilientStore for source and sink
- * compile: x10c -sourcepath ~/X10/trunk/x10.dist/samples/resiliency com/ibm/m3rlite/example/ResilientKMeansM3R_2.x10
- * execute: X10_RESILIENT_MODE=1 X10_NPLACES=8 M3RLITE_NSPARES=1 M3RLITE_VERBOSE=1 KMEANS_USEHC=1 x10 -DX10RT_DATASTORE=Hazelcast com.ibm.m3rlite.example.ResilientKMeansM3R_2 10000 8
  *
  * @author kawatiya
  *
@@ -29,6 +26,19 @@ import x10.util.concurrent.AtomicLong;
  * V2(Coords): Coordinates added to the cluster (Double value x ND)
  * K3(Long)  : Cluster ID (in 0~NC-1)
  * V3(Coords): New coordinates of the cluster (Double value x ND)
+ *
+ * Compile:
+	x10c -sourcepath ~/X10/trunk/x10.dist/samples/resiliency com/ibm/m3rlite/example/ResilientKMeansM3R_2.x10
+ * Execute example (ResilientStore on Place0):
+	X10_RESILIENT_MODE=1 X10_NPLACES=8 \
+	M3RLITE_NSPARES=1 M3RLITE_VERBOSE=1 \
+	x10 com.ibm.m3rlite.example.ResilientKMeansM3R_2 10000 8
+ * Execute example (ResilientStore on Hazelcast):
+	X10_RESILIENT_MODE=12 X10_NPLACES=8 \
+	M3RLITE_NSPARES=1 M3RLITE_VERBOSE=1 \
+	X10_RESILIENT_STORE_MODE=2 X10_RESILIENT_STORE_VERBOSE=0 \
+	x10 -DX10RT_DATASTORE=Hazelcast \
+	com.ibm.m3rlite.example.ResilientKMeansM3R_2 10000 8
  */
 static public type Coords = Rail[Double];
 public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,Coords] {
@@ -42,13 +52,10 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
     	return v;
     }
     static def getResilientStore[K,V](name:String){V haszero} = x10.resilient.util.ResilientStoreForApp.make[K,V]();
-//    static def getResilientStore[K,V](name:String){K haszero,V haszero}:ResilientStore[K,V] {
-//        if (useHC == 0) {
-//            return ResilientStorePlace0.make[K,V](name);
-//        } else {
-//            return ResilientStoreHC.make2[K,V](name, Zero.get[K]()/*dummy lockKey*/);
-//        }
-//    }
+//  static def getResilientStore[K,V](name:String){K haszero,V haszero}:ResilientStore[K,V] {
+//      if (useHC == 0) return ResilientStorePlace0.make[K,V](name);
+//      else return ResilientStoreHC.make2[K,V](name, Zero.get[K]()/*dummy lockKey*/);
+//  }
 
     @x10.compiler.NonEscaping
     private val master = GlobalRef(this); // master instance
@@ -70,7 +77,7 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
         N = n; NC = nc; ND = nd;
         clusters = new Rail[Coords](NC, (i:Long)=>d(i)); // use the first NC points as the initial cluster values
         DEBUG("Storing data into ResilientStore");
-        for (var i:Long = 0; i < N; i++) rs_data.save/*put*/(i, d(i)); // put data into ResilientStore
+        for (var i:Long = 0; i < N; i++) rs_data.put(i, d(i)); // put data into ResilientStore
     }
 
     // K1=data ID, V1=coordinates of the data
@@ -81,8 +88,8 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
         val s = placeIndex * N / numLivePlaces;
         val e = (placeIndex+1) * N / numLivePlaces;
         if (s != startIndex || e != endIndex) {
-            DEBUG("Loading data from ResilientStore: startIndex="+s+" endIndex="+e);
-            myData = new Rail[Coords](e-s, (i:Long)=>rs_data.load(s+i)/*getOrElse(s+i,null)*/);
+            DEBUG("Loading data ["+s+","+e+") from ResilientStore");
+            myData = new Rail[Coords](e-s, (i:Long)=>rs_data.getOrElse(s+i,null));
             //DEBUG("Loaded data from ResilientStore: myData="+myData);
             startIndex = s; endIndex = e;
         }
@@ -93,7 +100,7 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
                 public def next() {
                     val p = Pair[Long,Coords](startIndex+idata, myData(idata));
                     idata++;
-                    //DEBUG("source passes data "+p);
+                    //DEBUG("source: passing data "+p);
                     return p;
                 }
             };
@@ -102,7 +109,7 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
 
     // K1=data ID, V1=coordinates of the data, K2=cluster ID, V2=coordinates added to the cluster
     public def mapper(k:Long, v:Coords, msink:(Long,Coords)=>void) {
-        //DEBUG("map data "+k+" for clusters="+clusters);
+        //DEBUG("mapper: mapping data "+k+" v="+v+" for clusters="+clusters);
         var dmin:Double = Double.MAX_VALUE;
         var idmin:Long = -1;
         // find the nearest cluster
@@ -112,10 +119,10 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
                 val t:Double = v(j) - clusters(i)(j);
                 d += t*t;
             }
-            //DEBUG("data "+k+" cluster "+i+" diff="+d);
+            //DEBUG("mapper: data "+k+" cluster "+i+" diff="+d);
             if (d < dmin) { dmin = d; idmin = i; }
         }
-        //DEBUG("mapper mapped data "+k+" to cluster "+idmin);
+        //DEBUG("mapper: mapped data "+k+" to cluster "+idmin);
         msink(idmin, v); // nearest cluster ID and data ID
     }
 
@@ -128,21 +135,22 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
         var pos:Coords = new Coords(ND, 0.0);
         var c:Long = 0;
         for (v in b) {
+            //DEBUG("reducer: reducing cluster "+a+" v="+v);
             c++; for (var j:Long = 0; j < ND; j++) pos(j) += v(j);
         }
         for (var j:Long = 0; j < ND; j++) pos(j) /= c;
-        //DEBUG("reducer reduced cluster"+a+" to "+pos);
+        //DEBUG("reducer: reduced cluster"+a+" to "+pos);
         output.add(Pair(a as Long, pos));
     }
 
     // K3=cluster ID, V3=new coordinates of the cluster
     public def sink(s:Iterable[Pair[Long,Coords]]) {
         if (s == null) return; // no data to process
-        //DEBUG("sink received "+s);
+        //DEBUG("sink: received "+s);
         for (kv in s) {
             val k = kv.first;  // cluster ID
             val v = kv.second; // center of the cluster
-            rs_clusters.save/*put*/(k, v); // put the cluster data into ResilientStore
+            rs_clusters.put(k, v); // put the cluster data into ResilientStore
         }
     }
 
@@ -150,9 +158,9 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
     public def stop() {
         val iterNum = engine.iterationNumber();
         val iterFailed = engine.iterationFailed();
-        DEBUG("stop: iterNum="+iterNum+" iterFailed="+iterFailed);
+        //DEBUG("stop: iterNum="+iterNum+" iterFailed="+iterFailed);
         if (engine.iterationFailed()) { // some livePlace died in the last iteration
-            DEBUG("failed iteration, skipping");
+            DEBUG("Failed iteration, skipping");
             return false;
         } else if (iterNum == 0) { // first stop() call before the execution
             return false;
@@ -160,15 +168,15 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
             // update the cluster values and calculate diff
             var diff:Double = 0.0; // diff from the old clusters
             for (var i:Long = 0; i < NC; i++) {
-                val v = rs_clusters.load(i)/*getOrElse(i,null)*/ as Coords/*V3*/; // get the new cluster data from ResilientStore
+                val v = rs_clusters.getOrElse(i,null) as Coords/*V3*/; // get the new cluster data from ResilientStore
                 assert v != null;
                 for (var j:Long = 0; j < ND; j++) {
                     var t:Double = v(j) - clusters(i)(j);
                     diff += t*t;
-                    clusters(i)(j) = v(j);
                 }
+                clusters(i) = v;
             }
-            DEBUG("diff="+diff+" clusters="+clusters);
+            DEBUG("diff="+diff/*+" clusters="+clusters*/);
             return (diff < 1.0e-8); // converged
         }
     }
