@@ -16,6 +16,7 @@ import x10.util.Pair;
 import x10.util.ArrayList;
 import x10.util.concurrent.AtomicLong;
 
+import x10.resilient.regionarray.DistArray;
 import x10.resilient.util.ResilientStoreForApp;
 
 /**
@@ -122,7 +123,7 @@ public class ResilientKMeansM3R_2 implements Job[Long,Long,Long,Long,Long,Rail[D
         for (kv in s) {
             val k = kv.first;  // cluster ID
             val v = kv.second; // center of the cluster
-            rs.save(k, v);
+            rs.save(k, v); // put data into ResilientStore
         }
     }
 
@@ -130,17 +131,18 @@ public class ResilientKMeansM3R_2 implements Job[Long,Long,Long,Long,Long,Rail[D
     public def stop() {
         val iterNum = engine.iterationNumber();
         val iterFailed = engine.iterationFailed();
-        DEBUG("stop: iterNum="+iterNum+" iterFailed="+iterFailed);
-        if (iterNum == 0) return false; // first stop() call before the execution
-        if (engine.iterationFailed()) {
+        //DEBUG("stop: iterNum="+iterNum+" iterFailed="+iterFailed);
+        if (engine.iterationFailed()) { // some livePlace died in the last iteration
             //@@@@
             DEBUG("failed iteration, skipping");
             return false;
-        } else {
-            var diff:Double = 0.0; // diff from the old clusters
+        } else if (iterNum == 0) { // first stop() call before the execution
+            return false;
+        } else { // iteration succeeded without place death
             // update the cluster values and calculate diff
+            var diff:Double = 0.0; // diff from the old clusters
             for (var i:Long = 0; i < NC; i++) {
-                val v = rs.load(i) as Rail[Double]/*V3*/;
+                val v = rs.load(i) as Rail[Double]/*V3*/; // get data from ResilientStore
                 assert v != null;
                 for (var j:Long = 0; j < ND; j++) {
                     var t:Double = v(j) - clusters(i*ND + j);

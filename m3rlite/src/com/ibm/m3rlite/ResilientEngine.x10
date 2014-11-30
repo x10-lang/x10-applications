@@ -145,9 +145,10 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 
 		if (verbose>=2) DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
 		if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- livePlaces prepared in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
-		while (!job.stop()) { //TODO: should stop be called before the first iteration?
-			iterationNumber++;
+		while (true) {
 		  try {
+			if (job.stop()) break; //TODO: should stop be called before the first iteration?
+			iterationNumber++;
 			if (iterationFailed) {
 				if (verbose>=2) DEBUG("New livePlaces: "+livePlaces);
 				iterationFailed = false;
