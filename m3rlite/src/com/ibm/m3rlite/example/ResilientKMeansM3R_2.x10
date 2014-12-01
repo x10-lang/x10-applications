@@ -57,6 +57,8 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
 //      else return ResilientStoreHC.make2[K,V](name, Zero.get[K]()/*dummy lockKey*/);
 //  }
 
+    static val RS_CHUNK = 10000; // data is stored by this chunk
+
     @x10.compiler.NonEscaping
     private val master = GlobalRef(this); // master instance
     private var engine:ResilientEngine[Long,Coords, Long,Coords, Long,Coords];
@@ -65,7 +67,8 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
     val NC:Long; // Number of clusters
     val ND:Long; // Dimensions of points
 
-    val rs_data = getResilientStore[Long/*K1*/,Coords/*V1*/]("data"); // resilient store to store N coords
+  //val rs_data = getResilientStore[Long/*K1*/,Coords/*V1*/]("data"); // resilient store to store N coords
+    val rs_data = getResilientStore[Long/*K1*/,Rail[Coords]/*Rail[V1]*/]("data"); // resilient store to store N coords by RS_CHUNK
     transient var myData:Rail[Coords]; // part of N coords for this place ([startIndex,endIndex))
     transient var startIndex:Long = -1, endIndex:Long = -1; // range of myData
 
@@ -76,8 +79,18 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
     public def this(n:Long, nc:Long, nd: Long, d:Rail[Coords]) {
         N = n; NC = nc; ND = nd;
         clusters = new Rail[Coords](NC, (i:Long)=>d(i)); // use the first NC points as the initial cluster values
+
+        // put data into ResilientStore
         DEBUG("Storing data into ResilientStore");
-        for (var i:Long = 0; i < N; i++) rs_data.put(i, d(i)); // put data into ResilientStore
+      //for (var i:Long = 0; i < N; i++) rs_data.put(i, d(i));
+        val chunk = new Rail[Coords](RS_CHUNK);
+        for (var i:Long = 0; i < N; i += RS_CHUNK) {
+            val remainSize = N-i;
+            val copySize = Math.min(remainSize, RS_CHUNK);
+            Rail.copy(d, i, chunk, 0, copySize);
+            if (copySize < RS_CHUNK) chunk.clear(copySize, RS_CHUNK-copySize);
+            rs_data.put(i, chunk);
+        }
     }
 
     // K1=data ID, V1=coordinates of the data
@@ -88,8 +101,19 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
         val s = placeIndex * N / numLivePlaces;
         val e = (placeIndex+1) * N / numLivePlaces;
         if (s != startIndex || e != endIndex) {
+            // get data from ResilientStore
             DEBUG("Loading data ["+s+","+e+") from ResilientStore");
-            myData = new Rail[Coords](e-s, (i:Long)=>rs_data.getOrElse(s+i,null));
+          //myData = new Rail[Coords](e-s, (i:Long)=>rs_data.getOrElse(s+i,null));
+            myData = new Rail[Coords](e-s);
+            for (var i:Long = 0; i < N; i += RS_CHUNK) {
+                if (i+RS_CHUNK < s) continue; if (e <= i) break;
+                val chunk = rs_data.getOrElse(i,null) as Rail[Coords];
+                assert chunk.size==RS_CHUNK;
+                val chunkStart:Long, myDataStart:Long, copySize:Long;
+                if (i < s) { chunkStart = s-i; myDataStart = 0; copySize = Math.min(e-s, RS_CHUNK-chunkStart); }
+                else       { chunkStart = 0; myDataStart = i-s; copySize = Math.min(RS_CHUNK, e-i); }
+                Rail.copy(chunk, chunkStart, myData, myDataStart, copySize);
+            }
             //DEBUG("Loaded data from ResilientStore: myData="+myData);
             startIndex = s; endIndex = e;
         }
@@ -221,24 +245,19 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
         DEBUG("testWithSimple");
         val N  : Long = (args.size > 0) ? Long.parseLong(args(0)) : 8;
         val NC : Long = (args.size > 1) ? Long.parseLong(args(1)) : 4;
-        val ND : Long = 1;
+        val ND : Long = (args.size > 2) ? Long.parseLong(args(2)) : 1;
         Console.OUT.println("N = " + N);
         Console.OUT.println("num of Clusters = " + NC);
         Console.OUT.println("dimension = " + ND);
 
         val d = new Rail[Coords](N, (i:Long)=>new Coords(ND, i as Double)); // 0 1 2 3 4 5 6 7
         val clusters = calc_kmeans(N, NC, ND, d);
-        for (var i:Long = 0; i < NC; i++)
-            Console.OUT.println("Cluster["+i+"] : " + clusters(i)(0)); // 0.0 1.5 3.5 6.0
-    }
 
-    public static def testWithSimple2(args:Rail[String]) {
-        DEBUG("testWithSimple2");
-        val N  = 1000000, NC = 8, ND = 1;
-        val d = new Rail[Coords](N, (i:Long)=>new Coords(ND, i as Double));
-        val clusters = calc_kmeans(N, NC, ND, d);
-        for (var i:Long = 0; i < NC; i++)
-            Console.OUT.println("Cluster["+i+"] : " + clusters(i)(0));
+        for (var i:Long = 0; i < NC; i++) {
+            Console.OUT.print("Cluster["+i+"] :");
+            for (var j:Long = 0; j < ND; j++) Console.OUT.print(" " + clusters(i)(j)); // 0.0 1.5 3.5 6.0
+            Console.OUT.println();
+        }
     }
 
     public static def main(args:Rail[String]) {
