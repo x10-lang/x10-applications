@@ -15,6 +15,10 @@ LOG_DIR="${HOME}/hmmlog"
 LOG_PROPERTIES="logging.properties"
 LIBS="lib/m3rlite.jar:lib/m3rlite.example.jar"
 
+if [ ! -e $LOG_DIR ]; then
+	mkdir $LOG_DIR
+fi
+
 # HMM PAPRAMS
 S=10
 O=10

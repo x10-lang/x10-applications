@@ -2,17 +2,27 @@
 How to run and test ResilientHMM
 =============================================
 
-[Build Libray]
+[Build Libray for Managed Backend (Java)]
 > make all
 
 m3rlite.example.jar and m3rlite.jar will be generated in lib/
 
-[Running]
+[Build Exec Binary for C++ Backend]
+> make native
+
+ResilientHMM will be generated. 
+
+[Running on Managed Backend]
 You can try to run a example of ResilientHMM without any options for checking.  
 > X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM
 
 Also you can pass your parameters, and example is here. (see also Options, or run with "-h" option)
-> X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM -s 2 -o 6 -n 100 -m 10 -e 0.001 -f testdata/sample.dat
+> X10_RESILIENT_MODE=1 X10_NPLACES=2 x10 -logconf logging.properties -cp lib/m3rlite.jar:lib/m3rlite.example.jar com.ibm.m3rlite.example.ResilientHMM -s 2 -o 6 -n 100 -m 10 -e 0.001 -f testdata/sample.dat -t scenario/normal.scenario
+
+
+[Running on C++ Backend]
+> ./ResilientHMM
+See also ResilientHMMTestRunner.sh, which shows an example of environment value, e.g. X10_LOG_LEVEL. 
 
 [Options]
    -h or --help: this information
@@ -23,9 +33,12 @@ Also you can pass your parameters, and example is here. (see also Options, or ru
    -m or --maxIters (1 value): maximum iteration
    -e or --epsilon (1 value): convergence criterion
    -f or --fileName (1 value): input file name
+   -t or --testScenario (1 value): scenario for resilient test
 
-
-./ResilientHMM -s <number of hidden states> -o <number of observation types> -n <number of input lines> -m <maximum iterations> -e <eps> -f <learning data>
+./ResilientHMM -s <number of hidden states> -o <number of observation types> -n <number of input lines> -m <maximum iterations> -e <eps> -f <learning data> -t <failure scenario file>
 
 [Learning data file format]
-You can preapre your own learning data. Each line is separated with space, and it contains observation symbols, like that "1 2 3 4 5". 
+You can preapre your own learning data. Each line is separated with space, and it contains observation symbols, like that "1 2 3 4 5". You can refer example learning data set on testdata directory. 
+
+[Scenario files]
+You can kill specified places at arbitrary phase and iterations. The phases you can set are "source", "map", "reduce", and "sink". Example scenario is mapfail.scenario on scenario directory, and it has "2,map,5" lines. It means, "place 2 will be killed at map phase if iteration count is 5". You can set multiple conditions in this scenario files. 
