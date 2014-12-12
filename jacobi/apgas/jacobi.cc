@@ -1,5 +1,5 @@
 #include <apgas/Task.h>
-#include <apgas/Pool.h>
+#include <apgas/Runtime.h>
 
 #include <stdio.h>
 #include <math.h>
@@ -183,11 +183,11 @@ class Jacobi : public Task {
         error = 10.0 * tol;
         k = 1;
 
-        JacobiWorker** tasks = Pool::alloc<JacobiWorker*>(P*sizeof(JacobiWorker*));
+        JacobiWorker** tasks = Runtime::alloc<JacobiWorker*>(P*sizeof(JacobiWorker*));
         for (int tn = 0; tn<P; tn++) {
             int min, max;
             partitionBlock(1, n-2, P, tn, &min, &max);
-            tasks[tn] = new (Pool::alloc<JacobiWorker>()) JacobiWorker(min, max);
+            tasks[tn] = new (Runtime::alloc<JacobiWorker>()) JacobiWorker(min, max);
         }
 
         while ((k<=mits)&&(error>tol)) 
@@ -200,7 +200,7 @@ class Jacobi : public Task {
                     for(j=0;j<m;j++)   
                         uold[i][j] = u[i][j];
                 
-                myPool->runFinish(P, (Task**)tasks);
+                myRuntime->runFinish(P, (Task**)tasks);
 
                 for (int tn=0; tn < P; tn++) {
                     error += tasks[tn]->error;
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
     char* nthreads = getenv("X10_NTHREADS");
     int P = nthreads ? atoi(nthreads) : 1;
     Jacobi jb(P);
-    apgas::Pool aPool(&jb);
-    aPool.start();
+    apgas::Runtime aRuntime(&jb);
+    aRuntime.start();
 }
     
