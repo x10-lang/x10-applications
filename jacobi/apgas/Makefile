@@ -21,10 +21,15 @@ else
 	CXX = g++
 endif
 
+default:jacobi jacobi_array
+
 jacobi: jacobi.cc
-	$(CXX) $(CXXFLAGS) -o $@ jacobi.cc -lm $(APGAS_LINK_ARGS) 
+	$(CXX) $(CXXFLAGS) -lprofiler -o $@ jacobi.cc -lm $(APGAS_LINK_ARGS) 
+
+jacobi_array: jacobi_array.cc
+	$(CXX) $(CXXFLAGS) -o $@ jacobi_array.cc -lm $(APGAS_LINK_ARGS) 
 
 clean:
-	$(RM) jacobi
+	$(RM) jacobi jacobi_array
 
 .PHONY: clean 

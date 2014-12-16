@@ -1,5 +1,6 @@
 #include <apgas/Task.h>
 #include <apgas/Runtime.h>
+#include <x10/array/Array_2.h>
 
 #include <stdio.h>
 #include <math.h>
@@ -50,7 +51,9 @@ void error_check(void);
  #define MSIZE 1000
  int n,m,mits; 
  double tol,relax=1.0,alpha=0.0543; 
- double u[MSIZE][MSIZE],f[MSIZE][MSIZE],uold[MSIZE][MSIZE];
+ x10::array::Array_2<double>* u = x10::array::Array_2<double>::_make(MSIZE, MSIZE);
+ x10::array::Array_2<double>* f = x10::array::Array_2<double>::_make(MSIZE, MSIZE);
+ x10::array::Array_2<double>* uold = x10::array::Array_2<double>::_make(MSIZE, MSIZE);
  double dx,dy;
 
 class JacobiWorker : public Task {
@@ -73,7 +76,7 @@ void partitionBlock(int min, int max, int n, int i, int* myMin, int* myMax) {
 class Jacobi : public Task {
   public:
     int P;
-    
+
     Jacobi() { }
 
     void execute() {
@@ -92,7 +95,7 @@ class Jacobi : public Task {
         tol=0.0000000001;
         mits=5000;
         P = getRuntime()->numWorkers();
-        
+
         printf("Running using %d threads...\n",P);
 
         driver ( ) ;
@@ -144,9 +147,8 @@ class Jacobi : public Task {
             {
                 xx =(int)( -1.0 + dx * (i-1));        
                 yy = (int)(-1.0 + dy * (j-1)) ;       
-                u[i][j] = 0.0;                       
-                f[i][j] = -1.0*alpha *(1.0-xx*xx)*(1.0-yy*yy)\
-                    - 2.0*(1.0-xx*xx)-2.0*(1.0-yy*yy);  
+                u->x10::array::Array_2<double>::__set(i,j, 0.0);
+                f->x10::array::Array_2<double>::__set(i, j, -1.0*alpha *(1.0-xx*xx)*(1.0-yy*yy) - 2.0*(1.0-xx*xx)-2.0*(1.0-yy*yy));
             }
 
     }
@@ -198,8 +200,8 @@ class Jacobi : public Task {
             /* Copy new solution into old */
             {
                 for(i=0;i<n;i++)   
-                    for(j=0;j<m;j++)   
-                        uold[i][j] = u[i][j];
+                    for(j=0;j<m;j++)
+                        uold->x10::array::Array_2<double>::__set(i, j, u->x10::array::Array_2<double>::__apply(i,j));
                 
                 myRuntime->runFinish(P, (Task**)tasks);
 
@@ -242,7 +244,7 @@ class Jacobi : public Task {
             { 
                 xx = -1.0 + dx * (i-1);
                 yy = -1.0 + dy * (j-1);
-                temp  = u[i][j] - (1.0-xx*xx)*(1.0-yy*yy);
+                temp  = u->x10::array::Array_2<double>::__apply(i, j) - (1.0-xx*xx)*(1.0-yy*yy);
                 error = error + temp*temp; 
             }
         error = sqrt(error)/(n*m);
@@ -260,11 +262,11 @@ void JacobiWorker::execute() {
     error = 0;
     for (int i= i_min; i <= i_max; i++) {
         for (int j=1; j<(m-1); j++)  { 
-            double resid = (ax*(uold[i-1][j] + uold[i+1][j]) +
-                            ay*(uold[i][j-1] + uold[i][j+1])+
-                            b * uold[i][j] - f[i][j])/b;  
+            double resid = (ax*(uold->x10::array::Array_2<double>::__apply(i-1, j) + uold->x10::array::Array_2<double>::__apply(i+1, j)) +
+                            ay*(uold->x10::array::Array_2<double>::__apply(i, j-1) + uold->x10::array::Array_2<double>::__apply(i, j+1))+
+                            b * uold->x10::array::Array_2<double>::__apply(i, j) - f->x10::array::Array_2<double>::__apply(i, j))/b;  
 
-            u[i][j] = uold[i][j] - omega * resid;  
+            u->x10::array::Array_2<double>::__set(i, j, uold->x10::array::Array_2<double>::__apply(i, j) - omega * resid);
             error = error + resid*resid ;   
         }
     }
