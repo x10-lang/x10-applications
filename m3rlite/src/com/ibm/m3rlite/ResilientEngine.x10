@@ -112,7 +112,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		if (num_use <= 0) throw new Exception("Too many spare places to run");
 		for (p in Place.places()) {
 		    try {
-			at (p) Console.OUT.println(here+" running in "+Runtime.getName());
+			at (p) Console.OUT.println(here+" running in "+x10.xrx.Runtime.getName());
 			if (num_use-- > 0) livePlaces.add(p); else sparePlaces.add(p);
 		    } catch (e:DeadPlaceException) {
 			Console.OUT.println(p+" is dead");
