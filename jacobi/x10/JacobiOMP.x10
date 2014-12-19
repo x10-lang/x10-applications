@@ -37,7 +37,7 @@ public class JacobiOMP {
     val uold:Array_2[double];
     val f:Array_2[double];
 
-    val P:long = Runtime.NTHREADS;
+    val P:long = x10.xrx.Runtime.NTHREADS;
 
     public static def main(Rail[String]) {
         val n=MSIZE;

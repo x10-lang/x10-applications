@@ -36,7 +36,7 @@ public class Jacobi {
     val uold:Array_2[double];
     val f:Array_2[double];
 
-    val P:long = Runtime.NTHREADS;
+    val P:long = x10.xrx.Runtime.NTHREADS;
 
     public static def main(Rail[String]) {
         val n=MSIZE;
@@ -127,9 +127,10 @@ public class Jacobi {
             // sequential
             // body(1, n-2, 1, m-2);
 
-            finish for (t1 in 0..(Runtime.NTHREADS-1)) {
+            val nt = x10.xrx.Runtime.NTHREADS-1;
+            finish for (t1 in 0..nt) {
                 val i_block = i_is(t1);
-                for (t2 in 0..(Runtime.NTHREADS-1)) {
+                for (t2 in 0..nt) {
                     val j_block = j_is(t2);
                     async body(i_block.min, i_block.max, j_block.min, j_block.max);
                 }

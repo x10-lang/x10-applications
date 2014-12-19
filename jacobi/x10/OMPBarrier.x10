@@ -1,4 +1,5 @@
 import x10.util.concurrent.AtomicInteger;
+import x10.xrx.Runtime;
 
 public final class OMPBarrier(count:Int) {
     private val alive = new AtomicInteger(count);
