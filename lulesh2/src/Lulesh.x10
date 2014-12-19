@@ -80,7 +80,7 @@ public class Lulesh {
         if (!opts.quiet) {
             Console.OUT.printf("Running problem size %d^3 per domain until completion\n", opts.nx);
             Console.OUT.printf("Num places: %d\n", Place.numPlaces());
-            Console.OUT.printf("Num threads: %d\n", Runtime.NTHREADS);
+            Console.OUT.printf("Num threads: %d\n", x10.xrx.Runtime.NTHREADS);
             Console.OUT.printf("Total number of elements: %d\n\n", Place.numPlaces()*opts.nx*opts.nx*opts.nx);
             Console.OUT.printf("To run other sizes, use -s <integer>.\n");
             Console.OUT.printf("To run a fixed number of iterations, use -i <integer>.\n");
