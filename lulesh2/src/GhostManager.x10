@@ -31,11 +31,18 @@ public class GhostManager {
          */
         public var currentPhase:Long;
 
+        /**
+         * Boundary data received from other places, held for later combination
+         * with boundary data computed locally.
+         */
+        var boundaryData:Rail[Rail[Double]];
+
         public def this(neighborListSend:Rail[Long], neighborListRecv:Rail[Long]) {
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
             this.neighborsReceived = new Rail[Boolean](neighborListRecv.size);
             this.currentPhase = 0;
+            this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
         }
     }
 
@@ -58,6 +65,27 @@ public class GhostManager {
      */
     public final def waitForGhosts() {
         when (allNeighborsReceived()) {
+            localState().currentPhase++;
+            resetNeighborsReceived();
+        }
+    }
+
+    /** 
+     * Wait for all boundary data to be received from neighboring places,
+     * and then combine it with boundary data computed at this place.
+     * Switch ghost manager phase from sending to using ghost data.
+     */
+    public final def waitAndCombineBoundaries(domainPlh:PlaceLocalHandle[Domain],
+            accessFields:(dom:Domain) => Rail[Rail[Double]],
+            sideLength:Long) {
+        when (allNeighborsReceived()) {
+            val boundaryData = localState().boundaryData;
+            for (i in 0..(boundaryData.size-1)) {
+                if (boundaryData(i) != null) {
+                    domainPlh().accumulateBoundaryData(localState().neighborListRecv(i), boundaryData(i), accessFields, sideLength);
+                    boundaryData(i) = null;
+                }
+            }
             localState().currentPhase++;
             resetNeighborsReceived();
         }
@@ -155,10 +183,11 @@ public class GhostManager {
     }
 
     /**
-     * Accumulate (add) boundary data from this place to boundary data at 
-     * all neighboring places.
+     * Send boundary data from this place to neighboring places to be combined
+     * later by waitAndCombineBoundaries.
+     * @see waitAndCombineBoundaries
      */
-    public def combineBoundaries(domainPlh:PlaceLocalHandle[Domain], 
+    public def gatherBoundariesToCombine(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         sideLength:Long) {
         atomic localState().currentPhase++;
@@ -170,7 +199,8 @@ public class GhostManager {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
                 when (localState().currentPhase == phase);
-                domainPlh().accumulateBoundaryData(sourceId, boundaryData, accessFields, sideLength);
+                // hold boundary data for later accumulation
+                localState().boundaryData(getNeighborNumber(sourceId)) = boundaryData;
                 setNeighborReceived(sourceId);
             }
 

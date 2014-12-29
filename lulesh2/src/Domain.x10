@@ -502,7 +502,6 @@ public class Domain {
         }
     }
 
-
     public def accumulateBoundaryData(sourceId:Long, data:Rail[Double], 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 sideLength:Long) {

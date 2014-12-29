@@ -154,8 +154,9 @@ public class Lulesh {
             val domain = domainPlh();
 
             val nodesPerSide = domain.sizeX+1;
-            massGhostMgr.combineBoundaries(domainPlh, (dom:Domain) => [dom.nodalMass], nodesPerSide); 
-            massGhostMgr.waitForGhosts();
+            val accessMass = (dom:Domain) => [dom.nodalMass];
+            massGhostMgr.gatherBoundariesToCombine(domainPlh, accessMass, nodesPerSide); 
+            massGhostMgr.waitAndCombineBoundaries(domainPlh, accessMass, nodesPerSide);
 
             Team.WORLD.barrier();
 
@@ -330,11 +331,12 @@ public class Lulesh {
         calcVolumeForceForElems(domain);
 
         val nodesPerSide = domain.sizeX+1;
-        forceGhostMgr.combineBoundaries(domainPlh, 
-            (dom:Domain) => [dom.fx, dom.fy, dom.fz],
+        val accessForce = (dom:Domain) => [dom.fx, dom.fy, dom.fz];
+        forceGhostMgr.gatherBoundariesToCombine(domainPlh, 
+            accessForce,
             nodesPerSide
         );
-        forceGhostMgr.waitForGhosts();
+        forceGhostMgr.waitAndCombineBoundaries(domainPlh, accessForce, nodesPerSide);
     }
 
     /** Calculate the volume force contribution for each mesh element. */
