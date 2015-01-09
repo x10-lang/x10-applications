@@ -205,6 +205,9 @@ public class Lulesh {
             }
             newDt = Team.WORLD.allreduce(gNewDt, Team.MIN);
 
+ if (opts.showProg && !opts.quiet && here.equals(Place.FIRST_PLACE))
+ Console.OUT.printf("dtcourant = %e, dthydro = %e\n", domain.dtcourant, domain.dthydro);
+
             ratio = newDt / oldDt;
             if (ratio >= 1.0) {
                 if (ratio < domain.deltatimemultlb) {
@@ -321,7 +324,7 @@ public class Lulesh {
         domain.fy.clear();
         domain.fz.clear();
         /*
-        Foreach.block(0, domain.numNode-1, (i:Long)=> {
+        Foreach.sequential(0, domain.numNode-1, (i:Long)=> {
             domain.fx(i) = 0.0;
             domain.fy(i) = 0.0;
             domain.fz(i) = 0.0;
@@ -390,7 +393,7 @@ public class Lulesh {
         val fy_elem = new Rail[Double](numElem8);
         val fz_elem = new Rail[Double](numElem8);
 
-        Foreach.block(0, domain.numElem-1,
+        Foreach.sequential(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
             @StackAllocate val bStore = @StackAllocateUninitialized new Rail[Double](24);
@@ -587,7 +590,7 @@ public class Lulesh {
         val y8n  = new Rail[Double](numElem8);
         val z8n  = new Rail[Double](numElem8);
 
-        Foreach.bisect(0, numElem-1,
+        Foreach.sequential(0, numElem-1,
         (min_i:Long, max_i:Long) => {
             @StackAllocate val x1 = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val y1 = @StackAllocateUninitialized new Rail[Double](8);
@@ -920,7 +923,7 @@ public class Lulesh {
             calcKinematicsForElems(domain, vnew, deltatime);
 
             // element loop to do some stuff not included in the elemlib function.
-            Foreach.bisect(0, numElem-1, (k:Long)=> {
+            Foreach.sequential(0, numElem-1, (k:Long)=> {
                 // calc strain rate and apply as constraint (only done in FB element)
                 val vdov = domain.dxx(k) + domain.dyy(k) + domain.dzz(k);
                 val vdovthird = vdov / 3.0;
@@ -941,7 +944,7 @@ public class Lulesh {
     }
 
     def calcKinematicsForElems(domain:Domain, vnew:Rail[Double], deltaTime:Double) {
-        Foreach.bisect(0, domain.numElem-1,
+        Foreach.sequential(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
             @StackAllocate val bStore = @StackAllocate new Rail[Double](24);
@@ -1101,7 +1104,7 @@ public class Lulesh {
     }
 
     def calcMonotonicQGradientsForElems(domain:Domain, vnew:Rail[Double]) { 
-        Foreach.block(0, domain.numElem-1, (i:Long)=> {
+        Foreach.sequential(0, domain.numElem-1, (i:Long)=> {
             val ptiny = 1.e-36;
 
             val n0 = domain.nodeList(i*8+0);
@@ -1256,7 +1259,7 @@ public class Lulesh {
         val qqc_monoq = domain.qqc_monoq;
         val regElemList = domain.regElemList(r);
 
-        Foreach.bisect(0, domain.regElemSize(r)-1, (ielem:Long)=> {
+        Foreach.sequential(0, domain.regElemSize(r)-1, (ielem:Long)=> {
             val i = regElemList(ielem);
             val bcMask = domain.elemBC(i);
             var delvm:Double = 0.0, delvp:Double = 0.0;
@@ -1552,7 +1555,7 @@ public class Lulesh {
 
                 work.clear(0, numElemReg);
                 /*
-                Foreach.block(0, numElemReg-1, (i:Long)=> {
+                Foreach.sequential(0, numElemReg-1, (i:Long)=> {
                     work(i) = 0.0; 
                 });
                 */
@@ -1774,7 +1777,7 @@ public class Lulesh {
     def calcCourantConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
         val qqc2 = 64.0 * domain.qqc * domain.qqc;
 
-        val dtcourant_new = Foreach.blockReduce(0, length-1,
+        val dtcourant_new = Foreach.sequentialReduce(0, length-1,
         (i:Long)=> {
             val indx = regElemList(i);
             var dtf:Double;
@@ -1806,7 +1809,7 @@ public class Lulesh {
      * (prescribed) divided by vdov in the element.
      */
     def calcHydroConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
-        val dthydro_new = Foreach.blockReduce(0, length-1, (i:Long)=> {
+        val dthydro_new = Foreach.sequentialReduce(0, length-1, (i:Long)=> {
             val indx = regElemList(i);
             var dthydro_tmp:Double;
             if (domain.vdov(indx) == 0.0) {
