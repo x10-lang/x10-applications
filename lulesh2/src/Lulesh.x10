@@ -587,7 +587,7 @@ public class Lulesh {
         val y8n  = new Rail[Double](numElem8);
         val z8n  = new Rail[Double](numElem8);
 
-        Foreach.bisect(0, numElem-1,
+        Foreach.block(0, numElem-1,
         (min_i:Long, max_i:Long) => {
             @StackAllocate val x1 = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val y1 = @StackAllocateUninitialized new Rail[Double](8);
@@ -693,9 +693,8 @@ public class Lulesh {
 
         // compute the hourglass modes
 
-        //Foreach.bisect(0, domain.numElem-1,
-        //(min_i:Long, max_i:Long) => {
-        for (i2 in 0..(domain.numElem-1)) {
+        Foreach.block(0, domain.numElem-1,
+        (min_i:Long, max_i:Long) => {
             @StackAllocate val hourgamStore = @StackAllocateUninitialized new Rail[Double](32);
             val hourgam = Array_2.makeView[Double](hourgamStore, 8, 4);
             @StackAllocate val xd1 = @StackAllocateUninitialized new Rail[Double](8);
@@ -704,7 +703,7 @@ public class Lulesh {
             @StackAllocate val hgfx = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfy = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfz = @StackAllocateUninitialized new Rail[Double](8);
-            //for (i2 in min_i..max_i) {
+            for (i2 in min_i..max_i) {
                 val i3 = 8*i2;
                 val volinv = 1.0 / determ(i2);
                 for (i1 in 0..3) {
@@ -816,8 +815,8 @@ public class Lulesh {
                 domain.fx(n7si2) += hgfx(7);
                 domain.fy(n7si2) += hgfy(7);
                 domain.fz(n7si2) += hgfz(7);
-            //}
-        } //);
+            }
+        });
     }
 
     private @Inline final def calcElemFBHourglassForce(
@@ -920,7 +919,7 @@ public class Lulesh {
             calcKinematicsForElems(domain, vnew, deltatime);
 
             // element loop to do some stuff not included in the elemlib function.
-            Foreach.bisect(0, numElem-1, (k:Long)=> {
+            Foreach.block(0, numElem-1, (k:Long)=> {
                 // calc strain rate and apply as constraint (only done in FB element)
                 val vdov = domain.dxx(k) + domain.dyy(k) + domain.dzz(k);
                 val vdovthird = vdov / 3.0;
@@ -941,7 +940,7 @@ public class Lulesh {
     }
 
     def calcKinematicsForElems(domain:Domain, vnew:Rail[Double], deltaTime:Double) {
-        Foreach.bisect(0, domain.numElem-1,
+        Foreach.block(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
             @StackAllocate val bStore = @StackAllocate new Rail[Double](24);
@@ -1256,7 +1255,7 @@ public class Lulesh {
         val qqc_monoq = domain.qqc_monoq;
         val regElemList = domain.regElemList(r);
 
-        Foreach.bisect(0, domain.regElemSize(r)-1, (ielem:Long)=> {
+        Foreach.block(0, domain.regElemSize(r)-1, (ielem:Long)=> {
             val i = regElemList(ielem);
             val bcMask = domain.elemBC(i);
             var delvm:Double = 0.0, delvp:Double = 0.0;
@@ -1422,24 +1421,21 @@ public class Lulesh {
 
             // Bound the updated relative volumes with eosvmin/max
             if (eosvmin != 0.0) {
-                for (i in 0..(numElem-1)) {
-                //Foreach.block(0, numElem-1, (i:Long)=> {
+                Foreach.block(0, numElem-1, (i:Long)=> {
                     if (vnew(i) < eosvmin) vnew(i) = eosvmin;
-                }
+                });
             }
 
             if (eosvmax != 0.0) {
-                for (i in 0..(numElem-1)) {
-                //Foreach.block(0, numElem-1, (i:Long)=> {
+                Foreach.block(0, numElem-1, (i:Long)=> {
                     if (vnew(i) > eosvmax) vnew(i) = eosvmax;
-                }
+                });
             }
 
             // This check may not make perfect sense in LULESH, but
             // it's representative of something in the full code -
             // just leave it in, please
-            for (i in 0..(numElem-1)) {
-            //Foreach.block(0, numElem-1, (i:Long)=> {
+            Foreach.block(0, numElem-1, (i:Long)=> {
                 var vc:Double = domain.v(i);
                 if (eosvmin != 0.0) {
                     if (vc < eosvmin) vc = eosvmin;
@@ -1450,7 +1446,7 @@ public class Lulesh {
                 if (vc <= 0.0) {
                     throw new VolumeException(i, vc);
                 }
-            }
+            });
 
             for (r in 0..(domain.numReg-1)) {
                 val numElemReg = domain.regElemSize(r);
@@ -1757,13 +1753,12 @@ public class Lulesh {
     }
 
     def updateVolumesForElems(domain:Domain, vnew:Rail[Double]) {
-        for (i in 0..(domain.numElem-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
+        Foreach.block(0, domain.numElem-1, (i:Long)=> {
             var tmpV:Double = vnew(i);
             // cutoff to avoid spurious volume change due to rounding error
             if (Math.abs(tmpV - 1.0) < domain.v_cut) tmpV = 1.0;
             domain.v(i) = tmpV;
-        }
+        });
     }
 
     /**
