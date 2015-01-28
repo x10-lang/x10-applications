@@ -242,7 +242,7 @@ void cuSolve_CG(QCDComplex* dpXq,QCDComplex* dpU,QCDComplex* dpB,double CKs,doub
 	MPI_Allreduce(&ret,&rr,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD);
 	rrp = rr;
 
-	printf("%f\n", rr);
+	// printf("%f\n", rr);
 
 	for(iter=0; iter < niter; iter++){
 	        cuQCDDopr_DdagD(dpS,dpU,dpP,dpT,CKs);
@@ -267,7 +267,7 @@ void cuSolve_CG(QCDComplex* dpXq,QCDComplex* dpU,QCDComplex* dpB,double CKs,doub
 
 		rrp = rr;
 
-		printf("%f\n", rr*snorm);
+		// printf("%f\n", rr*snorm);
 
 		if(rr*snorm < enorm){
 			nconv = iter;
