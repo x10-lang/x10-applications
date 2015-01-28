@@ -1,4 +1,13 @@
 /*--------------------------------------------------------------------
+	Dslash base code using MPI + CUDA
+
+	Copyright 2015 Koichi Shirahata
+
+	Written by
+		Koichi Shirahata
+
+--------------------------------------------------------------------*/
+/*--------------------------------------------------------------------
 	Dslash base code using MPI
 
 	Copyright 2009-2013 IBM Research - Tokyo, IBM Corporation

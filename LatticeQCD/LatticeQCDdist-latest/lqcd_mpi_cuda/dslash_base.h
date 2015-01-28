@@ -1,10 +1,10 @@
 /*--------------------------------------------------------------------
-	Dslash base code using MPI
+	Dslash base code using MPI + CUDA
 
-	Copyright 2009-2013 IBM Research - Tokyo, IBM Corporation
+	Copyright 2015 Koichi Shirahata
 
 	Written by
-		Jun Doi  (doichan@jp.ibm.com)
+		Koichi Shirahata
 
 --------------------------------------------------------------------*/
 

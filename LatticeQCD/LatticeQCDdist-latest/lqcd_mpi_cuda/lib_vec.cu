@@ -1,4 +1,13 @@
 /*--------------------------------------------------------------------
+	Lattice QCD linear algebra routines using CUDA
+
+	Copyright 2015 Koichi Shirahata
+
+	Written by
+		Koichi Shirahata
+
+--------------------------------------------------------------------*/
+/*--------------------------------------------------------------------
 	Lattice QCD linear algebra routines
 
 	Copyright 2009-2013 IBM Research - Tokyo, IBM Corporation

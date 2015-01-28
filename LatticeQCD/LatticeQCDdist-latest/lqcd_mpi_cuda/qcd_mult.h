@@ -1,4 +1,13 @@
 /*--------------------------------------------------------------------
+	QCD kernel library using CUDA
+
+	Copyright 2015 Koichi Shirahata
+
+	Written by
+		Koichi Shirahata
+
+--------------------------------------------------------------------*/
+/*--------------------------------------------------------------------
 	QCD kernel library
 
 	Copyright 2009-2013 IBM Research - Tokyo, IBM Corporation
