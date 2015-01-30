@@ -1230,23 +1230,23 @@ void QCDDopr_Init(int Nx,int Ny,int Nz,int Nt,int npx,int npy,int npz,int npt,in
 
 	qcdSendBuf[QCD_XP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
 	qcdSendBuf[QCD_XM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
-	qcdRecvBuf[QCD_XP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
-	qcdRecvBuf[QCD_XM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
 
 	qcdSendBuf[QCD_YP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
 	qcdSendBuf[QCD_YM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
-	qcdRecvBuf[QCD_YP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
-	qcdRecvBuf[QCD_YM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
 
 	qcdSendBuf[QCD_ZP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
 	qcdSendBuf[QCD_ZM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
-	qcdRecvBuf[QCD_ZP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
-	qcdRecvBuf[QCD_ZM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
 
 	qcdSendBuf[QCD_TP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
 	qcdSendBuf[QCD_TM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
-	qcdRecvBuf[QCD_TP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
-	qcdRecvBuf[QCD_TM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
+	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
 
 	checkCudaErrors(cudaMalloc((void**)&dqcdSendBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
 	checkCudaErrors(cudaMalloc((void**)&dqcdSendBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
