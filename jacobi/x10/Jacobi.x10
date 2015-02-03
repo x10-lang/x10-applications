@@ -1,4 +1,5 @@
 import x10.array.*;
+import x10.compiler.Foreach;
 import x10.util.concurrent.AtomicDouble;
 
 /************************************************************
@@ -52,7 +53,8 @@ public class Jacobi {
         val end = System.nanoTime();
 
         Console.OUT.println("------------------------");
-        Console.OUT.println("Execution time = "+((end-start)/1E9));
+        val timeInMillis = (end-start)/1E6;
+        Console.OUT.println("Execution time = "+timeInMillis/1E3+" per iter "+timeInMillis/mits+" ms");
         jb.errorCheck();
     }
 
@@ -75,9 +77,9 @@ public class Jacobi {
 
    /******************************************************************
     * Subroutine HelmholtzJ
-    * Solves poisson equation on rectangular grid assuming : 
+    * Solves Poisson equation on rectangular grid assuming : 
     * (1) Uniform discretization in each direction, and 
-    * (2) Dirichlect boundary conditions 
+    * (2) Dirichlet boundary conditions 
     * 
     * Jacobi method is used in this routine 
     *
@@ -102,18 +104,16 @@ public class Jacobi {
         val ay = 1.0/(dy*dy); /* Y-direction coef */
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
-        val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P,i));
-        val j_is = new Rail[DenseIterationSpace_1](P, (j:long)=>BlockingUtils.partitionBlock(1,m-2,P,j));
         val error = new AtomicDouble(10.0 * tol);
         var k:long = 1;
 
         while ((k<=mits)&&(error.get()>tol)) {
             Array.swap(u, uold);
 
-            val body = (min_i:Long, max_i:Long, min_j:Long, max_j:Long) => {
+            val body = (min_i:Long, max_i:Long) => {
                 var my_error:double = 0.0;
                 for (i in min_i..max_i) {
-                    for (j in min_j..max_j) {
+                    for (j in 1..(m-2)) {
                         val resid = (ax*(uold(i-1, j) + uold(i+1, j)) +
                                      ay*(uold(i, j-1) + uold(i, j+1)) + 
                                      b * uold(i, j) - f(i, j))/b;  
@@ -123,28 +123,20 @@ public class Jacobi {
                 }
                 error.getAndAdd(my_error);
             };
-
-            // sequential
-            // body(1, n-2, 1, m-2);
-
-            val nt = x10.xrx.Runtime.NTHREADS-1;
-            finish for (t1 in 0..nt) {
-                val i_block = i_is(t1);
-                for (t2 in 0..nt) {
-                    val j_block = j_is(t2);
-                    async body(i_block.min, i_block.max, j_block.min, j_block.max);
-                }
-            }
+            
+            //body(1, n-2); // sequential
+            //Foreach.basic(1, n-2, body);
+            Foreach.block(1, n-2, body);
+            //Foreach.bisect(1, n-2, body);
 
             k = k + 1;
             if (k%500==0) Console.OUT.println("Finished "+k+" iteration.");
             error.set(Math.sqrt(error.get())/(n*m));
         }
 
-        Console.OUT.println("Total Number of Iterations:"+k);
+        Console.OUT.println("Total Number of Iterations:"+(k-1));
         Console.OUT.println("Residual:"+error.get());
     }
-
 
     /************************************************************
     * Checks error between numerical and exact solution 

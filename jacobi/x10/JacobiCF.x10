@@ -74,9 +74,9 @@ public class JacobiCF {
 
    /******************************************************************
     * Subroutine HelmholtzJ
-    * Solves poisson equation on rectangular grid assuming : 
+    * Solves Poisson equation on rectangular grid assuming : 
     * (1) Uniform discretization in each direction, and 
-    * (2) Dirichlect boundary conditions 
+    * (2) Dirichlet boundary conditions 
     * 
     * Jacobi method is used in this routine 
     *
@@ -131,7 +131,7 @@ public class JacobiCF {
             error = Math.sqrt(error)/(n*m);
         }
 
-        Console.OUT.println("Total Number of Iterations:"+k);
+        Console.OUT.println("Total Number of Iterations:"+(k-1));
         Console.OUT.println("Residual:"+error);
     }
 
