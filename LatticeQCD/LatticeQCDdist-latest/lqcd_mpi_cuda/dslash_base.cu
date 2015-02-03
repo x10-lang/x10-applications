@@ -72,11 +72,14 @@ __device__ int dqcdNsite;
 static QCDComplex* qcdSendBuf[8];
 static QCDComplex* qcdRecvBuf[8];
 
+static QCDComplex* pqcdSendBuf[8];
+static QCDComplex* pqcdRecvBuf[8];
+
 static QCDComplex* dqcdSendBuf[8];
 static QCDComplex* dqcdRecvBuf[8];
 
-// static cudaStream_t stream[8];
-static cudaStream_t stream[9];
+static cudaStream_t stream[8];
+// static cudaStream_t stream[9];
 
 int qcdNumThreadsDivY[QCD_NUM_MAX_THREADS][2];
 int qcdNumThreadsDivZ[QCD_NUM_MAX_THREADS][2];
@@ -1203,9 +1206,11 @@ void QCDDopr_Init(int Nx,int Ny,int Nz,int Nt,int npx,int npy,int npz,int npt,in
 	checkCudaErrors(cudaMemcpyToSymbol(dqcdNxyz, &qcdNxyz, sizeof(int)));
 	checkCudaErrors(cudaMemcpyToSymbol(dqcdNsite, &qcdNsite, sizeof(int)));
 
-	// for (i = 0; i < 8; i++) {
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < 8; i++) {
+	// for (i = 0; i < 9; i++) {
 	    checkCudaErrors(cudaStreamCreateWithFlags(&stream[i], cudaStreamNonBlocking));
+	    // checkCudaErrors(cudaStreamCreate(&stream[i]));
+	    // checkCudaErrors(cudaEventCreateWithFlags(&event[i], cudaEventDisableTiming));
 	}
 
 	qcdNetSize[0] = npx;
@@ -1228,25 +1233,45 @@ void QCDDopr_Init(int Nx,int Ny,int Nz,int Nt,int npx,int npy,int npz,int npt,in
 	qcdRankNeighbors[QCD_TM] = QCDDopr_GetRank(qcdNetPos[0],qcdNetPos[1],qcdNetPos[2],(qcdNetPos[3] + qcdNetSize[3] - 1) % qcdNetSize[3]);
 
 
-	qcdSendBuf[QCD_XP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
-	qcdSendBuf[QCD_XM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
+        qcdSendBuf[QCD_XP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
+        qcdSendBuf[QCD_XM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
+        qcdRecvBuf[QCD_XP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
+        qcdRecvBuf[QCD_XM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt);
 
 	qcdSendBuf[QCD_YP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
-	qcdSendBuf[QCD_YM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
+        qcdSendBuf[QCD_YM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
+	qcdRecvBuf[QCD_YP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
+        qcdRecvBuf[QCD_YM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt);
 
-	qcdSendBuf[QCD_ZP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
+        qcdSendBuf[QCD_ZP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
 	qcdSendBuf[QCD_ZM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
+        qcdRecvBuf[QCD_ZP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
+	qcdRecvBuf[QCD_ZM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt);
 
-	qcdSendBuf[QCD_TP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
-	qcdSendBuf[QCD_TM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
-	checkCudaErrors(cudaMallocHost((void**)&qcdRecvBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
+        qcdSendBuf[QCD_TP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
+        qcdSendBuf[QCD_TM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
+        qcdRecvBuf[QCD_TP] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
+        qcdRecvBuf[QCD_TM] = (QCDComplex*)malloc(sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz);
+
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
+
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt));
+
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt));
+
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdSendBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
+	checkCudaErrors(cudaMallocHost((void**)&pqcdRecvBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz));
 
 	checkCudaErrors(cudaMalloc((void**)&dqcdSendBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
 	checkCudaErrors(cudaMalloc((void**)&dqcdSendBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt));
@@ -1336,8 +1361,6 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 	MPI_Status st;
 	// int i;
 
-	// cudaStream_t stream[8];
-
 	QCDComplex* dpUx;
 	QCDComplex* dpUy;
 	QCDComplex* dpUz;
@@ -1387,95 +1410,97 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	}
 
+	cuQCDDopr_MakeTPB_dirac<<<blocks, threads, 0, stream[QCD_TP]>>>(dqcdSendBuf[QCD_TP],dpW,tid,nid);
+	cuQCDDopr_MakeTMB_dirac<<<blocks, threads, 0, stream[QCD_TM]>>>(dqcdSendBuf[QCD_TM],dpUt + qcdNsite-qcdNxyz,dpW + qcdNsite-qcdNxyz,tid,nid);
+	cuQCDDopr_MakeXPB<<<blocks, threads, 0, stream[QCD_XP]>>>(dqcdSendBuf[QCD_XP],dpW,tid,nid);
+	cuQCDDopr_MakeXMB<<<blocks, threads, 0, stream[QCD_XM]>>>(dqcdSendBuf[QCD_XM],dpUx + qcdNx-1,dpW + qcdNx-1,tid,nid);
+	cuQCDDopr_MakeYPB<<<blocks, threads, 0, stream[QCD_YP]>>>(dqcdSendBuf[QCD_YP],dpW,tid,nid);
+	cuQCDDopr_MakeYMB<<<blocks, threads, 0, stream[QCD_YM]>>>(dqcdSendBuf[QCD_YM],dpUy + qcdNxy-qcdNx,dpW + qcdNxy-qcdNx,tid,nid);
+	cuQCDDopr_MakeZPB<<<blocks, threads, 0, stream[QCD_ZP]>>>(dqcdSendBuf[QCD_ZP],dpW,tid,nid);
+	cuQCDDopr_MakeZMB<<<blocks, threads, 0, stream[QCD_ZM]>>>(dqcdSendBuf[QCD_ZM],dpUz + qcdNxyz-qcdNxy,dpW + qcdNxyz-qcdNxy,tid,nid);
+
 	//Send T
-	cuQCDDopr_MakeTPB_dirac<<<blocks, threads>>>(dqcdSendBuf[QCD_TP],dpW,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_TP], dqcdSendBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_TP], dqcdSendBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyDeviceToHost, stream[QCD_TP]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_TP], pqcdSendBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToHost, stream[QCD_TP]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_TP]));
 	    MPI_Isend(qcdSendBuf[QCD_TP],12*qcdNxyz,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_TM],QCD_TP,MPI_COMM_WORLD,&reqSend[QCD_TP]);
 	}
 
-	cuQCDDopr_MakeTMB_dirac<<<blocks, threads>>>(dqcdSendBuf[QCD_TM],dpUt + qcdNsite-qcdNxyz,dpW + qcdNsite-qcdNxyz,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_TM], dqcdSendBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_TM], dqcdSendBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyDeviceToHost, stream[QCD_TM]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_TM], pqcdSendBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToHost, stream[QCD_TM]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_TM]));
 	    MPI_Isend(qcdSendBuf[QCD_TM],12*qcdNxyz,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_TP],QCD_TM,MPI_COMM_WORLD,&reqSend[QCD_TM]);
 	}
 
 	//Send X
-	cuQCDDopr_MakeXPB<<<blocks, threads>>>(dqcdSendBuf[QCD_XP],dpW,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_XP], dqcdSendBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_XP], dqcdSendBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyDeviceToHost, stream[QCD_XP]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_XP], pqcdSendBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_XP]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_XP]));
 	    MPI_Isend(qcdSendBuf[QCD_XP],12*qcdNy*qcdNz*qcdNt,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_XM],QCD_XP,MPI_COMM_WORLD,&reqSend[QCD_XP]);
 	}
 
-	cuQCDDopr_MakeXMB<<<blocks, threads>>>(dqcdSendBuf[QCD_XM],dpUx + qcdNx-1,dpW + qcdNx-1,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_XM], dqcdSendBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_XM], dqcdSendBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyDeviceToHost, stream[QCD_XM]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_XM], pqcdSendBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_XM]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_XM]));
 	    MPI_Isend(qcdSendBuf[QCD_XM],12*qcdNy*qcdNz*qcdNt,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_XP],QCD_XM,MPI_COMM_WORLD,&reqSend[QCD_XM]);
 	}
 
 	//Send Y
-	cuQCDDopr_MakeYPB<<<blocks, threads>>>(dqcdSendBuf[QCD_YP],dpW,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_YP], dqcdSendBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_YP], dqcdSendBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyDeviceToHost, stream[QCD_YP]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_YP], pqcdSendBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_YP]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_YP]));
 	    MPI_Isend(qcdSendBuf[QCD_YP],12*qcdNx*qcdNz*qcdNt,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_YM],QCD_YP,MPI_COMM_WORLD,&reqSend[QCD_YP]);
 	}
 
-	cuQCDDopr_MakeYMB<<<blocks, threads>>>(dqcdSendBuf[QCD_YM],dpUy + qcdNxy-qcdNx,dpW + qcdNxy-qcdNx,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_YM], dqcdSendBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_YM], dqcdSendBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyDeviceToHost, stream[QCD_YM]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_YM], pqcdSendBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_YM]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_YM]));
 	    MPI_Isend(qcdSendBuf[QCD_YM],12*qcdNx*qcdNz*qcdNt,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_YP],QCD_YM,MPI_COMM_WORLD,&reqSend[QCD_YM]);
 	}
 
 	//Send Z
-	cuQCDDopr_MakeZPB<<<blocks, threads>>>(dqcdSendBuf[QCD_ZP],dpW,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_ZP], dqcdSendBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_ZP], dqcdSendBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyDeviceToHost, stream[QCD_ZP]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_ZP], pqcdSendBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToHost, stream[QCD_ZP]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_ZP]));
 	    MPI_Isend(qcdSendBuf[QCD_ZP],12*qcdNx*qcdNy*qcdNt,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_ZM],QCD_ZP,MPI_COMM_WORLD,&reqSend[QCD_ZP]);
 	}
 
-	cuQCDDopr_MakeZMB<<<blocks, threads>>>(dqcdSendBuf[QCD_ZM],dpUz + qcdNxyz-qcdNxy,dpW + qcdNxyz-qcdNxy,tid,nid);
 #pragma omp barrier
 	if(tid == 0){
-	    checkCudaErrors(cudaMemcpy(qcdSendBuf[QCD_ZM], dqcdSendBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyDeviceToHost));
+	    checkCudaErrors(cudaMemcpyAsync(pqcdSendBuf[QCD_ZM], dqcdSendBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyDeviceToHost, stream[QCD_ZM]));
+	    checkCudaErrors(cudaMemcpyAsync(qcdSendBuf[QCD_ZM], pqcdSendBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToHost, stream[QCD_ZM]));
+	    checkCudaErrors(cudaStreamSynchronize(stream[QCD_ZM]));
 	    MPI_Isend(qcdSendBuf[QCD_ZM],12*qcdNx*qcdNy*qcdNt,MPI_DOUBLE_PRECISION,qcdRankNeighbors[QCD_ZP],QCD_ZM,MPI_COMM_WORLD,&reqSend[QCD_ZM]);
 	}
 
 	cuQCDLA_Equate<<<blocks, threads>>>(dpV + tid*qcdNsite/nid,dpW + tid*qcdNsite/nid, (tid+1)*qcdNsite/nid - tid*qcdNsite/nid);
-
-#pragma omp barrier
 	cuQCDDopr_TPin_dirac<<<blocks, threads>>>(dpV,dpUt,dpW + qcdNxyz,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_TMin_dirac<<<blocks, threads>>>(dpV,dpUt-qcdNxyz,dpW - qcdNxyz,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_XPin<<<blocks, threads>>>(dpV,dpUx,dpW+1,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_XMin<<<blocks, threads>>>(dpV,dpUx-1,dpW-1,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_YPin<<<blocks, threads>>>(dpV,dpUy,dpW + qcdNx,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_YMin<<<blocks, threads>>>(dpV,dpUy-qcdNx,dpW - qcdNx,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_ZPin<<<blocks, threads>>>(dpV,dpUz,dpW + qcdNxy,tid,nid);
-
-#pragma omp barrier
 	cuQCDDopr_ZMin<<<blocks, threads>>>(dpV,dpUz-qcdNxy,dpW - qcdNxy,tid,nid);
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_TP],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_TP], qcdRecvBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToDevice, stream[QCD_TP]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_TP], qcdRecvBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToHost, stream[QCD_TP]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_TP], pqcdRecvBuf[QCD_TP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToDevice, stream[QCD_TP]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_TP]));
@@ -1483,7 +1508,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_TM],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_TM], qcdRecvBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToDevice, stream[QCD_TM]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_TM], qcdRecvBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToHost, stream[QCD_TM]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_TM], pqcdRecvBuf[QCD_TM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNz, cudaMemcpyHostToDevice, stream[QCD_TM]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_TM]));
@@ -1491,7 +1517,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_XP],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_XP], qcdRecvBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_XP]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_XP], qcdRecvBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_XP]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_XP], pqcdRecvBuf[QCD_XP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_XP]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_XP]));
@@ -1499,7 +1526,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_XM],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_XM], qcdRecvBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_XM]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_XM], qcdRecvBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_XM]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_XM], pqcdRecvBuf[QCD_XM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNy*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_XM]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_XM]));
@@ -1507,7 +1535,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_YP],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_YP], qcdRecvBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_YP]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_YP], qcdRecvBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_YP]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_YP], pqcdRecvBuf[QCD_YP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_YP]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_YP]));
@@ -1515,7 +1544,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_YM],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_YM], qcdRecvBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_YM]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_YM], qcdRecvBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToHost, stream[QCD_YM]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_YM], pqcdRecvBuf[QCD_YM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNz*qcdNt, cudaMemcpyHostToDevice, stream[QCD_YM]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_YM]));
@@ -1523,7 +1553,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_ZP],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_ZP], qcdRecvBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToDevice, stream[QCD_ZP]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_ZP], qcdRecvBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToHost, stream[QCD_ZP]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_ZP], pqcdRecvBuf[QCD_ZP], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToDevice, stream[QCD_ZP]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_ZP]));
@@ -1531,7 +1562,8 @@ void cuQCDDopr_Mult(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
 	if(tid == 0){
 		MPI_Wait(&reqRecv[QCD_ZM],&st);
-		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_ZM], qcdRecvBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToDevice, stream[QCD_ZM]));
+		checkCudaErrors(cudaMemcpyAsync(pqcdRecvBuf[QCD_ZM], qcdRecvBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToHost, stream[QCD_ZM]));
+		checkCudaErrors(cudaMemcpyAsync(dqcdRecvBuf[QCD_ZM], pqcdRecvBuf[QCD_ZM], sizeof(QCDComplex)*QCD_HALF_SPINOR_SIZE*qcdNx*qcdNy*qcdNt, cudaMemcpyHostToDevice, stream[QCD_ZM]));
 	}
 #pragma omp barrier
 	checkCudaErrors(cudaStreamSynchronize(stream[QCD_ZM]));
@@ -1590,6 +1622,7 @@ void cuQCDDopr_H(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,double k)
 
     cuQCDDopr_Mult(dpV,dpU,dpW,-k);
     cuQCDopr_MultGamma5<<<blocks, threads>>>(dpV);
+
 }
 
 void cuQCDDopr_DdagD(QCDComplex* dpV,QCDComplex* dpU,QCDComplex* dpW,QCDComplex* dpT,double k)
