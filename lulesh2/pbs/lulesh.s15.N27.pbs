@@ -1,0 +1,9 @@
+#PBS -q regular
+#PBS -l mppwidth=96
+#PBS -l walltime=00:15:00
+
+cd $PBS_O_WORKDIR
+
+export MPICH_MAX_THREAD_SAFETY=multiple
+
+aprun -e X10_NTHREADS=1 -n 27 -N 8 -S 2 ./bin/lulesh2.0 -s 15
