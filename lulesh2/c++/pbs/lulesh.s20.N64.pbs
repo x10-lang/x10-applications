@@ -1,0 +1,10 @@
+#PBS -q regular
+#PBS -l mppwidth=384
+#PBS -l walltime=00:15:00
+
+cd $PBS_O_WORKDIR
+
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 64 ./lulesh2.0 -s 20
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 64 ./lulesh2.0 -s 20
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 64 ./lulesh2.0 -s 20
+
