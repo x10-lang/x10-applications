@@ -4,7 +4,10 @@
 # SEDOV_SYNC_POS_VEL_LATE
 SYNCFLAG = -define SEDOV_SYNC_POS_VEL_EARLY
 
-X10FLAG = -O -NO_CHECKS -VERBOSE_CHECKS -g -report postcompile=1 ${SYNCFLAG}
+X10FLAG = -O -VERBOSE_CHECKS -g -report postcompile=1 ${SYNCFLAG}
+ifdef NO_CHECKS
+    X10FLAG += -NO_CHECKS
+endif
 
 X10RTIMPL ?=  # sockets, mpi, pami, etc.
 ifdef X10RTIMPL
