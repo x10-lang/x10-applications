@@ -44,6 +44,8 @@ import x10.util.WorkerLocalHandle;
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
 public class Lulesh {
+    static PRINT_COMM_TIME = false;
+
     /** The command line options that were passed to this instance of LULESH. */
     protected val opts:CommandLineOptions;
 
@@ -179,6 +181,16 @@ public class Lulesh {
 
             val elapsedTimeMillis = Timer.milliTime() - start;
             domain.elapsedTimeMillis = Team.WORLD.allreduce(elapsedTimeMillis, Team.MAX);
+
+            if (PRINT_COMM_TIME) {
+                val printGhostManager = (name:String, mgr:GhostManager) => {
+                    Console.OUT.printf("%d %10s ghosts wait %4d (ms) send %4d (ms)\n", here.id, name, mgr.localState().waitTime, mgr.localState().sendTime);
+                };
+                printGhostManager("pos/vel", posVelGhostMgr);
+                printGhostManager("force", forceGhostMgr);
+                printGhostManager("gradient", gradientGhostMgr);
+                Console.OUT.printf("%d allreduce %4d (ms)\n", here.id, domain.allreduceTime);
+            }
         } // at(place) async
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
@@ -203,7 +215,10 @@ public class Lulesh {
             if (domain.dthydro < gNewDt) {
                 gNewDt = domain.dthydro * 2.0 / 3.0;
             }
+
+            val start = Timer.milliTime();
             newDt = Team.WORLD.allreduce(gNewDt, Team.MIN);
+            domain.allreduceTime += Timer.milliTime() - start;
 
             ratio = newDt / oldDt;
             if (ratio >= 1.0) {
@@ -369,11 +384,9 @@ public class Lulesh {
     protected def initStressTermsForElems(domain:Domain, sigxx:Rail[Double], 
                                 sigyy:Rail[Double], sigzz:Rail[Double]) {
         // pull in the stresses appropriate to the hydro integration
-
-        for (i in 0..(domain.numElem-1)) {
-        //Foreach.block(0, domain.numElem-1, (i:Long)=> {
+        Foreach.block(0, domain.numElem-1, (i:Long)=> {
             sigxx(i) = sigyy(i) = sigzz(i) = -domain.p(i) - domain.q(i);
-        }
+        });
     }
 
     /** 
@@ -845,12 +858,11 @@ public class Lulesh {
     }
 
     def calcAccelerationForNodes(domain:Domain) {
-        for (i in 0..(domain.numNode-1)) {
-        //Foreach.block(0, domain.numNode-1, (i:Long)=> {
+        Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.xdd(i) = domain.fx(i) / domain.nodalMass(i);
             domain.ydd(i) = domain.fy(i) / domain.nodalMass(i);
             domain.zdd(i) = domain.fz(i) / domain.nodalMass(i);
-        }
+        });
     }
 
     def applyAccelerationBoundaryConditionsForNodes(domain:Domain) {
@@ -884,8 +896,7 @@ public class Lulesh {
      * avoid spurious mesh motion due to floating point roundoff error.
      */
     def calcVelocityForNodes(domain:Domain, dt:Double, u_cut:Double) {
-        for (i in 0..(domain.numNode-1)) {
-        //Foreach.block(0, domain.numNode-1, (i:Long)=> {
+        Foreach.block(0, domain.numNode-1, (i:Long)=> {
             var xdtmp:Double = domain.xd(i) + domain.xdd(i) * dt;
             if (Math.abs(xdtmp) < u_cut) xdtmp = 0.0;
             domain.xd(i) = xdtmp;
@@ -897,16 +908,15 @@ public class Lulesh {
             var zdtmp:Double = domain.zd(i) + domain.zdd(i) * dt;
             if (Math.abs(zdtmp) < u_cut) zdtmp = 0.0;
             domain.zd(i) = zdtmp;
-        }
+        });
     }
 
     def calcPositionForNodes(domain:Domain, dt:Double) {
-        for (i in 0..(domain.numNode-1)) {
-        //Foreach.block(0, domain.numNode-1, (i:Long)=> {
+        Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.x(i) += domain.xd(i) * dt;
             domain.y(i) += domain.yd(i) * dt;
             domain.z(i) += domain.zd(i) * dt;
-        }
+        });
     }
 
     def calcLagrangeElements(domain:Domain, vnew:Rail[Double]) {

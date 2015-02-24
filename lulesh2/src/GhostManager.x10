@@ -10,6 +10,7 @@
  */
 
 import x10.compiler.Uncounted;
+import x10.util.Timer;
 
 /** Manages updates of ghost data for LULESH. */
 public class GhostManager {
@@ -37,6 +38,9 @@ public class GhostManager {
          */
         var boundaryData:Rail[Rail[Double]];
 
+        public var sendTime:Long = 0;
+        public var waitTime:Long = 0;
+
         public def this(neighborListSend:Rail[Long], neighborListRecv:Rail[Long]) {
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
@@ -46,7 +50,7 @@ public class GhostManager {
         }
     }
 
-    private val localState:PlaceLocalHandle[LocalState];
+    public val localState:PlaceLocalHandle[LocalState];
 
     /**
      * Create a new GhostManager for ghost updates between all places.
@@ -64,10 +68,12 @@ public class GhostManager {
      * Used to switch ghost manager phase from sending to using ghost data.
      */
     public final def waitForGhosts() {
+        val start = Timer.milliTime();
         when (allNeighborsReceived()) {
             localState().currentPhase++;
             resetNeighborsReceived();
         }
+        localState().waitTime += Timer.milliTime() - start;
     }
 
     /** 
@@ -78,6 +84,7 @@ public class GhostManager {
     public final def waitAndCombineBoundaries(domainPlh:PlaceLocalHandle[Domain],
             accessFields:(dom:Domain) => Rail[Rail[Double]],
             sideLength:Long) {
+        val start = Timer.milliTime();
         when (allNeighborsReceived()) {
             val boundaryData = localState().boundaryData;
             for (i in 0..(boundaryData.size-1)) {
@@ -89,6 +96,7 @@ public class GhostManager {
             localState().currentPhase++;
             resetNeighborsReceived();
         }
+        localState().waitTime += Timer.milliTime() - start;
     }
 
     private def allNeighborsReceived():Boolean {
@@ -140,6 +148,7 @@ public class GhostManager {
     public def updateBoundaryData(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         sideLength:Long) {
+        val start = Timer.milliTime();
         atomic localState().currentPhase++;
         val sourceId = here.id;
         val sourceDom = domainPlh();
@@ -154,6 +163,7 @@ public class GhostManager {
             }
 
         }
+        localState().sendTime += Timer.milliTime() - start;
     }
 
     /**
@@ -164,6 +174,7 @@ public class GhostManager {
     public def updatePlaneGhosts(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         sideLength:Long) {
+        val start = Timer.milliTime();
         atomic localState().currentPhase++;
         val sourceId = here.id;
         val sourceDom = domainPlh();
@@ -180,6 +191,7 @@ public class GhostManager {
                 setNeighborReceived(sourceId);
             }
         }
+        localState().sendTime += Timer.milliTime() - start;
     }
 
     /**
@@ -190,6 +202,7 @@ public class GhostManager {
     public def gatherBoundariesToCombine(domainPlh:PlaceLocalHandle[Domain], 
                         accessFields:(dom:Domain) => Rail[Rail[Double]],
                         sideLength:Long) {
+        val start = Timer.milliTime();
         atomic localState().currentPhase++;
         val sourceId = here.id;
         val sourceDom = domainPlh();
@@ -205,5 +218,6 @@ public class GhostManager {
             }
 
         }
+        localState().sendTime += Timer.milliTime() - start;
     }
 }

@@ -97,7 +97,8 @@ public class Domain {
     public var deltatime:Double;
 
     /** Elapsed time for computation TODO remove this from Domain */
-    public var elapsedTimeMillis:Long;
+    public var elapsedTimeMillis:Long = 0;
+    public var allreduceTime:Long = 0;
 
     /** length of cube mesh along side */
     public val nx:Long;
