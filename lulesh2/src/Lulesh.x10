@@ -44,7 +44,7 @@ import x10.util.WorkerLocalHandle;
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
 public class Lulesh {
-    static PRINT_COMM_TIME = false;
+    static PRINT_COMM_TIME = true;
 
     /** The command line options that were passed to this instance of LULESH. */
     protected val opts:CommandLineOptions;
@@ -258,17 +258,19 @@ public class Lulesh {
 
         lagrangeElements(domain);
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
+/*
         val nodesPerSide = domain.sizeX+1;
         posVelGhostMgr.updateBoundaryData(domainPlh, 
             (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
             nodesPerSide
         );
+*/
 }
 
         calcTimeConstraintsForElems(domain);
 
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
-        posVelGhostMgr.waitForGhosts();
+        //posVelGhostMgr.waitForGhosts();
 }
     }
 
@@ -350,11 +352,13 @@ public class Lulesh {
 
         val nodesPerSide = domain.sizeX+1;
         val accessForce = (dom:Domain) => [dom.fx, dom.fy, dom.fz];
+/*
         forceGhostMgr.gatherBoundariesToCombine(domainPlh, 
             accessForce,
             nodesPerSide
         );
         forceGhostMgr.waitAndCombineBoundaries(domainPlh, accessForce, nodesPerSide);
+*/
     }
 
     /** Calculate the volume force contribution for each mesh element. */
@@ -1086,11 +1090,13 @@ public class Lulesh {
             calcMonotonicQGradientsForElems(domain, vnew);
 
             val elementsPerSide = domain.sizeX;
+/*
             gradientGhostMgr.updatePlaneGhosts(domainPlh, 
                 (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
                 elementsPerSide
             );
             gradientGhostMgr.waitForGhosts();
+*/
 
             calcMonotonicQForElems(domain, vnew);
 
