@@ -233,6 +233,9 @@ public class Lulesh {
                 newDt = domain.dtmax;
             }
             domain.deltatime = newDt;
+        } else {
+            // TODO: without this barrier, fixed timestep can deadlock - why?
+            Team.WORLD.barrier();
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
