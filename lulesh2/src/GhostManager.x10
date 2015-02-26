@@ -20,10 +20,14 @@ public class GhostManager {
         /** List of neighbors from which data must be received. */
         public val neighborListRecv:Rail[Long];
         /** 
-         * Flag for each neighbor in neighborListRecv indicating whether data
-         * have already been received from that neighbor for the current cycle.
-        */
+         * Flag for each neighbor in neighborListRecv indicating whether the
+         * update closure has already been received from that neighbor for the current cycle.
+         */
         public val neighborsReceived:Rail[Boolean];
+        /**
+         * The update function recevied from each neighbor for the current cycle
+         */
+        public val updateFunctions:Rail[()=>void];
         /**
          * The current phase of the computation with regard to ghost cell updates.
          * Places are assumed to progress together; in even phases, ghost cells are
@@ -45,6 +49,7 @@ public class GhostManager {
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
             this.neighborsReceived = new Rail[Boolean](neighborListRecv.size);
+            this.updateFunctions = new Rail[()=>void](neighborListRecv.size);
             this.currentPhase = 0;
             this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
         }
@@ -70,6 +75,7 @@ public class GhostManager {
     public final def waitForGhosts() {
         val start = Timer.milliTime();
         when (allNeighborsReceived()) {
+            processUpdateFunctions();
             localState().currentPhase++;
             resetNeighborsReceived();
         }
@@ -86,6 +92,7 @@ public class GhostManager {
             sideLength:Long) {
         val start = Timer.milliTime();
         when (allNeighborsReceived()) {
+            processUpdateFunctions();
             val boundaryData = localState().boundaryData;
             for (i in 0..(boundaryData.size-1)) {
                 if (boundaryData(i) != null) {
@@ -107,12 +114,16 @@ public class GhostManager {
         return true;
     }
 
-    private def setNeighborReceived(neighborId:Long) {
+    private def setNeighborReceived(neighborId:Long, updateFunction:()=>void) {
         val neighbors = localState().neighborListRecv;
         val received = localState().neighborsReceived;
+        val functions = localState().updateFunctions;
         for (i in 0..(neighbors.size-1)) {
             if (neighborId == neighbors(i)) {
-                atomic received(i) = true;
+                atomic {
+                    received(i) = true;
+                    functions(i) = updateFunction;
+                }
                 break;
             }
         }
@@ -120,10 +131,19 @@ public class GhostManager {
 
     private def resetNeighborsReceived() {
         val received = localState().neighborsReceived;
+        val functions = localState().updateFunctions;
         atomic {
             for (i in 0..(received.size-1)) {
                 received(i) = false;
+                functions(i) = null;
             }
+        }
+    }
+
+    private def processUpdateFunctions() {
+        val functions = localState().updateFunctions;
+        for (f in functions) {
+            f();
         }
     }
 
@@ -157,9 +177,9 @@ public class GhostManager {
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
-                when (localState().currentPhase == phase);
-                domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength);
-                setNeighborReceived(sourceId);
+                setNeighborReceived(sourceId, ()=>{
+                    domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength);
+                });
             }
 
         }
@@ -183,12 +203,12 @@ public class GhostManager {
         for (i in 0..(neighbors.size-1)) {
             val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
-                when (localState().currentPhase == phase);
-                var ghostOffset:Long = sideLength*sideLength*sideLength;
-                val ghostRegionSize = (sideLength)*(sideLength);
-                ghostOffset += getNeighborNumber(sourceId) * ghostRegionSize;
-                domainPlh().updateGhosts(ghosts, accessFields, ghostRegionSize, ghostOffset);
-                setNeighborReceived(sourceId);
+                setNeighborReceived(sourceId, ()=>{
+                    var ghostOffset:Long = sideLength*sideLength*sideLength;
+                    val ghostRegionSize = (sideLength)*(sideLength);
+                    ghostOffset += getNeighborNumber(sourceId) * ghostRegionSize;
+                    domainPlh().updateGhosts(ghosts, accessFields, ghostRegionSize, ghostOffset);
+                });
             }
         }
         localState().sendTime += Timer.milliTime() - start;
@@ -211,12 +231,11 @@ public class GhostManager {
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
-                when (localState().currentPhase == phase);
-                // hold boundary data for later accumulation
-                localState().boundaryData(getNeighborNumber(sourceId)) = boundaryData;
-                setNeighborReceived(sourceId);
+                setNeighborReceived(sourceId, ()=>{
+                    // hold boundary data for later accumulation
+                    localState().boundaryData(getNeighborNumber(sourceId)) = boundaryData;
+                });
             }
-
         }
         localState().sendTime += Timer.milliTime() - start;
     }
