@@ -20,10 +20,9 @@ public class GhostManager {
         /** List of neighbors from which data must be received. */
         public val neighborListRecv:Rail[Long];
         /** 
-         * Flag for each neighbor in neighborListRecv indicating whether the
-         * update closure has already been received from that neighbor for the current cycle.
+         * Count of neighbors which have given us update functions this cycle.
          */
-        public val neighborsReceived:Rail[Boolean];
+        public var neighborsReceivedCount:Long;
         /**
          * The update function recevied from each neighbor for the current cycle
          */
@@ -48,7 +47,7 @@ public class GhostManager {
         public def this(neighborListSend:Rail[Long], neighborListRecv:Rail[Long]) {
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
-            this.neighborsReceived = new Rail[Boolean](neighborListRecv.size);
+            this.neighborsReceivedCount = 0;
             this.updateFunctions = new Rail[()=>void](neighborListRecv.size);
             this.currentPhase = 0;
             this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
@@ -107,22 +106,19 @@ public class GhostManager {
     }
 
     private def allNeighborsReceived():Boolean {
-        val received = localState().neighborsReceived;
-        for (i in 0..(received.size-1)) {
-            if (! received(i)) return false;
-        }
-        return true;
+        val received = localState().neighborsReceivedCount;
+        val expected = localState().updateFunctions.size;
+        return received == expected;
     }
 
     private def setNeighborReceived(neighborId:Long, updateFunction:()=>void) {
         val neighbors = localState().neighborListRecv;
-        val received = localState().neighborsReceived;
         val functions = localState().updateFunctions;
         for (i in 0..(neighbors.size-1)) {
             if (neighborId == neighbors(i)) {
                 atomic {
-                    received(i) = true;
                     functions(i) = updateFunction;
+                    localState().neighborsReceivedCount++;
                 }
                 break;
             }
@@ -130,13 +126,10 @@ public class GhostManager {
     }
 
     private def resetNeighborsReceived() {
-        val received = localState().neighborsReceived;
         val functions = localState().updateFunctions;
         atomic {
-            for (i in 0..(received.size-1)) {
-                received(i) = false;
-                functions(i) = null;
-            }
+            localState().neighborsReceivedCount = 0;
+            functions.clear();
         }
     }
 
