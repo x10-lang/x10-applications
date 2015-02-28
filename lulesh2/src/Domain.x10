@@ -23,7 +23,7 @@ import x10.util.Random;
  * @see "I. Karlin et al. LULESH Programming Model and Performance Ports 
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
-public class Domain {
+public final class Domain {
     // TODO persistent region, element and node members should be val not var
 
     // Cutoffs (treat as constants)

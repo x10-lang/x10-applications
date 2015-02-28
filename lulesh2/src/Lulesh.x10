@@ -43,7 +43,7 @@ import x10.util.WorkerLocalHandle;
  * @see "I. Karlin et al. LULESH Programming Model and Performance Ports 
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
-public class Lulesh {
+public final class Lulesh {
     static PRINT_COMM_TIME = false;
 
     /** The command line options that were passed to this instance of LULESH. */

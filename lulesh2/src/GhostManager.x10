@@ -11,10 +11,12 @@
 
 import x10.compiler.Uncounted;
 import x10.util.Timer;
+import x10.util.Stack;
+import x10.compiler.Inline;
 
 /** Manages updates of ghost data for LULESH. */
-public class GhostManager {
-    static class LocalState {
+public final class GhostManager {
+    static final class LocalState {
         /** List of neighbors to which data must be sent. */
         public val neighborListSend:Rail[Long];
         /** List of neighbors from which data must be received. */
@@ -24,9 +26,9 @@ public class GhostManager {
          */
         public var neighborsReceivedCount:Long;
         /**
-         * The update function recevied from each neighbor for the current cycle
+         * The pending update functions recevied from neighbors for the current cycle
          */
-        public val updateFunctions:Rail[()=>void];
+        public val updateFunctions:Stack[()=>void];
         /**
          * The current phase of the computation with regard to ghost cell updates.
          * Places are assumed to progress together; in even phases, ghost cells are
@@ -48,7 +50,7 @@ public class GhostManager {
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
             this.neighborsReceivedCount = 0;
-            this.updateFunctions = new Rail[()=>void](neighborListRecv.size);
+            this.updateFunctions = new Stack[()=>void]();
             this.currentPhase = 0;
             this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
         }
@@ -72,11 +74,12 @@ public class GhostManager {
      * Used to switch ghost manager phase from sending to using ghost data.
      */
     public final def waitForGhosts() {
+        processUpdateFunctions();
         val start = Timer.milliTime();
         when (allNeighborsReceived()) {
             processUpdateFunctions();
             localState().currentPhase++;
-            resetNeighborsReceived();
+            localState().neighborsReceivedCount = 0;
         }
         localState().waitTime += Timer.milliTime() - start;
     }
@@ -89,6 +92,7 @@ public class GhostManager {
     public final def waitAndCombineBoundaries(domainPlh:PlaceLocalHandle[Domain],
             accessFields:(dom:Domain) => Rail[Rail[Double]],
             sideLength:Long) {
+        processUpdateFunctions();
         val start = Timer.milliTime();
         when (allNeighborsReceived()) {
             processUpdateFunctions();
@@ -100,43 +104,37 @@ public class GhostManager {
                 }
             }
             localState().currentPhase++;
-            resetNeighborsReceived();
+            localState().neighborsReceivedCount = 0;
         }
         localState().waitTime += Timer.milliTime() - start;
     }
 
     private def allNeighborsReceived():Boolean {
         val received = localState().neighborsReceivedCount;
-        val expected = localState().updateFunctions.size;
+        val expected = localState().neighborListRecv.size;
         return received == expected;
-    }
-
-    private def setNeighborReceived(neighborId:Long, updateFunction:()=>void) {
-        val neighbors = localState().neighborListRecv;
-        val functions = localState().updateFunctions;
-        for (i in 0..(neighbors.size-1)) {
-            if (neighborId == neighbors(i)) {
-                atomic {
-                    functions(i) = updateFunction;
-                    localState().neighborsReceivedCount++;
-                }
-                break;
-            }
-        }
-    }
-
-    private def resetNeighborsReceived() {
-        val functions = localState().updateFunctions;
-        atomic {
-            localState().neighborsReceivedCount = 0;
-            functions.clear();
-        }
     }
 
     private def processUpdateFunctions() {
         val functions = localState().updateFunctions;
-        for (f in functions) {
+        while (true) {
+            var f:()=>void = null;
+            atomic { if (!functions.isEmpty()) f = functions.pop(); }
+            if (f == null) break;
             f();
+        }
+    }
+
+    private @Inline def postUpdateFunction(posterPhase:Long, updateFunction:()=>void) {
+        val state = localState();
+        if (posterPhase == state.currentPhase) {
+            updateFunction();
+            atomic { state.neighborsReceivedCount++; }
+        } else {
+            atomic {
+                state.updateFunctions.push(updateFunction);
+                state.neighborsReceivedCount++;
+            }
         }
     }
 
@@ -170,11 +168,10 @@ public class GhostManager {
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
-                setNeighborReceived(sourceId, ()=>{
-                    domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength);
+                postUpdateFunction(phase, ()=>{ 
+                    domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength); 
                 });
             }
-
         }
         localState().sendTime += Timer.milliTime() - start;
     }
@@ -196,7 +193,7 @@ public class GhostManager {
         for (i in 0..(neighbors.size-1)) {
             val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
-                setNeighborReceived(sourceId, ()=>{
+                postUpdateFunction(phase,  ()=>{
                     var ghostOffset:Long = sideLength*sideLength*sideLength;
                     val ghostRegionSize = (sideLength)*(sideLength);
                     ghostOffset += getNeighborNumber(sourceId) * ghostRegionSize;
@@ -224,8 +221,7 @@ public class GhostManager {
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
             @Uncounted at(Place(neighbors(i))) async {
-                setNeighborReceived(sourceId, ()=>{
-                    // hold boundary data for later accumulation
+                postUpdateFunction(phase, ()=>{ 
                     localState().boundaryData(getNeighborNumber(sourceId)) = boundaryData;
                 });
             }

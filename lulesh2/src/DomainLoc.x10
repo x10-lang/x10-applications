@@ -15,7 +15,7 @@ import x10.util.ArrayList;
 /** 
  * Represents a domain's location in the grid decomposition for LULESH.
 */
-public class DomainLoc(
+public final class DomainLoc(
     /** The (place) ID for this domain. */
     id:Int,
     /** Number of places per side of cubic decomposition */
