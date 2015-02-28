@@ -44,7 +44,7 @@ import x10.util.WorkerLocalHandle;
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
 public class Lulesh {
-    static PRINT_COMM_TIME = true;
+    static PRINT_COMM_TIME = false;
 
     /** The command line options that were passed to this instance of LULESH. */
     protected val opts:CommandLineOptions;
