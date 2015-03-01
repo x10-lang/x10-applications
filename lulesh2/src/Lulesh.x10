@@ -403,9 +403,9 @@ public final class Lulesh {
 
         val numElem = domain.numElem;
         val numElem8 = numElem * 8;
-        val fx_elem = new Rail[Double](numElem8);
-        val fy_elem = new Rail[Double](numElem8);
-        val fz_elem = new Rail[Double](numElem8);
+        val fx_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+        val fy_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+        val fz_elem = Unsafe.allocRailUninitialized[Double](numElem8);
 
         Foreach.block(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
@@ -597,23 +597,22 @@ public final class Lulesh {
                                      determ:Rail[Double], hgcoef:Double) {
         val numElem = domain.numElem;
         val numElem8 = numElem * 8;
-        val dvdx = new Rail[Double](numElem8);
-        val dvdy = new Rail[Double](numElem8);
-        val dvdz = new Rail[Double](numElem8);
-        val x8n  = new Rail[Double](numElem8);
-        val y8n  = new Rail[Double](numElem8);
-        val z8n  = new Rail[Double](numElem8);
+        val dvdx = Unsafe.allocRailUninitialized[Double](numElem8);
+        val dvdy = Unsafe.allocRailUninitialized[Double](numElem8);
+        val dvdz = Unsafe.allocRailUninitialized[Double](numElem8);
+        val x8n  = Unsafe.allocRailUninitialized[Double](numElem8);
+        val y8n  = Unsafe.allocRailUninitialized[Double](numElem8);
+        val z8n  = Unsafe.allocRailUninitialized[Double](numElem8);
 
         Foreach.block(0, numElem-1,
         (min_i:Long, max_i:Long) => {
-            @StackAllocate val x1 = @StackAllocateUninitialized new Rail[Double](8);
-            @StackAllocate val y1 = @StackAllocateUninitialized new Rail[Double](8);
-            @StackAllocate val z1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val x1 = @StackAllocate new Rail[Double](8);
+            @StackAllocate val y1 = @StackAllocate new Rail[Double](8);
+            @StackAllocate val z1 = @StackAllocate new Rail[Double](8);
+            @StackAllocate val pfx = @StackAllocate new Rail[Double](8);
+            @StackAllocate val pfy = @StackAllocate new Rail[Double](8);
+            @StackAllocate val pfz = @StackAllocate new Rail[Double](8);
             for (i in min_i..max_i) {
-                @StackAllocate val pfx = @StackAllocate new Rail[Double](8);
-                @StackAllocate val pfy = @StackAllocate new Rail[Double](8);
-                @StackAllocate val pfz = @StackAllocate new Rail[Double](8);
-
                 collectDomainNodesToElemNodes(domain, i, x1, y1, z1);
 
                 calcElemVolumeDerivative(pfx, pfy, pfz, x1, y1, z1);
