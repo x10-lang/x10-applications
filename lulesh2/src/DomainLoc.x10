@@ -96,29 +96,29 @@ public final class DomainLoc(
 
         if (!planeOnly) {
             /* transfer between domains connected only by an edge */
-            if (z > 0   && y   > 0   && lo) nl.add(id - p - r    );
-            if (z > 0   && y   < max && lo) nl.add(id - p + r    );
-            if (z < max && y   > 0   && hi) nl.add(id + p - r    );
-            if (z < max && y   < max && hi) nl.add(id + p + r    );
-            if (z > 0   && x   > 0   && lo) nl.add(id - p     - c);
-            if (z > 0   && x   < max && lo) nl.add(id - p     + c);
-            if (z < max && x   > 0   && hi) nl.add(id + p     - c);
-            if (z < max && x   < max && hi) nl.add(id + p     + c);
-            if (y > 0   && x   > 0   && lo) nl.add(id     - r - c);
-            if (y > 0   && x   < max && lo) nl.add(id     - r + c);
-            if (y < max && x   > 0   && hi) nl.add(id     + r - c);
-            if (y < max && x   < max && hi) nl.add(id     + r + c);
+            if (z > 0   && y   > 0   && lo      ) nl.add(id - p - r    );
+            if (z > 0   && y   < max && lo && hi) nl.add(id - p + r    );
+            if (z < max && y   > 0   && lo && hi) nl.add(id + p - r    );
+            if (z < max && y   < max &&       hi) nl.add(id + p + r    );
+            if (z > 0   && x   > 0   && lo      ) nl.add(id - p     - c);
+            if (z > 0   && x   < max && lo && hi) nl.add(id - p     + c);
+            if (z < max && x   > 0   && lo && hi) nl.add(id + p     - c);
+            if (z < max && x   < max &&       hi) nl.add(id + p     + c);
+            if (y > 0   && x   > 0   && lo      ) nl.add(id     - r - c);
+            if (y > 0   && x   < max && lo && hi) nl.add(id     - r + c);
+            if (y < max && x   > 0   && lo && hi) nl.add(id     + r - c);
+            if (y < max && x   < max &&       hi) nl.add(id     + r + c);
             edgeNeighbors = nl.size() - planeNeighbors;
 
             /* receive data from domains connected only by a corner */
-            if (z > 0   && y > 0   && x > 0   && lo) nl.add(id - p - r - c);
-            if (z > 0   && y > 0   && x < max && lo) nl.add(id - p - r + c);
-            if (z > 0   && y < max && x > 0   && lo) nl.add(id - p + r - c);
-            if (z > 0   && y < max && x < max && lo) nl.add(id - p + r + c);
-            if (z < max && y > 0   && x > 0   && hi) nl.add(id + p - r - c);
-            if (z < max && y > 0   && x < max && hi) nl.add(id + p - r + c);
-            if (z < max && y < max && x > 0   && hi) nl.add(id + p + r - c);
-            if (z < max && y < max && x < max && hi) nl.add(id + p + r + c);
+            if (z > 0   && y > 0   && x > 0   && lo      ) nl.add(id - p - r - c);
+            if (z > 0   && y > 0   && x < max && lo && hi) nl.add(id - p - r + c);
+            if (z > 0   && y < max && x > 0   && lo && hi) nl.add(id - p + r - c);
+            if (z > 0   && y < max && x < max && lo && hi) nl.add(id - p + r + c);
+            if (z < max && y > 0   && x > 0   && lo && hi) nl.add(id + p - r - c);
+            if (z < max && y > 0   && x < max && lo && hi) nl.add(id + p - r + c);
+            if (z < max && y < max && x > 0   && lo && hi) nl.add(id + p + r - c);
+            if (z < max && y < max && x < max &&       hi) nl.add(id + p + r + c);
 
             cornerNeighbors = nl.size() - edgeNeighbors - planeNeighbors;
         } else {
@@ -127,5 +127,9 @@ public final class DomainLoc(
         }
 
         return nl.toRail();
+    }
+
+    public def toString() {
+        return "DomainLoc for place " + id + ": " + x+","+y+","+z;
     }
 }
