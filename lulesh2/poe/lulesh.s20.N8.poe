@@ -4,8 +4,8 @@
 # @ class = No_Class
 # @ node_usage = not_shared
 # @ network.MPI = sn_single,not_shared,ip
-# @ output = lulesh.s20.N8.out
-# @ error  = lulesh.s20.N8.err
+# @ output = lulesh.s20.N8.$(jobid).out
+# @ error  = lulesh.s20.N8.$(jobid).err
 # @ tasks_per_node = 8
 # @ node = 1
 # @ queue
