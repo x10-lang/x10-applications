@@ -44,7 +44,7 @@ import x10.util.WorkerLocalHandle;
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
 public final class Lulesh {
-    static PRINT_COMM_TIME = false;
+    static PRINT_COMM_TIME = true;
 
     /** The command line options that were passed to this instance of LULESH. */
     protected val opts:CommandLineOptions;
@@ -431,22 +431,25 @@ public final class Lulesh {
 
         // copy the data out of the temporary
         // arrays used above into the final forces field
-        for (gnode in 0..(domain.numNode-1)) {
-            val count = domain.nodeElemCount(gnode);
-            val elemStart = domain.nodeElemStart(gnode);
-            var fx_tmp:Double = 0.0;
-            var fy_tmp:Double = 0.0;
-            var fz_tmp:Double = 0.0;
-            for (i in 0..(count-1)) {
-                val elem = domain.nodeElemCornerList(elemStart+i);
-                fx_tmp += fx_elem(elem);
-                fy_tmp += fy_elem(elem);
-                fz_tmp += fz_elem(elem);
+        Foreach.block(0, domain.numNode-1,
+        (min_g:Long, max_g:Long) => {
+            for (gnode in min_g..max_g) {
+                val count = domain.nodeElemCount(gnode);
+                val elemStart = domain.nodeElemStart(gnode);
+                var fx_tmp:Double = 0.0;
+                var fy_tmp:Double = 0.0;
+                var fz_tmp:Double = 0.0;
+                for (i in 0..(count-1)) {
+                    val elem = domain.nodeElemCornerList(elemStart+i);
+                    fx_tmp += fx_elem(elem);
+                    fy_tmp += fy_elem(elem);
+                    fz_tmp += fz_elem(elem);
+                }
+                domain.fx(gnode) = fx_tmp;
+                domain.fy(gnode) = fy_tmp;
+                domain.fz(gnode) = fz_tmp;
             }
-            domain.fx(gnode) = fx_tmp;
-            domain.fy(gnode) = fy_tmp;
-            domain.fz(gnode) = fz_tmp;
-        }
+        });
     }
 
     /**
