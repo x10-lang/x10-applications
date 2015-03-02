@@ -44,6 +44,7 @@ public final class GhostManager {
         var boundaryData:Rail[Rail[Double]];
 
         public var sendTime:Long = 0;
+        public var processTime:Long = 0;
         public var waitTime:Long = 0;
 
         public def this(neighborListSend:Rail[Long], neighborListRecv:Rail[Long]) {
@@ -74,14 +75,19 @@ public final class GhostManager {
      * Used to switch ghost manager phase from sending to using ghost data.
      */
     public final def waitForGhosts() {
+        val t1 = Timer.milliTime();
         processUpdateFunctions();
-        val start = Timer.milliTime();
+        val t2 = Timer.milliTime();
+        localState().processTime += (t2 - t1);
         when (allNeighborsReceived()) {
+            val t3 = Timer.milliTime();
+            localState().waitTime += (t3 - t2);
             processUpdateFunctions();
             localState().currentPhase++;
             localState().neighborsReceivedCount = 0;
+            val t4 = Timer.milliTime();
+            localState().processTime += (t4 - t3);
         }
-        localState().waitTime += Timer.milliTime() - start;
     }
 
     /** 
@@ -92,9 +98,13 @@ public final class GhostManager {
     public final def waitAndCombineBoundaries(domainPlh:PlaceLocalHandle[Domain],
             accessFields:(dom:Domain) => Rail[Rail[Double]],
             sideLength:Long) {
+        val t1 = Timer.milliTime();
         processUpdateFunctions();
-        val start = Timer.milliTime();
+        val t2 = Timer.milliTime();
+        localState().processTime += (t2 - t1);
         when (allNeighborsReceived()) {
+            val t3 = Timer.milliTime();
+            localState().waitTime += (t3 - t2);
             processUpdateFunctions();
             val boundaryData = localState().boundaryData;
             for (i in 0..(boundaryData.size-1)) {
@@ -105,8 +115,9 @@ public final class GhostManager {
             }
             localState().currentPhase++;
             localState().neighborsReceivedCount = 0;
+            val t4 = Timer.milliTime();
+            localState().processTime += (t4 - t3);
         }
-        localState().waitTime += Timer.milliTime() - start;
     }
 
     private def allNeighborsReceived():Boolean {

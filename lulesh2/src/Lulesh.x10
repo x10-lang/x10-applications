@@ -184,7 +184,7 @@ public final class Lulesh {
 
             if (PRINT_COMM_TIME) {
                 val printGhostManager = (name:String, mgr:GhostManager) => {
-                    Console.OUT.printf("%d %10s ghosts wait %4d (ms) send %4d (ms)\n", here.id, name, mgr.localState().waitTime, mgr.localState().sendTime);
+                    Console.OUT.printf("%d %10s ghosts wait %4d (ms) process %4d (ms) send %4d (ms)\n", here.id, name, mgr.localState().waitTime, mgr.localState().processTime, mgr.localState().sendTime);
                 };
                 printGhostManager("pos/vel", posVelGhostMgr);
                 printGhostManager("force", forceGhostMgr);
