@@ -28,7 +28,18 @@ export MP_SHARED_MEMORY=no ## for PAMI
 #export CHANGE_SMT=yes			# tells POE to change the smt mode
 #export SMTMODE=4			# tells POE what SMT mode to change to (1 or 4 - default is 2)
 
-export X10_NTHREADS=4
+export X10_NTHREADS=1
+poe ./bin/lulesh2.0 -procs 27 -s 20
+poe ./bin/lulesh2.0 -procs 27 -s 20
+poe ./bin/lulesh2.0 -procs 27 -s 20
 
+export X10_NTHREADS=2
+poe ./bin/lulesh2.0 -procs 27 -s 20
+poe ./bin/lulesh2.0 -procs 27 -s 20
+poe ./bin/lulesh2.0 -procs 27 -s 20
+
+export X10_NTHREADS=4
+poe ./bin/lulesh2.0 -procs 27 -s 20
+poe ./bin/lulesh2.0 -procs 27 -s 20
 poe ./bin/lulesh2.0 -procs 27 -s 20
 
