@@ -450,6 +450,11 @@ public final class Lulesh {
                 domain.fz(gnode) = fz_tmp;
             }
         });
+
+        // force GC to reuse space for large temporary arrays
+        Unsafe.dealloc(fx_elem);
+        Unsafe.dealloc(fy_elem);
+        Unsafe.dealloc(fz_elem);
     }
 
     /**
@@ -647,6 +652,14 @@ public final class Lulesh {
                                         dvdx, dvdy, dvdz,
                                         hgcoef);
         }
+
+        // force GC to reuse space for large temporary arrays
+        Unsafe.dealloc(dvdx);
+        Unsafe.dealloc(dvdy);
+        Unsafe.dealloc(dvdz);
+        Unsafe.dealloc(x8n);
+        Unsafe.dealloc(y8n);
+        Unsafe.dealloc(z8n);
     }
 
     /**
