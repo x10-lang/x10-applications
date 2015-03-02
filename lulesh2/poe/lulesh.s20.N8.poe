@@ -1,0 +1,40 @@
+#!/bin/ksh
+# @ job_type  = parallel
+# @ job_name  = SysMem
+# @ class = No_Class
+# @ node_usage = not_shared
+# @ network.MPI = sn_single,not_shared,ip
+# @ output = lulesh.s20.N8.out
+# @ error  = lulesh.s20.N8.err
+# @ tasks_per_node = 8
+# @ node = 1
+# @ queue
+#
+export MP_CHECKPOINT=no
+export MP_CLOCK_SOURCE=OS
+export LAPI_DEBUG_USE_IMMEDIATE_SEND=no   ## still broken?
+export MP_S_BSR_BARRIER=no
+export LD_LIBRARY_PATH=/opt/ibmhpc/pe12012/pempi/gnu/lib/libmpi:/opt/ibmhpc/pe12012/base/gnu/lib:/usr/lib
+export MP_EUILIBPATH=/opt/ibmhpc/pe12012/pempi/gnu/lib/libmpi:/opt/ibmhpc/pe12012/base/gnu/lib:/usr/lib
+export MP_EUILIB=us
+export MP_RESD=poe
+export MP_DEVTYPE=hfi
+export MP_SHARED_MEMORY=no ## for PAMI
+#export MP_PMD_SCRIPTS=yes		# Tells PMD to run the prolog and epilog
+#export HUGE_PAGES=yes			# Example only, tells the scripts huge pages were requested
+#export LP_COUNT=2000			# Example only, tells the prolog how many huge pages per task
+#export DYNAMIC_WIN=yes			# tells POE to change the number of dynamic windows
+#export DWIN_COUNT=180			# tells POE how many dynamic windows to setup
+#export CHANGE_SMT=yes			# tells POE to change the smt mode
+#export SMTMODE=4			# tells POE what SMT mode to change to (1 or 4 - default is 2)
+
+export X10_NTHREADS=4
+
+poe ./bin/lulesh2.0 -s 20
+
+poe ./bin/lulesh2.0 -s 20
+
+poe ./bin/lulesh2.0 -s 20
+
+poe ./bin/lulesh2.0 -s 20
+
