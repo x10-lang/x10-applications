@@ -853,10 +853,10 @@ public final class Domain {
 
     /** Setup symmetry planes and free surface boundary arrays */
     private @NonEscaping def setupBoundaryConditions(edgeElems:Long) {
-        val xMin = (loc.y != 0n);
-        val xMax = (loc.y != loc.tp-1n);
-        val yMin = (loc.x != 0n);
-        val yMax = (loc.x != loc.tp-1n);
+        val xMin = (loc.x != 0n);
+        val xMax = (loc.x != loc.tp-1n);
+        val yMin = (loc.y != 0n);
+        val yMax = (loc.y != loc.tp-1n);
         val zMin = (loc.z != 0n);
         val zMax = (loc.z != loc.tp-1n);
 
@@ -874,22 +874,22 @@ public final class Domain {
             pidx += sizeX*sizeY;
         }
 
-        if (xMin) {
+        if (yMin) {
             ghostIdx(2) = pidx;
             pidx += sizeX*sizeZ;
         }
 
-        if (xMax) {
+        if (yMax) {
             ghostIdx(3) = pidx;
             pidx += sizeX*sizeZ;
         }
 
-        if (yMin) {
+        if (xMin) {
             ghostIdx(4) = pidx;
             pidx += sizeY*sizeZ;
         }
 
-        if (yMax) {
+        if (xMax) {
             ghostIdx(5) = pidx;
         }
 
