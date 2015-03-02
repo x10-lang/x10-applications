@@ -964,13 +964,13 @@ public final class Domain {
     }
 
     public def deallocateGradients() {
-        delx_zeta = null;
-        delx_eta = null;
-        delx_xi = null;
+        Unsafe.dealloc(delx_zeta); delx_zeta = null;
+        Unsafe.dealloc(delx_eta);  delx_eta  = null;
+        Unsafe.dealloc(delx_xi);   delx_xi   = null;
 
-        delv_zeta = null;
-        delv_eta = null;
-        delv_xi = null;
+        Unsafe.dealloc(delv_zeta); delv_zeta = null;
+        Unsafe.dealloc(delv_eta);  delv_eta  = null;
+        Unsafe.dealloc(delv_xi);   delv_xi   = null;
     }
 
     public def allocateStrains() {

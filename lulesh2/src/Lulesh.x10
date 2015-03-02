@@ -1604,6 +1604,21 @@ public final class Lulesh {
                           vnewc, rho0, e_new, p_new,
                           pbvc, bvc, ss4o3,
                           numElemReg, regElemList);
+
+        Unsafe.dealloc(e_old);
+        Unsafe.dealloc(delvc);
+        Unsafe.dealloc(p_old);
+        Unsafe.dealloc(q_old);
+        Unsafe.dealloc(compression);
+        Unsafe.dealloc(compHalfStep);
+        Unsafe.dealloc(qq_old);
+        Unsafe.dealloc(ql_old);
+        Unsafe.dealloc(work);
+        Unsafe.dealloc(p_new);
+        Unsafe.dealloc(e_new);
+        Unsafe.dealloc(q_new);
+        Unsafe.dealloc(bvc);
+        Unsafe.dealloc(pbvc);
     }
 
     private def calcEnergyForElems(p_new:Rail[Double],
