@@ -11,6 +11,7 @@
 
 import x10.compiler.NonEscaping;
 import x10.compiler.Inline;
+import x10.compiler.Native;
 import x10.regionarray.Region;
 import x10.util.Random;
 
@@ -703,12 +704,7 @@ public final class Domain {
         regElemSize = new Rail[Long](nr);
         regElemList = new Rail[Rail[Long]](nr);
 
-        /*
-         * NOTE: the load imbalance in regions is highly dependent on PRNG!
-         * This is not ideal, given that the reference code uses static load
-         * balancing; a different PRNG could give very different performance.
-         */
-        val rand = new Random(here.id+1);
+        srand(here.id as Int);
 
         var nextIndex:Long = 0;
         if (numReg == 1n) {
@@ -734,7 +730,7 @@ public final class Domain {
             // Until all elements are assigned
             while (nextIndex < numElem) {
                 // pick the region
-                var regionVar:Int = rand.nextInt() % costDenominator;
+                var regionVar:Int = rand() % costDenominator;
                 var i:Long = 0;
                 while(regionVar >= regBinEnd(i))
                     i++;
@@ -744,7 +740,7 @@ public final class Domain {
                 var regionNum:Int = ((i + here.id) as Int % numReg) + 1n;
                 // make sure we don't pick the same region twice in a row
                 while(regionNum == lastReg) {
-                    regionVar = rand.nextInt() % costDenominator;
+                    regionVar = rand() % costDenominator;
                     i = 0;
                     while(regionVar >= regBinEnd(i))
                         i++;
@@ -752,22 +748,22 @@ public final class Domain {
                 }
 
                 // Pick the bin size of the region and determine the number of elements.
-                val binSize = rand.nextInt() % 1000;
+                val binSize = rand() % 1000;
                 var elements:Long;
                 if (binSize < 773) {
-                    elements = rand.nextInt() % 15 + 1;
+                    elements = rand() % 15 + 1;
                 } else if (binSize < 937) {
-                    elements = rand.nextInt() % 16 + 16;
+                    elements = rand() % 16 + 16;
                 } else if (binSize < 970) {
-                    elements = rand.nextInt() % 32 + 32;
+                    elements = rand() % 32 + 32;
                 } else if (binSize < 974) {
-                    elements = rand.nextInt() % 64 + 64;
+                    elements = rand() % 64 + 64;
                 } else if (binSize < 978) {
-                    elements = rand.nextInt() % 128 + 128;
+                    elements = rand() % 128 + 128;
                 } else if (binSize < 981) {
-                    elements = rand.nextInt() % 256 + 256;
+                    elements = rand() % 256 + 256;
                 } else {
-                    elements = rand.nextInt() % 1537 + 512;
+                    elements = rand() % 1537 + 512;
                 }
                 val runTo = elements + nextIndex;
                 // Store the elements.  If we hit the end before we run out of elements then just stop.
@@ -987,6 +983,26 @@ public final class Domain {
       dzz = null;
       dyy = null;
       dxx = null;
+    }
+
+
+    /*
+     * NOTE: the load imbalance in regions is highly dependent on PRNG!
+     * This is not ideal, given that the reference code uses static load
+     * balancing; a different PRNG could give very different performance.
+     * Therefore we use the same C PRNG as the reference code to ensure the
+     * same load imbalance for a given problem size and number of processes.
+     */
+    var rand:Random;
+
+    @Native("c++",  "::srand(#seed)")
+    private def srand(seed:Int):void {
+        rand = new Random(seed);
+    }
+
+    @Native("c++",  "::rand()")
+    private def rand():Int {
+        return rand.nextInt();
     }
 }
 // vim:tabstop=4:shiftwidth=4:expandtab

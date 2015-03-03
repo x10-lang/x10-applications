@@ -155,6 +155,10 @@ public final class Lulesh {
         finish for (place in Place.places()) at(place) async {
             val domain = domainPlh();
 
+            if (PRINT_COMM_TIME) {
+                printLoadImbalance(domain);
+            }
+
             val nodesPerSide = domain.sizeX+1;
             val accessMass = (dom:Domain) => [dom.nodalMass];
             massGhostMgr.gatherBoundariesToCombine(domainPlh, accessMass, nodesPerSide); 
@@ -195,6 +199,36 @@ public final class Lulesh {
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
         verifyAndWriteFinalOutput(elapsedTime, domainPlh(), opts.nx);
+    }
+
+    /**
+     * Compute and print the load imbalance between places in simulating
+     * regions of different materials in applyMaterialPropertiesForElems
+     */
+    private def printLoadImbalance(domain:Domain) {
+        var repTimesNumElem:Int = 0n;
+        for (r in 0..(domain.numReg-1)) {
+            val numElemReg = domain.regElemSize(r);
+            var rep:Int;
+            // Determine load imbalance for this region
+            // round down the number with lowest cost
+            if (r < domain.numReg/2)
+                rep = 1n;
+            // you don't get an expensive region unless you at least have 5 regions
+            else if (r < (domain.numReg - (domain.numReg+15n)/20n))
+                rep = 1n + domain.cost;
+            // very expensive regions
+            else
+                rep = 10n * (1n + domain.cost);
+            repTimesNumElem += rep * numElemReg;
+        }
+Console.OUT.println(here + " repTimesNumElem " + repTimesNumElem);
+        val maxLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
+        val totalLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
+        if (here.equals(Place.FIRST_PLACE)) {
+            val meanLoad = totalLoad/Place.numPlaces();
+            Console.OUT.printf("region load max %d average %d imbalance %f\n", maxLoad, meanLoad, (maxLoad*1.0/meanLoad)-1.0);
+        }
     }
 
     /* Work Routines */
