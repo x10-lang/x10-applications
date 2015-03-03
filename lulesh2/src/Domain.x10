@@ -699,12 +699,16 @@ public final class Domain {
      *    weights of all regions, sourced from the -b command line parameter
      */
     private @NonEscaping def createRegionIndexSets(nr:Int, balance:Int) {
-        // TODO everything
         regNumList = new Rail[Long](numElem);
         regElemSize = new Rail[Long](nr);
         regElemList = new Rail[Rail[Long]](nr);
 
-        val rand = new Random(here.id);
+        /*
+         * NOTE: the load imbalance in regions is highly dependent on PRNG!
+         * This is not ideal, given that the reference code uses static load
+         * balancing; a different PRNG could give very different performance.
+         */
+        val rand = new Random(here.id+1);
 
         var nextIndex:Long = 0;
         if (numReg == 1n) {
@@ -719,7 +723,7 @@ public final class Domain {
             // distribute the elements
 
             // Determine the relative weights of all the regions.
-            var lastReg:Long = -1;
+            var lastReg:Int = -1n;
             var costDenominator:Int = 0n; // Total sum of all regions' weights
             val regBinEnd = new Rail[Int](numReg); // Chance of hitting a given region is (regBinEnd(i) - regBinEnd(i-1))/costDenominator
             for (i in 0n..(numReg-1n)) {
@@ -730,21 +734,21 @@ public final class Domain {
             // Until all elements are assigned
             while (nextIndex < numElem) {
                 // pick the region
-                var regionVar:Long = rand.nextInt() % costDenominator;
+                var regionVar:Int = rand.nextInt() % costDenominator;
                 var i:Long = 0;
                 while(regionVar >= regBinEnd(i))
                     i++;
                 // Rotate the regions based on place ID.  Rotation is 
                 // here.id % NumRegions . This makes each domain have a
                 // different region with the highest representation
-                var regionNum:Long = ((i + here.id) % numReg) + 1;
+                var regionNum:Int = ((i + here.id) as Int % numReg) + 1n;
                 // make sure we don't pick the same region twice in a row
                 while(regionNum == lastReg) {
                     regionVar = rand.nextInt() % costDenominator;
                     i = 0;
                     while(regionVar >= regBinEnd(i))
                         i++;
-                    regionNum = ((i + here.id) % numReg) + 1;
+                    regionNum = ((i + here.id) as Int % numReg) + 1n;
                 }
 
                 // Pick the bin size of the region and determine the number of elements.
