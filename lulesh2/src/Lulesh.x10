@@ -757,6 +757,12 @@ Console.OUT.println(here + " repTimesNumElem " + repTimesNumElem);
            dvdx:Rail[Double], dvdy:Rail[Double], dvdz:Rail[Double],
            hourg:Double) {
 
+        val numElem = domain.numElem;
+        val numElem8 = numElem * 8;
+        val fx_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+        val fy_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+        val fz_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+
         // compute the hourglass modes
 
         Foreach.block(0, domain.numElem-1,
@@ -850,39 +856,37 @@ Console.OUT.println(here + " repTimesNumElem " + repTimesNumElem);
                 calcElemFBHourglassForce(xd1, yd1, zd1, hourgam,
                       coefficient, hgfx, hgfy, hgfz);
 
-                domain.fx(n0si2) += hgfx(0);
-                domain.fy(n0si2) += hgfy(0);
-                domain.fz(n0si2) += hgfz(0);
-
-                domain.fx(n1si2) += hgfx(1);
-                domain.fy(n1si2) += hgfy(1);
-                domain.fz(n1si2) += hgfz(1);
-
-                domain.fx(n2si2) += hgfx(2);
-                domain.fy(n2si2) += hgfy(2);
-                domain.fz(n2si2) += hgfz(2);
-
-                domain.fx(n3si2) += hgfx(3);
-                domain.fy(n3si2) += hgfy(3);
-                domain.fz(n3si2) += hgfz(3);
-
-                domain.fx(n4si2) += hgfx(4);
-                domain.fy(n4si2) += hgfy(4);
-                domain.fz(n4si2) += hgfz(4);
-
-                domain.fx(n5si2) += hgfx(5);
-                domain.fy(n5si2) += hgfy(5);
-                domain.fz(n5si2) += hgfz(5);
-
-                domain.fx(n6si2) += hgfx(6);
-                domain.fy(n6si2) += hgfy(6);
-                domain.fz(n6si2) += hgfz(6);
-
-                domain.fx(n7si2) += hgfx(7);
-                domain.fy(n7si2) += hgfy(7);
-                domain.fz(n7si2) += hgfz(7);
+                Rail.copy(hgfx, 0, fx_elem, i3, 8);
+                Rail.copy(hgfy, 0, fy_elem, i3, 8);
+                Rail.copy(hgfz, 0, fz_elem, i3, 8);
             }
         });
+
+        // Collect the data from the local arrays into the final force arrays
+        Foreach.block(0, domain.numNode-1,
+        (min_g:Long, max_g:Long) => {
+            for (gnode in min_g..max_g) {
+                val count = domain.nodeElemCount(gnode);
+                val elemStart = domain.nodeElemStart(gnode);
+                var fx_tmp:Double = 0.0;
+                var fy_tmp:Double = 0.0;
+                var fz_tmp:Double = 0.0;
+                for (i in 0..(count-1)) {
+                    val elem = domain.nodeElemCornerList(elemStart+i);
+                    fx_tmp += fx_elem(elem);
+                    fy_tmp += fy_elem(elem);
+                    fz_tmp += fz_elem(elem);
+                }
+                domain.fx(gnode) += fx_tmp;
+                domain.fy(gnode) += fy_tmp;
+                domain.fz(gnode) += fz_tmp;
+            }
+        });
+
+        // force GC to reuse space for large temporary arrays
+        Unsafe.dealloc(fx_elem);
+        Unsafe.dealloc(fy_elem);
+        Unsafe.dealloc(fz_elem);
     }
 
     private @Inline final def calcElemFBHourglassForce(
