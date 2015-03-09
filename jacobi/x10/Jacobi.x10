@@ -26,22 +26,24 @@ import x10.util.concurrent.AtomicDouble;
 *************************************************************/
 
 public class Jacobi {
-    static val MSIZE = 1000;
-
     static val relax = 1.0;
     static val alpha = 0.0543;
 
     val n:long;
     val m:long;
-    val u:Array_2[double];
-    val uold:Array_2[double];
+    val u:Array_2[double]{self!=null};
+    val uold:Array_2[double]{self!=null};
     val f:Array_2[double];
 
     val P:long = x10.xrx.Runtime.NTHREADS;
 
-    public static def main(Rail[String]) {
-        val n=MSIZE;
-        val m=MSIZE;
+    public static def main(args:Rail[String]) {
+        var size:Long = 1000;
+        if (args.size > 0) {
+            size = Long.parse(args(0));
+        }
+        val n = size;
+        val m = size;
         val tol=0.0000000001;
         val mits=5000;
 
@@ -49,13 +51,15 @@ public class Jacobi {
         Console.OUT.println("Jacobi iteration using "+jb.P+" threads...");
 
         val start = System.nanoTime();
-        jb.jacobi(tol, mits);
+        val iters = jb.jacobi(tol, mits);
         val end = System.nanoTime();
 
         Console.OUT.println("------------------------");
         val timeInMillis = (end-start)/1E6;
-        Console.OUT.println("Execution time = "+timeInMillis/1E3+" per iter "+timeInMillis/mits+" ms");
+
         jb.errorCheck();
+
+        Console.OUT.printf("Jacobi size: %d X10_NTHREADS: %d total time: %.3f s (per iter: %.3f ms)\n", size, jb.P, timeInMillis/1E3, timeInMillis/iters);
     }
 
     /** 
@@ -105,9 +109,8 @@ public class Jacobi {
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
         val error = new AtomicDouble(10.0 * tol);
-        var k:long = 1;
-
-        while ((k<=mits)&&(error.get()>tol)) {
+        var k:long = 0;
+        while ((k<mits)&&(error.get()>tol)) {
             Array.swap(u, uold);
 
             val body = (min_i:Long, max_i:Long) => {
@@ -134,8 +137,10 @@ public class Jacobi {
             error.set(Math.sqrt(error.get())/(n*m));
         }
 
-        Console.OUT.println("Total Number of Iterations:"+(k-1));
-        Console.OUT.println("Residual:"+error.get());
+        Console.OUT.println("Total Number of Iterations: "+k);
+        Console.OUT.println("Residual: "+error.get());
+
+        return k;
     }
 
     /************************************************************
@@ -155,6 +160,6 @@ public class Jacobi {
             }
         }
         error = Math.sqrt(error)/(n*m);
-        Console.OUT.println("Solution Error :"+error);
+        Console.OUT.println("Solution Error: "+error);
     }
 }

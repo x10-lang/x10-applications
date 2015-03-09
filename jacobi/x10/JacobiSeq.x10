@@ -24,33 +24,38 @@ import x10.array.*;
 *************************************************************/
 
 public class JacobiSeq {
-    static val MSIZE = 1000;
-
     static val relax = 1.0;
     static val alpha = 0.0543;
 
     val n:long;
     val m:long;
-    val u:Array_2[double];
-    val uold:Array_2[double];
+    val u:Array_2[double]{self!=null};
+    val uold:Array_2[double]{self!=null};
     val f:Array_2[double];
 
-    public static def main(Rail[String]) {
-        val n=MSIZE;
-        val m=MSIZE;
+    public static def main(args:Rail[String]) {
+        var size:Long = 1000;
+        if (args.size > 0) {
+            size = Long.parse(args(0));
+        }
+        val n = size;
+        val m = size;
         val tol=0.0000000001;
         val mits=5000;
 
         val jb = new JacobiSeq(m, n);
-        Console.OUT.println("Sequential Jacobi iteration...");
+        Console.OUT.println("Jacobi iteration (sequential)...");
 
         val start = System.nanoTime();
-        jb.jacobi(tol, mits);
+        val iters = jb.jacobi(tol, mits);
         val end = System.nanoTime();
 
         Console.OUT.println("------------------------");
-        Console.OUT.println("Execution time = "+((end-start)/1E9));
+        val timeInMillis = (end-start)/1E6;
+
         jb.errorCheck();
+
+        Console.OUT.printf("Jacobi size: %d X10_NTHREADS: %d total time: %.3f s (per iter: %.3f ms)\n", size, 1, timeInMillis/1E3, timeInMillis/iters);
     }
 
     /** 
@@ -63,7 +68,7 @@ public class JacobiSeq {
         this.n = n;
         this.u = new Array_2[double](n,m);
         this.uold = new Array_2[double](n,m);
-	this.f = new Array_2[double](n, m, (i:long,j:long) => {
+        this.f = new Array_2[double](n, m, (i:long,j:long) => {
             val xx = (-1.0 + dx * (i-1)) as int;
             val yy = (-1.0 + dy * (j-1)) as int;
             -1.0*alpha *(1.0-xx*xx)*(1.0-yy*yy) -2.0*(1.0-xx*xx)-2.0*(1.0-yy*yy)
@@ -100,9 +105,9 @@ public class JacobiSeq {
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
         var error:double = 10.0 * tol;
-        var k:long = 1;
+        var k:long = 0;
 
-        while ((k<=mits)&&(error>tol)) {
+        while ((k<mits)&&(error>tol)) {
             Array.swap(u, uold);
 
             for (i in 1..(n-2)) {
@@ -120,8 +125,10 @@ public class JacobiSeq {
             error = Math.sqrt(error)/(n*m);
         }
 
-        Console.OUT.println("Total Number of Iterations:"+(k-1));
+        Console.OUT.println("Total Number of Iterations:"+k);
         Console.OUT.println("Residual:"+error);
+
+        return k;
     }
 
 

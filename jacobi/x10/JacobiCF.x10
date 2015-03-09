@@ -24,35 +24,40 @@ import x10.array.*;
 *************************************************************/
 
 public class JacobiCF {
-    static val MSIZE = 1000;
-
     static val relax = 1.0;
     static val alpha = 0.0543;
 
     val n:long;
     val m:long;
-    val u:Array_2[double];
-    val uold:Array_2[double];
+    val u:Array_2[double]{self!=null};
+    val uold:Array_2[double]{self!=null};
     val f:Array_2[double];
 
     val P:long = x10.xrx.Runtime.NTHREADS;
 
-    public static def main(Rail[String]) {
-        val n=MSIZE;
-        val m=MSIZE;
+    public static def main(args:Rail[String]) {
+        var size:Long = 1000;
+        if (args.size > 0) {
+            size = Long.parse(args(0));
+        }
+        val n = size;
+        val m = size;
         val tol=0.0000000001;
         val mits=5000;
 
         val jb = new JacobiCF(m, n);
-        Console.OUT.println("Jacobi iteration using "+jb.P+" threads...");
+        Console.OUT.println("Jacobi iteration with collecting finish using "+jb.P+" threads...");
 
         val start = System.nanoTime();
-        jb.jacobi(tol, mits);
+        val iters = jb.jacobi(tol, mits);
         val end = System.nanoTime();
 
         Console.OUT.println("------------------------");
-        Console.OUT.println("Execution time = "+((end-start)/1E9));
+        val timeInMillis = (end-start)/1E6;
+
         jb.errorCheck();
+
+        Console.OUT.printf("Jacobi size: %d X10_NTHREADS: %d total time: %.3f s (per iter: %.3f ms)\n", size, jb.P, timeInMillis/1E3, timeInMillis/iters);
     }
 
     /** 
@@ -103,9 +108,8 @@ public class JacobiCF {
 
         val i_is = new Rail[DenseIterationSpace_1](P, (i:long)=>BlockingUtils.partitionBlock(1,n-2,P, i));
         var error:double = 10.0 * tol;
-        var k:long = 1;
-
-        while ((k<=mits)&&(error>tol)) {
+        var k:long = 0;
+        while ((k<mits)&&(error>tol)) {
             Array.swap(u, uold);
 
             error = finish(Reducible.SumReducer[Double]()) {
@@ -131,8 +135,10 @@ public class JacobiCF {
             error = Math.sqrt(error)/(n*m);
         }
 
-        Console.OUT.println("Total Number of Iterations:"+(k-1));
+        Console.OUT.println("Total Number of Iterations:"+k);
         Console.OUT.println("Residual:"+error);
+
+        return k;
     }
 
 
