@@ -1,4 +1,5 @@
 package com.ibm.m3rlite;
+import x10.compiler.Native;
 import x10.util.HashMap;
 import x10.util.GrowableRail;
 import x10.util.Pair;
@@ -103,6 +104,11 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	public def iterationNumber() = at (master) master().iterationNumber; // current iteration number (>=0)
 	public def iterationFailed() = at (master) master().iterationFailed; // last iteration failed, should be called from stop()
 
+        // workaround for the change of package name of Runtime from x10.lang to x10.xrx
+        @Native("java", "java.lang.management.ManagementFactory.getRuntimeMXBean().getName()")
+        @Native("c++", "::x10aux::runtime_name()")
+        private static native def getName() : String;
+
 	public def this(job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 		property(job);
 
@@ -112,7 +118,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		if (num_use <= 0) throw new Exception("Too many spare places to run");
 		for (p in Place.places()) {
 		    try {
-			at (p) Console.OUT.println(here+" running in "+x10.xrx.Runtime.getName());
+			at (p) Console.OUT.println(here+" running in "+getName());
 			if (num_use-- > 0) livePlaces.add(p); else sparePlaces.add(p);
 		    } catch (e:DeadPlaceException) {
 			Console.OUT.println(p+" is dead");
