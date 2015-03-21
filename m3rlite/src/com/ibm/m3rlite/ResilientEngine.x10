@@ -42,6 +42,10 @@ import x10.util.ArrayList;
  * instance in its PLH, which was created at the initialization phase, so we may
  * need some mechanism to support dynamic place addition. 
  * <br/>
+ * If there is no spare places remaining and M3RLITE_ADDPLACE=1 is specified,
+ * the engine tries to add a new place to replace the dead place.  This feature
+ * works only when System.addPlaces() is supported by the X10 runtime.
+ * <br/>
  * If there is no spare places remaining, the dead place is just excluded and
  * the iteration can continue on the reduced number of places.  This can be
  * disabled by an environment variable M3RLITE_NOSHRINK=1.  In this case, the
@@ -242,25 +246,31 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		sparePlaces.remove(deadPlace); // nothing may happen
 		val deadIndex = activePlaces.indexOf(deadPlace);
 		if (deadIndex >= 0) {
+		        iterationFailed = true;
+			var replaced:Boolean = false; // true if the dead place is successfully replaced
 			if (sparePlaces.size() > 0) {	// replace with a spare place
 				activePlaces.set(sparePlaces.removeFirst(), deadIndex);
-				activePlacesChanged = true;
+				activePlacesChanged = true; replaced = true;
 			} else if (addplace != 0) {	// replace by adding a place
 				DEBUG("Adding a place");
 				System.addPlacesAndWait(1, 5*1000/*timeout_msec*/);
-				if (nplaces+1 != Place.numPlaces())
-					throw new Exception("Place could not be added"); //TODO: should go to shrink mode?
+			    if (nplaces+1 == Place.numPlaces()) {
 				DEBUG("Added "+Place(nplaces));
 				activePlaces.set(Place(nplaces), deadIndex);
-				activePlacesChanged = true;
-				nplaces++;
-			} else if (noshrink == 0) {	// shrink activePlaces
-				activePlaces.remove(deadPlace);
-				activePlacesChanged = true;
-			} else {			// error
-				throw new Exception("No spare place to continue");
+				activePlacesChanged = true; replaced = true;
+				nplaces++; // = Place.numPlaces();
+			    } else {
+				DEBUG("AddPlace failed!!!");
+			    }
 			}
-		        iterationFailed = true;
+			if (!replaced) {
+			    if (noshrink == 0) {	// shrink activePlaces
+				activePlaces.remove(deadPlace);
+				activePlacesChanged = true; // this may be unnecessary
+			    } else {			// error
+				throw new Exception("No spare place to continue");
+			    }
+			}
 			//TODO: add multiple places at once
 			//TODO: add place asynchronously as spare
 		}
