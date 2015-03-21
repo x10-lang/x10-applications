@@ -61,6 +61,7 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	static val verbose  = getEnvLong("M3RLITE_VERBOSE");
 	static val nspares  = getEnvLong("M3RLITE_NSPARES");  // number of spare places
 	static val noshrink = getEnvLong("M3RLITE_NOSHRINK"); // don't shrink #places
+	static val addplace = getEnvLong("M3RLITE_ADDPLACE"); // use addPlaces if places are dead
 	static def getEnvLong(name:String) {
 		val env = System.getenv(name);
 		val v = (env!=null) ? Long.parseLong(env) : 0;
@@ -91,12 +92,15 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	
 	// resiliency support
 	private val activePlaces:ArrayList[Place] = new	ArrayList[Place](); // places used for the computation
+	transient private var nplaces:Long = Place.numPlaces(); // may be updated if place is added
 	transient private val sparePlaces:ArrayList[Place] = new ArrayList[Place](); // spare places 
 	transient private var iterationNumber:Long = 0;
 	transient private var iterationFailed:Boolean = false;
+	transient private var activePlacesChanged:Boolean = false; // changed to true if activePlaces list is modified
 	@x10.compiler.NonEscaping private val master = GlobalRef(this); // master instance //@@@@
 	private def numActivePlaces0() = activePlaces.size();
 	private def placeIndex0(p:Place) = activePlaces.indexOf(p);
+
 	// utility methods
 	public def numLivePlaces()     = numActivePlaces(); // old API, to be removed
 	public def numActivePlaces()   = at (master) master().numActivePlaces0();
@@ -114,13 +118,15 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		property(job);
 
 		// initialize activePlaces and sparePlaces lists
-		var num_use:Long = Place.numPlaces() - nspares;
+		var num_use:Long = nplaces - nspares;
 		if (verbose>=1) DEBUG("use " + num_use +" places for the computation");
 		if (num_use <= 0) throw new Exception("Too many spare places to run");
-		for (p in Place.places()) {
+		for (i in 0..(nplaces-1)) { // for (p in Place.places()) <- this only returns live places
+		    val p = Place(i);
 		    try {
 			at (p) Console.OUT.println(here+" running in "+getName());
 			if (num_use-- > 0) activePlaces.add(p); else sparePlaces.add(p);
+			activePlacesChanged = true;
 		    } catch (e:DeadPlaceException) {
 			Console.OUT.println(p+" is dead");
 		    }
@@ -130,31 +136,30 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	public def run() {
 		var t0:Long = 0;
 		if (verbose>=1)	{ DEBUG("---- run called"); t0 = System.nanoTime(); }
-
-		// distribute the job to all non-dead places
-		var tmpPlh:PlaceLocalHandle[State[K1,V1,K2,V2,K3,V3]];
-		var inited:Boolean = false;
-		while (true) {
-		    try {
-			val places = activePlaces.clone();
-			places.addAll(sparePlaces); // activePlaces + sparePlaces
-			places.sort((p1:Place,p2:Place)=>(p1.id-p2.id) as Int);
-			if (verbose>=2)	DEBUG("places: "+places);
-			tmpPlh = PlaceLocalHandle.make(new SparsePlaceGroup(places.toRail()),
-				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
-						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
-			break;
-		    } catch (e:Exception) {
-			processException(e, 0);
-		    }
-		}
-		val plh = tmpPlh;
-
 		if (verbose>=2) DEBUG("activePlaces: "+activePlaces+"  sparePlaces: " + sparePlaces);
-		if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- activePlaces prepared in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
+
+		var statePlh:PlaceLocalHandle[State[K1,V1,K2,V2,K3,V3]] // PLH that holds per-activePlace State
+			= PlaceLocalHandle.make(PlaceGroup.make(0), ()=>null as State[K1,V1,K2,V2,K3,V3]); // init with dummy value
+
 		while (true) {
 		  try {
+			// set up State at activePlaces
+			if (activePlacesChanged) {
+				if (verbose>=1)	DEBUG("set up State at activePlaces: "+activePlaces);
+				val places = activePlaces.clone(); places.sort((p1:Place,p2:Place)=>(p1.id-p2.id) as Int);
+				val oldPlh = statePlh, nactive = numActivePlaces0();
+				statePlh = PlaceLocalHandle.make(new SparsePlaceGroup(places.toRail()), ():State[K1,V1,K2,V2,K3,V3]=>
+					new State(
+						(oldPlh() != null) ? oldPlh().job : job, // reuse existing job if possible
+						new Rail[MyMap[K2,V2]](nactive, (Long)=>new MyMap[K2,V2]())
+					)
+				);
+				activePlacesChanged = false;
+			}
+			val plh = statePlh; // make it val for passing to other places
+
 			if (job.stop()) break; //TODO: should stop be called before the first iteration?
+
 			iterationNumber++;
 			if (iterationFailed) {
 				if (verbose>=2) DEBUG("New activePlaces: "+activePlaces);
@@ -239,20 +244,31 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		if (deadIndex >= 0) {
 			if (sparePlaces.size() > 0) {	// replace with a spare place
 				activePlaces.set(sparePlaces.removeFirst(), deadIndex);
+				activePlacesChanged = true;
+			} else if (addplace != 0) {	// replace by adding a place
+				DEBUG("Adding a place");
+				System.addPlacesAndWait(1, 5*1000/*timeout_msec*/);
+				if (nplaces+1 != Place.numPlaces())
+					throw new Exception("Place could not be added"); //TODO: should go to shrink mode?
+				DEBUG("Added "+Place(nplaces));
+				activePlaces.set(Place(nplaces), deadIndex);
+				activePlacesChanged = true;
+				nplaces++;
 			} else if (noshrink == 0) {	// shrink activePlaces
 				activePlaces.remove(deadPlace);
+				activePlacesChanged = true;
 			} else {			// error
 				throw new Exception("No spare place to continue");
 			}
 		        iterationFailed = true;
+			//TODO: add multiple places at once
+			//TODO: add place asynchronously as spare
 		}
 	    } else if (e instanceof MultipleExceptions) {
 	        val exceptions = (e as MultipleExceptions).exceptions();
 	        DEBUG(new String(new Rail[Char](l,' ')) + "MultipleExceptions size=" + exceptions.size);
 	        val deadPlaceExceptions = (e as MultipleExceptions).getExceptionsOfType[DeadPlaceException]();
-	        for (dpe in deadPlaceExceptions) {
-	            processException(dpe, l+1);
-	        }
+	        for (dpe in deadPlaceExceptions) processException(dpe, l+1);
 	        val filtered = (e as MultipleExceptions).filterExceptionsOfType[DeadPlaceException]();
 	        if (filtered != null) throw filtered;
 	    } else {
