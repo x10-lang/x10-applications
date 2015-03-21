@@ -33,9 +33,9 @@ import x10.util.ArrayList;
  * About resiliency support.
  * <br/>
  * When a place is dead during an iterative map/reduce execution, next iteration
- * will be done excluding the dead place.  The job can call numLivePlaces() and
+ * will be done excluding the dead place.  The job can call numActivePlaces() and
  * placeIndex(Place), to know the total places used for the calculation and the
- * index of the specified place (0 to numLivePlaces-1).
+ * index of the specified place (0 to numActivePlaces-1).
  * <br/>
  * If an environment variable M3RLITE_NSPARES=n is specified, n places are reserved
  * as spare places, which will replace the dead place.  The spare place has a job
@@ -51,7 +51,7 @@ import x10.util.ArrayList;
  * <br/>
  * The job for ResilientEngine should: (1) keep the source data resiliently
  * (e.g. by using ResilientStore), (2) divide the source data appropriately using
- * placeIndex() and numLivePlaces(), (3) not use Place.places() or numPlaces() during
+ * placeIndex() and numActivePlaces(), (3) not use Place.places() or numPlaces() during
  * the execution, and (4) return false in stop() if all data are not processed.
  *
  * @author kawatiya (for resiliency support)
@@ -90,19 +90,20 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 			incoming:NN[Rail[MyMap[K2,V2]]]){}
 	
 	// resiliency support
-	private val livePlaces:ArrayList[Place] = new ArrayList[Place]();
-	transient private val sparePlaces:ArrayList[Place] = new ArrayList[Place]();
+	private val activePlaces:ArrayList[Place] = new	ArrayList[Place](); // places used for the computation
+	transient private val sparePlaces:ArrayList[Place] = new ArrayList[Place](); // spare places 
 	transient private var iterationNumber:Long = 0;
 	transient private var iterationFailed:Boolean = false;
 	@x10.compiler.NonEscaping private val master = GlobalRef(this); // master instance //@@@@
-	private def numLivePlaces0() = livePlaces.size();
-	private def placeIndex0(p:Place) = livePlaces.indexOf(p);
+	private def numActivePlaces0() = activePlaces.size();
+	private def placeIndex0(p:Place) = activePlaces.indexOf(p);
 	// utility methods
-	public def numLivePlaces() = at (master) master().numLivePlaces0();
+	public def numLivePlaces()     = numActivePlaces(); // old API, to be removed
+	public def numActivePlaces()   = at (master) master().numActivePlaces0();
 	public def placeIndex(p:Place) = at (master) master().placeIndex0(p);
-	public def getLivePlaces() = at (master) master().livePlaces;
-	public def iterationNumber() = at (master) master().iterationNumber; // current iteration number (>=0)
-	public def iterationFailed() = at (master) master().iterationFailed; // last iteration failed, should be called from stop()
+	public def getActivePlaces()   = at (master) master().activePlaces;
+	public def iterationNumber()   = at (master) master().iterationNumber; // current iteration number (>=0)
+	public def iterationFailed()   = at (master) master().iterationFailed; // last iteration failed, should be called from stop()
 
         // workaround for the change of package name of Runtime from x10.lang to x10.xrx
         @Native("java", "java.lang.management.ManagementFactory.getRuntimeMXBean().getName()")
@@ -112,14 +113,14 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	public def this(job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 		property(job);
 
-		// initialize livePlaces and sparePlaces lists
+		// initialize activePlaces and sparePlaces lists
 		var num_use:Long = Place.numPlaces() - nspares;
 		if (verbose>=1) DEBUG("use " + num_use +" places for the computation");
 		if (num_use <= 0) throw new Exception("Too many spare places to run");
 		for (p in Place.places()) {
 		    try {
 			at (p) Console.OUT.println(here+" running in "+getName());
-			if (num_use-- > 0) livePlaces.add(p); else sparePlaces.add(p);
+			if (num_use-- > 0) activePlaces.add(p); else sparePlaces.add(p);
 		    } catch (e:DeadPlaceException) {
 			Console.OUT.println(p+" is dead");
 		    }
@@ -135,8 +136,8 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		var inited:Boolean = false;
 		while (true) {
 		    try {
-			val places = livePlaces.clone();
-			places.addAll(sparePlaces); // livePlaces + sparePlaces
+			val places = activePlaces.clone();
+			places.addAll(sparePlaces); // activePlaces + sparePlaces
 			places.sort((p1:Place,p2:Place)=>(p1.id-p2.id) as Int);
 			if (verbose>=2)	DEBUG("places: "+places);
 			tmpPlh = PlaceLocalHandle.make(new SparsePlaceGroup(places.toRail()),
@@ -149,48 +150,48 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 		}
 		val plh = tmpPlh;
 
-		if (verbose>=2) DEBUG("livePlaces: "+livePlaces+"  sparePlaces: " + sparePlaces);
-		if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- livePlaces prepared in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
+		if (verbose>=2) DEBUG("activePlaces: "+activePlaces+"  sparePlaces: " + sparePlaces);
+		if (verbose>=1)	{ val t = System.nanoTime(); DEBUG("---- activePlaces prepared in "+((t-t0)/1000000.0)+"msec"); t0 = t; }
 		while (true) {
 		  try {
 			if (job.stop()) break; //TODO: should stop be called before the first iteration?
 			iterationNumber++;
 			if (iterationFailed) {
-				if (verbose>=2) DEBUG("New livePlaces: "+livePlaces);
+				if (verbose>=2) DEBUG("New activePlaces: "+activePlaces);
 				iterationFailed = false;
 
 				// clean up possible garbage in the incoming array
-				val P = numLivePlaces0();
-				finish for (p in livePlaces) at (p) async {
+				val P = numActivePlaces0();
+				finish for (p in activePlaces) at (p) async {
 					val incoming = plh().incoming;	
 					for (var j:Long=0; j < P; j++) incoming(j) = null;
 				}
 			}
 
 			// map and communicate phase
-			finish for (p in livePlaces) at (p) async {
-				val P = numLivePlaces0();
+			finish for (p in activePlaces) at (p) async {
+				val P = numActivePlaces0();
 				val job = plh().job; // local copy
 				val incoming = plh().incoming;	
 				// Prepare and run the mapper
 				val results = new Rail[MyMap[K2,V2]](P, (Long) => new MyMap[K2,V2]());
 				val mSink = (k:K2,v:V2)=> {insert(results(job.partition(k) % P), k, v);};
-				val src = job.source(); // job.source(placeIndex0(here), numLivePlaces0())
+				val src = job.source(); // job.source(placeIndex0(here), numActivePlaces0())
 				
 				// Map Phase: Call the user-supplied mapper
 				if (src != null)
 					for (kv in src) job.mapper(kv.first, kv.second, mSink);
 				
 				// Transmit data to all places
-				for (q in livePlaces) {
+				for (q in activePlaces) {
 					val v = results(placeIndex0(q));
 					if (v.size() > 0)
 						at(q) plh().incoming(placeIndex0(p))=v;
 				}
 			}
 			// reduce phase
-			finish for(p in livePlaces) at (p) async {	
-				val P = numLivePlaces0();
+			finish for(p in activePlaces) at (p) async {	
+				val P = numActivePlaces0();
 				val job = plh().job; // local copy
 				val incoming = plh().incoming;	
 				// Now process all the incoming data, shuffling it together
@@ -234,12 +235,12 @@ public class ResilientEngine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!
 	        val deadPlace = (e as DeadPlaceException).place;
 	        DEBUG(new String(new Rail[Char](l,' ')) + "DeadPlaceException thrown from " + deadPlace);
 		sparePlaces.remove(deadPlace); // nothing may happen
-		val deadIndex = livePlaces.indexOf(deadPlace);
+		val deadIndex = activePlaces.indexOf(deadPlace);
 		if (deadIndex >= 0) {
 			if (sparePlaces.size() > 0) {	// replace with a spare place
-				livePlaces.set(sparePlaces.removeFirst(), deadIndex);
-			} else if (noshrink == 0) {	// shrink livePlaces
-				livePlaces.remove(deadPlace);
+				activePlaces.set(sparePlaces.removeFirst(), deadIndex);
+			} else if (noshrink == 0) {	// shrink activePlaces
+				activePlaces.remove(deadPlace);
 			} else {			// error
 				throw new Exception("No spare place to continue");
 			}

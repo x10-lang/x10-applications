@@ -94,12 +94,12 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
     }
 
     // K1=data ID, V1=coordinates of the data
-    public def source() { // source(placeIndex:Long, numLivePlaces:Long)
+    public def source() { // source(placeIndex:Long, numActivePlaces:Long)
         val h = here;
         clusters = at (master) master().clusters; // set the latest cluster info into local job instance
-        val placeIndex = engine.placeIndex(h), numLivePlaces = engine.numLivePlaces();
-        val s = placeIndex * N / numLivePlaces;
-        val e = (placeIndex+1) * N / numLivePlaces;
+        val placeIndex = engine.placeIndex(h), numActivePlaces = engine.numActivePlaces();
+        val s = placeIndex * N / numActivePlaces;
+        val e = (placeIndex+1) * N / numActivePlaces;
         if (s != startIndex || e != endIndex) {
             // get data from ResilientStore
             DEBUG("Loading data ["+s+","+e+") from ResilientStore");
@@ -183,7 +183,7 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
         val iterNum = engine.iterationNumber();
         val iterFailed = engine.iterationFailed();
         //DEBUG("stop: iterNum="+iterNum+" iterFailed="+iterFailed);
-        if (engine.iterationFailed()) { // some livePlace died in the last iteration
+        if (engine.iterationFailed()) { // some activePlace died in the last iteration
             DEBUG("Failed iteration, skipping");
             return false;
         } else if (iterNum == 0) { // first stop() call before the execution
