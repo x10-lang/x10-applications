@@ -17,7 +17,6 @@ import x10.compiler.StackAllocate;
 import x10.compiler.StackAllocateUninitialized;
 import x10.util.Team;
 import x10.util.Timer;
-import x10.util.WorkerLocalHandle;
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
@@ -46,9 +45,6 @@ import x10.util.WorkerLocalHandle;
 public final class Lulesh {
     static PRINT_COMM_TIME = false;
 
-    /** The command line options that were passed to this instance of LULESH. */
-    protected val opts:CommandLineOptions;
-
     /** The simulation domain at each place. */
     protected val domainPlh:PlaceLocalHandle[Domain];
 
@@ -60,8 +56,6 @@ public final class Lulesh {
     protected val forceGhostMgr:GhostManager;
     /** Manager for position gradient updates between plane neighbors */
     protected val gradientGhostMgr:GhostManager;
-
-    private val gamma = new Array_2[Double](4,8);
 
     private static val EXIT_CODE_INCORRECT_USAGE = 2n;
 
@@ -93,11 +87,10 @@ public final class Lulesh {
             Console.OUT.printf("See help (-h) for more options\n\n");
         }
 
-        new Lulesh(opts, placesPerSide).run();
+        new Lulesh(opts, placesPerSide).run(opts);
     }
 
     public def this(opts:CommandLineOptions, placesPerSide:Int) {
-        this.opts = opts;
         val domainPlh = PlaceLocalHandle.make[Domain](Place.places(), 
             () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide));
         this.domainPlh = domainPlh;
@@ -115,43 +108,9 @@ public final class Lulesh {
         this.gradientGhostMgr = new GhostManager(
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 () => domainPlh().loc.createNeighborList(true, true, true));
-
-        // initialize hourglass gamma
-        gamma(0,0) =  1.0;
-        gamma(0,1) =  1.0;
-        gamma(0,2) = -1.0;
-        gamma(0,3) = -1.0;
-        gamma(0,4) = -1.0;
-        gamma(0,5) = -1.0;
-        gamma(0,6) =  1.0;
-        gamma(0,7) =  1.0;
-        gamma(1,0) =  1.0;
-        gamma(1,1) = -1.0;
-        gamma(1,2) = -1.0;
-        gamma(1,3) =  1.0;
-        gamma(1,4) = -1.0;
-        gamma(1,5) =  1.0;
-        gamma(1,6) =  1.0;
-        gamma(1,7) = -1.0;
-        gamma(2,0) =  1.0;
-        gamma(2,1) = -1.0;
-        gamma(2,2) =  1.0;
-        gamma(2,3) = -1.0;
-        gamma(2,4) =  1.0;
-        gamma(2,5) = -1.0;
-        gamma(2,6) =  1.0;
-        gamma(2,7) = -1.0;
-        gamma(3,0) = -1.0;
-        gamma(3,1) =  1.0;
-        gamma(3,2) = -1.0;
-        gamma(3,3) =  1.0;
-        gamma(3,4) =  1.0;
-        gamma(3,5) = -1.0;
-        gamma(3,6) =  1.0;
-        gamma(3,7) = -1.0;
     }
 
-    public def run() {
+    public def run(opts:CommandLineOptions) {
         finish for (place in Place.places()) at(place) async {
             val domain = domainPlh();
 
@@ -198,7 +157,7 @@ public final class Lulesh {
         } // at(place) async
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
-        verifyAndWriteFinalOutput(elapsedTime, domainPlh(), opts.nx);
+        verifyAndWriteFinalOutput(elapsedTime, domainPlh());
     }
 
     /**
@@ -222,7 +181,6 @@ public final class Lulesh {
                 rep = 10n * (1n + domain.cost);
             repTimesNumElem += rep * numElemReg;
         }
-Console.OUT.println(here + " repTimesNumElem " + repTimesNumElem);
         val maxLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
         val totalLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
         if (here.equals(Place.FIRST_PLACE)) {
@@ -762,6 +720,42 @@ Console.OUT.println(here + " repTimesNumElem " + repTimesNumElem);
         val fx_elem = Unsafe.allocRailUninitialized[Double](numElem8);
         val fy_elem = Unsafe.allocRailUninitialized[Double](numElem8);
         val fz_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+
+        // initialize hourglass gamma
+        @StackAllocate val gammaStore = @StackAllocateUninitialized new Rail[Double](32);
+        val gamma = Array_2.makeView[Double](gammaStore, 4, 8);
+        gamma(0,0) =  1.0;
+        gamma(0,1) =  1.0;
+        gamma(0,2) = -1.0;
+        gamma(0,3) = -1.0;
+        gamma(0,4) = -1.0;
+        gamma(0,5) = -1.0;
+        gamma(0,6) =  1.0;
+        gamma(0,7) =  1.0;
+        gamma(1,0) =  1.0;
+        gamma(1,1) = -1.0;
+        gamma(1,2) = -1.0;
+        gamma(1,3) =  1.0;
+        gamma(1,4) = -1.0;
+        gamma(1,5) =  1.0;
+        gamma(1,6) =  1.0;
+        gamma(1,7) = -1.0;
+        gamma(2,0) =  1.0;
+        gamma(2,1) = -1.0;
+        gamma(2,2) =  1.0;
+        gamma(2,3) = -1.0;
+        gamma(2,4) =  1.0;
+        gamma(2,5) = -1.0;
+        gamma(2,6) =  1.0;
+        gamma(2,7) = -1.0;
+        gamma(3,0) = -1.0;
+        gamma(3,1) =  1.0;
+        gamma(3,2) = -1.0;
+        gamma(3,3) =  1.0;
+        gamma(3,4) =  1.0;
+        gamma(3,5) = -1.0;
+        gamma(3,6) =  1.0;
+        gamma(3,7) = -1.0;
 
         // compute the hourglass modes
 
@@ -1899,8 +1893,8 @@ Console.OUT.println(here + " repTimesNumElem " + repTimesNumElem);
         domain.dthydro = Math.min(domain.dthydro, dthydro_new);
     }
 
-    def verifyAndWriteFinalOutput(elapsedTime:Double, 
-                                         domain:Domain, nx:Long) {
+    def verifyAndWriteFinalOutput(elapsedTime:Double, domain:Domain) {
+        val nx = domain.sizeX;
         // GrindTime1 only takes a single domain into account, and is thus a good way to measure
         // processor speed independent of multi-place parallelism.
         // GrindTime2 takes into account speedups from multi-place parallelism 
