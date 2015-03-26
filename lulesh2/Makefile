@@ -41,6 +41,9 @@ ${ManagedX10BIN}:	${SRCPATH}/*.x10
 ${NativeX10BIN}:	${SRCPATH}/*.x10
 	x10c++ ${X10FLAG} -o ${NativeX10BIN} -d ${BINDIR} ${SRCPATH}/Lulesh.x10
 
+kernel:	${SRCPATH}/*.x10
+	x10c++ ${X10FLAG} -o kernel -d ${BINDIR} ${SRCPATH}/LuleshKernel.x10
+
 run-java:	${ManagedX10BIN}
 	x10 -cp ${ManagedX10BIN} Lulesh ${APPFLAG}
 
