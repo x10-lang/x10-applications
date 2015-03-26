@@ -116,9 +116,7 @@ public class LuleshKernel {
         gamma(3,5) = -1.0;
         gamma(3,6) =  1.0;
         gamma(3,7) = -1.0;
-
-        val numElem = domain.numElem;
-
+/*
         final class LocalData {
             val hourgam = new Array_2[Double](8,4);
             val xd1 = new Rail[Double](8);
@@ -129,8 +127,10 @@ public class LuleshKernel {
             val hgfz = new Rail[Double](8);
         }
         val l = new WorkerLocal[LocalData](() => new LocalData());
+*/
         // compute the hourglass modes
         val body = (min_i:Long, max_i:Long) => {
+/*
             val local = l();
             val hourgam = local.hourgam;
             val xd1 = local.xd1;
@@ -139,7 +139,7 @@ public class LuleshKernel {
             val hgfx = local.hgfx;
             val hgfy = local.hgfy;
             val hgfz = local.hgfz;
-/*
+*/
             @StackAllocate val hourgamStore = @StackAllocateUninitialized new Rail[Double](32);
             val hourgam = Array_2.makeView[Double](hourgamStore, 8, 4);
             @StackAllocate val xd1 = @StackAllocateUninitialized new Rail[Double](8);
@@ -148,7 +148,6 @@ public class LuleshKernel {
             @StackAllocate val hgfx = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfy = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfz = @StackAllocateUninitialized new Rail[Double](8);
-*/
 /*
             val hourgamStore = new Rail[Double](32);
             val hourgam = Array_2.makeView[Double](hourgamStore, 8, 4);
@@ -159,16 +158,16 @@ public class LuleshKernel {
             val hgfy = new Rail[Double](8);
             val hgfz = new Rail[Double](8);
 */
+            var i3:Long = 8*min_i;
             for (i2 in min_i..max_i) {
-                val i3 = 8*i2;
                 val volinv = 1.0 / determ(i2);
                 for (i1 in 0..3) {
-
+                    val i3f = i3;
                     val hourmod = (a8n:Rail[Double]) => {
-                        a8n(i3)   * gamma(i1,0) + a8n(i3+1) * gamma(i1,1) +
-                        a8n(i3+2) * gamma(i1,2) + a8n(i3+3) * gamma(i1,3) +
-                        a8n(i3+4) * gamma(i1,4) + a8n(i3+5) * gamma(i1,5) +
-                        a8n(i3+6) * gamma(i1,6) + a8n(i3+7) * gamma(i1,7)
+                        a8n(i3f)   * gamma(i1,0) + a8n(i3f+1) * gamma(i1,1) +
+                        a8n(i3f+2) * gamma(i1,2) + a8n(i3f+3) * gamma(i1,3) +
+                        a8n(i3f+4) * gamma(i1,4) + a8n(i3f+5) * gamma(i1,5) +
+                        a8n(i3f+6) * gamma(i1,6) + a8n(i3f+7) * gamma(i1,7)
                     };
 
                     val hourmodx = hourmod(x8n);
@@ -177,9 +176,9 @@ public class LuleshKernel {
 
                     val setHourgam = (idx:Long) => {
                         hourgam(idx,i1) = gamma(i1,idx) 
-                            - volinv * (dvdx(i3+idx) * hourmodx
-                                      + dvdy(i3+idx) * hourmody
-                                      + dvdz(i3+idx) * hourmodz);
+                            - volinv * (dvdx(i3f+idx) * hourmodx
+                                      + dvdy(i3f+idx) * hourmody
+                                      + dvdz(i3f+idx) * hourmodz);
                     };
 
                     // TODO can re-roll this loop?
@@ -244,18 +243,15 @@ public class LuleshKernel {
                 for (i in 0..7) fy_elem(i) = hgfy(i);
                 for (i in 0..7) fz_elem(i) = hgfz(i);
             }
+            i3 += 8;
         };
+
+        val numElem = domain.numElem;
 
         //Foreach.sequential(0, numElem-1, body);
         //Foreach.basic(0, numElem, (i:Long) => {body(i, i);});
         Foreach.block(0, numElem-1, body);
         //Foreach.bisect(0, numElem, body);
-
-        // force GC to reuse space for large temporary arrays
-        //Unsafe.dealloc(fx_elem);
-        //Unsafe.dealloc(fy_elem);
-        //Unsafe.dealloc(fz_elem);
-        
     }
 
     private @Inline final def calcElemFBHourglassForce(
