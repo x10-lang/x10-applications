@@ -16,6 +16,14 @@ import x10.compiler.StackAllocate;
 import x10.compiler.StackAllocateUninitialized;
 import x10.compiler.WorkerLocal;
 
+/**
+ * This class extracts the hourglass force calculation kernel as a standalone
+ * program. It is not used in any way by the LULESH application (Lulesh.x10), 
+ * but it is useful for testing parallel iteration patterns.
+ * The hourglass force calculation loop is the most complicated loop in LULESH
+ * and accounts for around 20% of the runtime, making it a key target for
+ * loop optimizations.
+ */
 public class LuleshKernel {
     static val ITERS = 5000;
     static val SIZE = 30;
