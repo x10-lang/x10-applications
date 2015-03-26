@@ -239,11 +239,11 @@ public class LuleshKernel {
                 calcElemFBHourglassForce(xd1, yd1, zd1, hourgam,
                       coefficient, hgfx, hgfy, hgfz);
 
-                for (i in 0..7) fx_elem(i) = hgfx(i);
-                for (i in 0..7) fy_elem(i) = hgfy(i);
-                for (i in 0..7) fz_elem(i) = hgfz(i);
+                for (i in 0..7) fx_elem(i3+i) = hgfx(i);
+                for (i in 0..7) fy_elem(i3+i) = hgfy(i);
+                for (i in 0..7) fz_elem(i3+i) = hgfz(i);
+                i3 += 8;
             }
-            i3 += 8;
         };
 
         val numElem = domain.numElem;

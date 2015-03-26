@@ -451,7 +451,7 @@ public final class Domain {
                 sideLength:Long):Rail[Double] {
         val fields = accessFields(this);
         val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
-        val transfer = new Rail[Double](boundaryRegion.size()*fields.size);
+        val transfer = Unsafe.allocRailUninitialized[Double](boundaryRegion.size()*fields.size);
 
         var idx:Long = 0;
         for (field in fields) {
@@ -472,7 +472,7 @@ public final class Domain {
                 sideLength:Long):Rail[Double] {
         val fields = accessFields(this);
         val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
-        val transfer = new Rail[Double](boundaryRegion.size()*fields.size);
+        val transfer = Unsafe.allocRailUninitialized[Double](boundaryRegion.size()*fields.size);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {

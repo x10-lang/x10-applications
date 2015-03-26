@@ -300,7 +300,7 @@ public final class Lulesh {
      * material states.
      */
     protected def lagrangeElements(domain:Domain) {
-        val vnew = new Rail[Double](domain.numElem); // new relative vol -- temp
+        val vnew = Unsafe.allocRailUninitialized[Double](domain.numElem); // new relative vol -- temp
 
         calcLagrangeElements(domain, vnew);
 
@@ -309,6 +309,8 @@ public final class Lulesh {
         applyMaterialPropertiesForElems(domain, vnew);
 
         updateVolumesForElems(domain, vnew);
+
+        Unsafe.dealloc(vnew);
     }
 
     def calcTimeConstraintsForElems(domain:Domain) {
@@ -373,6 +375,11 @@ public final class Lulesh {
             }
 
             calcHourglassControlForElems(domain, determ, hgcoef);
+
+            Unsafe.dealloc(sigxx);
+            Unsafe.dealloc(sigyy);
+            Unsafe.dealloc(sigzz);
+            Unsafe.dealloc(determ);
         }
     }
 
@@ -769,16 +776,17 @@ public final class Lulesh {
             @StackAllocate val hgfx = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfy = @StackAllocateUninitialized new Rail[Double](8);
             @StackAllocate val hgfz = @StackAllocateUninitialized new Rail[Double](8);
+
+            var i3:Long = 8*min_i;
             for (i2 in min_i..max_i) {
-                val i3 = 8*i2;
                 val volinv = 1.0 / determ(i2);
                 for (i1 in 0..3) {
-
+                    val i3f = i3;
                     val hourmod = (a8n:Rail[Double]) => {
-                        a8n(i3)   * gamma(i1,0) + a8n(i3+1) * gamma(i1,1) +
-                        a8n(i3+2) * gamma(i1,2) + a8n(i3+3) * gamma(i1,3) +
-                        a8n(i3+4) * gamma(i1,4) + a8n(i3+5) * gamma(i1,5) +
-                        a8n(i3+6) * gamma(i1,6) + a8n(i3+7) * gamma(i1,7)
+                        a8n(i3f)   * gamma(i1,0) + a8n(i3f+1) * gamma(i1,1) +
+                        a8n(i3f+2) * gamma(i1,2) + a8n(i3f+3) * gamma(i1,3) +
+                        a8n(i3f+4) * gamma(i1,4) + a8n(i3f+5) * gamma(i1,5) +
+                        a8n(i3f+6) * gamma(i1,6) + a8n(i3f+7) * gamma(i1,7)
                     };
 
                     val hourmodx = hourmod(x8n);
@@ -787,9 +795,9 @@ public final class Lulesh {
 
                     val setHourgam = (idx:Long) => {
                         hourgam(idx,i1) = gamma(i1,idx) 
-                            - volinv * (dvdx(i3+idx) * hourmodx
-                                      + dvdy(i3+idx) * hourmody
-                                      + dvdz(i3+idx) * hourmodz);
+                            - volinv * (dvdx(i3f+idx) * hourmodx
+                                      + dvdy(i3f+idx) * hourmody
+                                      + dvdz(i3f+idx) * hourmodz);
                     };
 
                     // TODO can re-roll this loop?
@@ -853,6 +861,8 @@ public final class Lulesh {
                 Rail.copy(hgfx, 0, fx_elem, i3, 8);
                 Rail.copy(hgfy, 0, fy_elem, i3, 8);
                 Rail.copy(hgfz, 0, fz_elem, i3, 8);
+
+                i3 += 8;
             }
         });
 
@@ -1548,20 +1558,20 @@ public final class Lulesh {
         // These temporaries will be of different size for 
         // each call (due to different sized region element
         // lists)
-        val e_old = new Rail[Double](numElemReg);
-        val delvc = new Rail[Double](numElemReg);
-        val p_old = new Rail[Double](numElemReg);
-        val q_old = new Rail[Double](numElemReg);
-        val compression = new Rail[Double](numElemReg);
-        val compHalfStep = new Rail[Double](numElemReg);
-        val qq_old = new Rail[Double](numElemReg);
-        val ql_old = new Rail[Double](numElemReg);
-        val work = new Rail[Double](numElemReg);
-        val p_new = new Rail[Double](numElemReg);
-        val e_new = new Rail[Double](numElemReg);
-        val q_new = new Rail[Double](numElemReg);
-        val bvc = new Rail[Double](numElemReg);
-        val pbvc = new Rail[Double](numElemReg);
+        val e_old = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val delvc = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val p_old = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val q_old = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val compression = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val compHalfStep = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val qq_old = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val ql_old = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val work = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val p_new = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val e_new = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val q_new = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val bvc = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val pbvc = Unsafe.allocRailUninitialized[Double](numElemReg);
 
         //loop to add load imbalance based on region number 
         for(j in 0..(rep-1)) {
@@ -1664,7 +1674,7 @@ public final class Lulesh {
                 qq_old:Rail[Double], ql_old:Rail[Double],
                 rho0:Double, eosvmax:Double,
                 length:Long, regElemList:Rail[Long]) {
-        val pHalfStep = new Rail[Double](length);
+        val pHalfStep = Unsafe.allocRailUninitialized[Double](length);
 
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
@@ -1776,6 +1786,8 @@ public final class Lulesh {
                  if (Math.abs(q_new(i)) < q_cut) q_new(i) = 0.0;
             }
         }
+
+        Unsafe.dealloc(pHalfStep);
     }
 
     def calcPressureForElems(p_new:Rail[Double], 
