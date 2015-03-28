@@ -109,7 +109,7 @@ void driver( )
 #else
   nthreads = 1;
 #endif 
-  printf("Jacobi size: %d OMP_NUM_THREADS: %d total time: %.3f s (per iter: %.3f ms)\n", MSIZE, nthreads, time2-time1, (time2-time1)/mits);
+  printf("Jacobi size: %d OMP_NUM_THREADS: %d total time: %.3f s (per iter: %.3f ms)\n", MSIZE, nthreads, time2-time1, (time2-time1)/mits*1E3);
   /* error_check (n,m,alpha,dx,dy,u,f)*/
   error_check ( );
 }
