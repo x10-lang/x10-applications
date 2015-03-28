@@ -4,7 +4,7 @@ ifdef USE_XLC
 	CCFLAGS_OMP +=  -qsmp -qthreaded
 else
 	CC = gcc
-	CCFLAGS = -O2 -finline-functions
+	CCFLAGS = -O3
 	CCFLAGS_OMP = -fopenmp 
 endif
 

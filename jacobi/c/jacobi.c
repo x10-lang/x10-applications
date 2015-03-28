@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -51,7 +52,9 @@ void error_check(void);
  #define MSIZE 1000
  int n,m,mits; 
  double tol,relax=1.0,alpha=0.0543; 
- double u[MSIZE][MSIZE],f[MSIZE][MSIZE],uold[MSIZE][MSIZE];
+ double f[MSIZE][MSIZE];
+ double (*u)[MSIZE];
+ double (*uold)[MSIZE];
  double dx,dy;
 
 int main (void) 
@@ -99,8 +102,14 @@ void driver( )
   jacobi ();
   time2 = time_stamp();
 
-  printf("------------------------\n");     
-  printf("Execution time = %f\n",time2-time1);
+  printf("------------------------\n");    
+  int nthreads;
+#ifdef _OPENMP_
+  nthreads = omp_get_max_threads();
+#else
+  nthreads = 1;
+#endif 
+  printf("Jacobi size: %d OMP_NUM_THREADS: %d total time: %.3f s (per iter: %.3f ms)\n", MSIZE, nthreads, time2-time1, (time2-time1)/mits);
   /* error_check (n,m,alpha,dx,dy,u,f)*/
   error_check ( );
 }
@@ -115,7 +124,8 @@ void driver( )
 
 void initialize( )
 {
-      
+      u = (double(*)[1000])malloc(sizeof(double)*MSIZE*MSIZE);
+      uold = (double(*)[1000])malloc(sizeof(double)*MSIZE*MSIZE);
       int i,j, xx,yy;
       //double PI=3.1415926;
 
@@ -187,10 +197,11 @@ void jacobi( )
     /* Copy new solution into old */
 #pragma omp parallel
     {
-#pragma omp for private(j,i)
-      for(i=0;i<n;i++)   
-        for(j=0;j<m;j++)   
-          uold[i][j] = u[i][j]; 
+        // the original code copied each element of u into uold;
+        // swapping pointers is much faster! JM
+        double (*tmp)[MSIZE] = u;
+        u = uold;
+        uold = tmp;
 
 #pragma omp for private(resid,j,i) reduction(+:error) nowait
       for (i=1;i<(n-1);i++)  
@@ -216,8 +227,7 @@ void jacobi( )
   }          /*  End iteration loop */
 
   printf("Total Number of Iterations:%d\n",k); 
-  printf("Residual:%E\n", error); 
-
+  printf("Residual:%E\n", error);
 }
 /*      subroutine error_check (n,m,alpha,dx,dy,u,f) 
       implicit none 
