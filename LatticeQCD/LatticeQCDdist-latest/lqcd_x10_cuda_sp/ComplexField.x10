@@ -23,10 +23,10 @@ public class ComplexField extends Lattice {
 	}
 
 	public operator this(i : Long) = v(i);
-	public operator this(i : Long) = (t : Float) = {v(i) = t;}
+	public operator this(i : Long) = (t : Float) {v(i) = t;}
 
 	public operator this(ic : Long, id : Long, is : Long) = v(is*Nvec + id*Ncol2 + ic);
-	public operator this(ic : Long, id : Long, is : Long) = (t : Float) = {v(is*Nvec + id*Ncol2 + ic) = t;}
+	public operator this(ic : Long, id : Long, is : Long) = (t : Float) {v(is*Nvec + id*Ncol2 + ic) = t;}
 
 
 	def Set(t : Float)

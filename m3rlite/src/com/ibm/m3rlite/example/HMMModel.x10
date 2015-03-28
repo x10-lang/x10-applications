@@ -452,14 +452,14 @@ public class HMMModel(S:Int, O:Int) {
 	/**
 	 * Averaged log likelihood of the observations.
 	 */
-	public def entropy(d:Rail[Obs]):Double = {
+	public def entropy(d:Rail[Obs]):Double {
 		var result:Double = 0.0;
 		for (x in d) {
 			if (x != null) {
 				result += Math.log(likelihood(x));
 			}
 		}
-		-result/d.size
+		return -result/d.size;
 	}
 	
 	/**
