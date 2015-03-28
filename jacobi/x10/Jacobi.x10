@@ -1,6 +1,6 @@
-import x10.array.*;
+import x10.array.Array;
+import x10.array.Array_2;
 import x10.compiler.Foreach;
-import x10.util.concurrent.AtomicDouble;
 
 /************************************************************
 * program to solve a finite difference 
@@ -108,9 +108,9 @@ public class Jacobi {
         val ay = 1.0/(dy*dy); /* Y-direction coef */
         val b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
-        val error = new AtomicDouble(10.0 * tol);
+        var error:Double = 10.0 * tol;
         var k:long = 0;
-        while ((k<mits)&&(error.get()>tol)) {
+        while ((k < mits) && (error > tol)) {
             Array.swap(u, uold);
 
             val body = (min_i:Long, max_i:Long) => {
@@ -124,21 +124,20 @@ public class Jacobi {
                         my_error += resid*resid;   
                     }
                 }
-                error.getAndAdd(my_error);
+                return my_error;
             };
             
-            //body(1, n-2); // sequential
-            //Foreach.basic(1, n-2, body);
-            Foreach.block(1, n-2, body);
-            //Foreach.bisect(1, n-2, body);
+            //error = Foreach.sequentialReduce(1, n-2, body, (a:Double, b:Double)=>{ return a+b; });
+            error = Foreach.blockReduce(1, n-2, body, (a:Double, b:Double)=>{ return a+b; });
+            //error = Foreach.bisectReduce(1, n-2, body, (a:Double, b:Double)=>{ return a+b; });
 
             k = k + 1;
             if (k%500==0) Console.OUT.println("Finished "+k+" iteration.");
-            error.set(Math.sqrt(error.get())/(n*m));
+            error = Math.sqrt(error) / (n*m);
         }
 
         Console.OUT.println("Total Number of Iterations: "+k);
-        Console.OUT.printf("Residual:%E\n", error.get());
+        Console.OUT.printf("Residual:%E\n", error);
 
         return k;
     }
