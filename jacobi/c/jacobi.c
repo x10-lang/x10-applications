@@ -104,7 +104,7 @@ void driver( )
 
   printf("------------------------\n");    
   int nthreads;
-#ifdef _OPENMP_
+#ifdef _OPENMP
   nthreads = omp_get_max_threads();
 #else
   nthreads = 1;
@@ -188,9 +188,9 @@ void jacobi( )
   b  = -2.0/(dx*dx)-2.0/(dy*dy) - alpha; /* Central coeff */ 
 
   error = 10.0 * tol;
-  k = 1;
+  k = 0;
 
-  while ((k<=mits)&&(error>tol)) 
+  while ((k<mits)&&(error>tol)) 
   {
     error = 0.0;    
 
