@@ -149,7 +149,7 @@ public class JacobiSPMD {
         }
 
         Console.OUT.println("Total Number of Iterations:"+k());
-        Console.OUT.println("Residual:"+residual());
+        Console.OUT.printf("Residual:%E\n", residual());
 
         return k();
     }

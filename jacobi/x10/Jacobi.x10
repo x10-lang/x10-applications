@@ -138,7 +138,7 @@ public class Jacobi {
         }
 
         Console.OUT.println("Total Number of Iterations: "+k);
-        Console.OUT.println("Residual: "+error.get());
+        Console.OUT.printf("Residual:%E\n", error.get());
 
         return k;
     }

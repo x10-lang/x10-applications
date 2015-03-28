@@ -1,6 +1,6 @@
 all: jacobi jacobi_nochecks jacobi_cf jacobi_cf_nochecks jacobi_spmd jacobi_spmd_nochecks jacobi_spmd_barrier jacobi_spmd_barrier_nochecks jacobi_seq jacobi_seq_nochecks jacobi_omp jacobi_omp_nochecks
 
-X10FLAG = -O
+X10FLAG = -O -post '\# -O3'
 # enable CPU profiling with google-perftools
 PROFILE ?=
 ifdef PROFILE
