@@ -178,7 +178,7 @@ public final class GhostManager {
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
-            @Uncounted at(Place(neighbors(i))) async {
+            at(Place(neighbors(i))) @Uncounted async {
                 postUpdateFunction(phase, ()=>{ 
                     domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength); 
                 });
@@ -203,7 +203,7 @@ public final class GhostManager {
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength);
-            @Uncounted at(Place(neighbors(i))) async {
+            at(Place(neighbors(i))) @Uncounted async {
                 postUpdateFunction(phase,  ()=>{
                     var ghostOffset:Long = sideLength*sideLength*sideLength;
                     val ghostRegionSize = (sideLength)*(sideLength);
@@ -231,7 +231,7 @@ public final class GhostManager {
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
-            @Uncounted at(Place(neighbors(i))) async {
+            at(Place(neighbors(i))) @Uncounted async {
                 postUpdateFunction(phase, ()=>{ 
                     localState().boundaryData(getNeighborNumber(sourceId)) = boundaryData;
                 });
