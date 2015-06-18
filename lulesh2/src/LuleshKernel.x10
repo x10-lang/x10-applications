@@ -158,16 +158,15 @@ public class LuleshKernel {
             val hgfy = new Rail[Double](8);
             val hgfz = new Rail[Double](8);
 */
-            var i3:Long = 8*min_i;
             for (i2 in min_i..max_i) {
+                val i3 = 8*i2;
                 val volinv = 1.0 / determ(i2);
                 for (i1 in 0..3) {
-                    val i3f = i3;
                     val hourmod = (a8n:Rail[Double]) => {
-                        a8n(i3f)   * gamma(i1,0) + a8n(i3f+1) * gamma(i1,1) +
-                        a8n(i3f+2) * gamma(i1,2) + a8n(i3f+3) * gamma(i1,3) +
-                        a8n(i3f+4) * gamma(i1,4) + a8n(i3f+5) * gamma(i1,5) +
-                        a8n(i3f+6) * gamma(i1,6) + a8n(i3f+7) * gamma(i1,7)
+                        a8n(i3)   * gamma(i1,0) + a8n(i3+1) * gamma(i1,1) +
+                        a8n(i3+2) * gamma(i1,2) + a8n(i3+3) * gamma(i1,3) +
+                        a8n(i3+4) * gamma(i1,4) + a8n(i3+5) * gamma(i1,5) +
+                        a8n(i3+6) * gamma(i1,6) + a8n(i3+7) * gamma(i1,7)
                     };
 
                     val hourmodx = hourmod(x8n);
@@ -176,9 +175,9 @@ public class LuleshKernel {
 
                     val setHourgam = (idx:Long) => {
                         hourgam(idx,i1) = gamma(i1,idx) 
-                            - volinv * (dvdx(i3f+idx) * hourmodx
-                                      + dvdy(i3f+idx) * hourmody
-                                      + dvdz(i3f+idx) * hourmodz);
+                            - volinv * (dvdx(i3+idx) * hourmodx
+                                      + dvdy(i3+idx) * hourmody
+                                      + dvdz(i3+idx) * hourmodz);
                     };
 
                     // TODO can re-roll this loop?
@@ -242,7 +241,6 @@ public class LuleshKernel {
                 for (i in 0..7) fx_elem(i3+i) = hgfx(i);
                 for (i in 0..7) fy_elem(i3+i) = hgfy(i);
                 for (i in 0..7) fz_elem(i3+i) = hgfz(i);
-                i3 += 8;
             }
         };
 
