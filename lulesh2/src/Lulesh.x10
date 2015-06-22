@@ -1601,26 +1601,26 @@ public final class Lulesh {
                         compHalfStep(i) = compression(i);
                     }
                 }
-
-                if (eosvmax != 0.0 ) {
-                    for (i in 0..(numElemReg-1)) {
-                    //Foreach.block(0, numElemReg-1, (i:Long)=> {
-                       val elem = regElemList(i);
-                       if (vnewc(elem) >= eosvmax) { /* impossible due to calling func? */
-                          p_old(i)        = 0.0;
-                          compression(i)  = 0.0;
-                          compHalfStep(i) = 0.0;
-                       }
-                    }
-                 }
-
-                work.clear(0, numElemReg);
-                /*
-                Foreach.block(0, numElemReg-1, (i:Long)=> {
-                    work(i) = 0.0; 
-                });
-                */
             }
+
+            if (eosvmax != 0.0 ) {
+                for (i in 0..(numElemReg-1)) {
+                //Foreach.block(0, numElemReg-1, (i:Long)=> {
+                   val elem = regElemList(i);
+                   if (vnewc(elem) >= eosvmax) { /* impossible due to calling func? */
+                      p_old(i)        = 0.0;
+                      compression(i)  = 0.0;
+                      compHalfStep(i) = 0.0;
+                   }
+                }
+            }
+
+            work.clear(0, numElemReg);
+            /*
+            Foreach.block(0, numElemReg-1, (i:Long)=> {
+                work(i) = 0.0; 
+            });
+            */
 
             calcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
                              p_old, e_old, q_old, compression, compHalfStep,
