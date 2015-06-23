@@ -10,14 +10,14 @@ aprun -e X10_NTHREADS=1 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 aprun -e X10_NTHREADS=1 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 aprun -e X10_NTHREADS=1 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 
-aprun -e X10_NTHREADS=2 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
-aprun -e X10_NTHREADS=2 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
-aprun -e X10_NTHREADS=2 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
+#aprun -e X10_NTHREADS=2 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
+#aprun -e X10_NTHREADS=2 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
+#aprun -e X10_NTHREADS=2 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 
 aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
 
-aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
-aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
-aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
+#aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
+#aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
+#aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 1 ./bin/lulesh2.0 -s 30
