@@ -57,6 +57,20 @@ public final class Lulesh {
     /** Manager for position gradient updates between plane neighbors */
     protected val gradientGhostMgr:GhostManager;
 
+    static val NUM_LOOPS = 38;
+    /** Time (in ns) spent executing each of the parallel loops in LULESH. */
+    static val loopTimes = new Rail[Long](NUM_LOOPS);
+    private @Inline def startLoop(i:Long) {
+@Ifdef("__RECORD_LOOP_TIMES__") {
+        loopTimes(i) -= Timer.nanoTime();
+}
+    }
+    private @Inline def endLoop(i:Long) {
+@Ifdef("__RECORD_LOOP_TIMES__") {
+        loopTimes(i) += Timer.nanoTime();
+}
+    }
+
     private static val EXIT_CODE_INCORRECT_USAGE = 2n;
 
     public static def main(args:Rail[String]) {
@@ -158,6 +172,13 @@ public final class Lulesh {
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
         verifyAndWriteFinalOutput(elapsedTime, domainPlh());
+
+@Ifdef("__RECORD_LOOP_TIMES__") {
+        Console.OUT.println("### Loop times (in microseconds) ###");
+        for (i in 0..(NUM_LOOPS-1)) {
+            Console.OUT.printf("%3ld %8ld\n", i, loopTimes(i) / 1000);
+        }
+}
     }
 
     /**
@@ -330,6 +351,7 @@ public final class Lulesh {
     }
 
     protected def calcForceForNodes(domain:Domain) {
+startLoop(0);
         domain.fx.clear();
         domain.fy.clear();
         domain.fz.clear();
@@ -340,6 +362,7 @@ public final class Lulesh {
             domain.fz(i) = 0.0;
         });
         */
+endLoop(0);
 
         calcVolumeForceForElems(domain);
 
@@ -367,12 +390,14 @@ public final class Lulesh {
             integrateStressForElems(domain, sigxx, sigyy, sigzz, determ);
 
             // check for negative element volume
+startLoop(4);
             for (k in 0..(numElem-1)) {
                 // TODO parallel loop
                 if (determ(k) <= 0.0) {
                     throw new VolumeException(k, determ(k));
                 }
             }
+endLoop(4);
 
             calcHourglassControlForElems(domain, determ, hgcoef);
 
@@ -387,9 +412,11 @@ public final class Lulesh {
     protected def initStressTermsForElems(domain:Domain, sigxx:Rail[Double], 
                                 sigyy:Rail[Double], sigzz:Rail[Double]) {
         // pull in the stresses appropriate to the hydro integration
+startLoop(1);
         Foreach.block(0, domain.numElem-1, (i:Long)=> {
             sigxx(i) = sigyy(i) = sigzz(i) = -domain.p(i) - domain.q(i);
         });
+endLoop(1);
     }
 
     /** 
@@ -406,6 +433,7 @@ public final class Lulesh {
         val fy_elem = Unsafe.allocRailUninitialized[Double](numElem8);
         val fz_elem = Unsafe.allocRailUninitialized[Double](numElem8);
 
+startLoop(2);
         Foreach.block(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
@@ -427,9 +455,11 @@ public final class Lulesh {
                                             fx_elem, fy_elem, fz_elem, k);
             }
         });
+endLoop(2);
 
         // copy the data out of the temporary
         // arrays used above into the final forces field
+startLoop(3);
         Foreach.block(0, domain.numNode-1,
         (min_g:Long, max_g:Long) => {
             for (gnode in min_g..max_g) {
@@ -449,6 +479,7 @@ public final class Lulesh {
                 domain.fz(gnode) = fz_tmp;
             }
         });
+endLoop(3);
 
         // force GC to reuse space for large temporary arrays
         Unsafe.dealloc(fx_elem);
@@ -611,6 +642,7 @@ public final class Lulesh {
         val y8n  = Unsafe.allocRailUninitialized[Double](numElem8);
         val z8n  = Unsafe.allocRailUninitialized[Double](numElem8);
 
+startLoop(5);
         Foreach.block(0, numElem-1,
         (min_i:Long, max_i:Long) => {
             @StackAllocate val x1 = @StackAllocate new Rail[Double](8);
@@ -644,6 +676,7 @@ public final class Lulesh {
                 }
             }
         } );
+endLoop(5);
 
         if (hgcoef > 0.0) {
             calcFBHourglassForceForElems(domain,
@@ -766,6 +799,7 @@ public final class Lulesh {
 
         // compute the hourglass modes
 
+startLoop(6);
         Foreach.block(0, domain.numElem-1,
         (min_i:Long, max_i:Long) => {
             @StackAllocate val hourgamStore = @StackAllocateUninitialized new Rail[Double](32);
@@ -862,8 +896,10 @@ public final class Lulesh {
                 Rail.copy(hgfz, 0, fz_elem, i3, 8);
             }
         });
+endLoop(6);
 
         // Collect the data from the local arrays into the final force arrays
+startLoop(7);
         Foreach.block(0, domain.numNode-1,
         (min_g:Long, max_g:Long) => {
             for (gnode in min_g..max_g) {
@@ -883,6 +919,7 @@ public final class Lulesh {
                 domain.fz(gnode) += fz_tmp;
             }
         });
+endLoop(7);
 
         // force GC to reuse space for large temporary arrays
         Unsafe.dealloc(fx_elem);
@@ -916,11 +953,13 @@ public final class Lulesh {
     }
 
     def calcAccelerationForNodes(domain:Domain) {
+startLoop(8);
         Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.xdd(i) = domain.fx(i) / domain.nodalMass(i);
             domain.ydd(i) = domain.fy(i) / domain.nodalMass(i);
             domain.zdd(i) = domain.fz(i) / domain.nodalMass(i);
         });
+endLoop(8);
     }
 
     def applyAccelerationBoundaryConditionsForNodes(domain:Domain) {
@@ -928,24 +967,30 @@ public final class Lulesh {
         val numNodeBC = (size+1)*(size+1);
 
         if (!domain.symmXempty()) {
+startLoop(9);
             for (i in 0..(numNodeBC-1)) {
             //Foreach.block(0, numNodeBC-1, (i:Long)=> {
                 domain.xdd(domain.symmX(i)) = 0.0;
             }
+endLoop(9);
         }
 
         if (!domain.symmYempty()) {
+startLoop(10);
             for (i in 0..(numNodeBC-1)) {
             //Foreach.block(0, numNodeBC-1, (i:Long)=> {
                 domain.ydd(domain.symmY(i)) = 0.0;
             }
+endLoop(10);
         }
 
         if (!domain.symmZempty()) {
+startLoop(11);
             for (i in 0..(numNodeBC-1)) {
             //Foreach.block(0, numNodeBC-1, (i:Long)=> {
                 domain.zdd(domain.symmZ(i)) = 0.0;
             }
+endLoop(11);
         }
     }
 
@@ -954,6 +999,7 @@ public final class Lulesh {
      * avoid spurious mesh motion due to floating point roundoff error.
      */
     def calcVelocityForNodes(domain:Domain, dt:Double, u_cut:Double) {
+startLoop(12);
         Foreach.block(0, domain.numNode-1, (i:Long)=> {
             var xdtmp:Double = domain.xd(i) + domain.xdd(i) * dt;
             if (Math.abs(xdtmp) < u_cut) xdtmp = 0.0;
@@ -967,14 +1013,17 @@ public final class Lulesh {
             if (Math.abs(zdtmp) < u_cut) zdtmp = 0.0;
             domain.zd(i) = zdtmp;
         });
+endLoop(12);
     }
 
     def calcPositionForNodes(domain:Domain, dt:Double) {
+startLoop(13);
         Foreach.block(0, domain.numNode-1, (i:Long)=> {
             domain.x(i) += domain.xd(i) * dt;
             domain.y(i) += domain.yd(i) * dt;
             domain.z(i) += domain.zd(i) * dt;
         });
+endLoop(13);
     }
 
     def calcLagrangeElements(domain:Domain, vnew:Rail[Double]) {
@@ -987,6 +1036,7 @@ public final class Lulesh {
             calcKinematicsForElems(domain, vnew, deltatime);
 
             // element loop to do some stuff not included in the elemlib function.
+startLoop(15);
             Foreach.block(0, numElem-1, (k:Long)=> {
                 // calc strain rate and apply as constraint (only done in FB element)
                 val vdov = domain.dxx(k) + domain.dyy(k) + domain.dzz(k);
@@ -1003,11 +1053,13 @@ public final class Lulesh {
                     throw new VolumeException(k, vnew(k));
                 }
             } );
+endLoop(15);
             domain.deallocateStrains();
         }
     }
 
     def calcKinematicsForElems(domain:Domain, vnew:Rail[Double], deltaTime:Double) {
+startLoop(14);
         Foreach.block(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
@@ -1057,6 +1109,7 @@ public final class Lulesh {
                 domain.dzz(k) = D(2);
             }
         } );
+endLoop(14);
     }
 
     private @Inline final def calcElemCharacteristicLength(
@@ -1168,6 +1221,7 @@ public final class Lulesh {
     }
 
     def calcMonotonicQGradientsForElems(domain:Domain, vnew:Rail[Double]) { 
+startLoop(16);
         Foreach.block(0, domain.numElem-1, (i:Long)=> {
             val ptiny = 1.e-36;
 
@@ -1303,6 +1357,7 @@ public final class Lulesh {
 
             domain.delv_eta(i) = ax*dxv + ay*dyv + az*dzv;
         } );
+endLoop(16);
     }
 
     /** calculate the monotonic q for all regions */
@@ -1323,6 +1378,7 @@ public final class Lulesh {
         val qqc_monoq = domain.qqc_monoq;
         val regElemList = domain.regElemList(r);
 
+startLoop(17);
         Foreach.block(0, domain.regElemSize(r)-1, (ielem:Long)=> {
             val i = regElemList(ielem);
             val bcMask = domain.elemBC(i);
@@ -1476,6 +1532,7 @@ public final class Lulesh {
             domain.qq(i) = qquad;
             domain.ql(i) = qlin;
         } );
+endLoop(17);
     }
 
     /** Update pressure and internal energy variables for the new timestep. */
@@ -1489,20 +1546,25 @@ public final class Lulesh {
 
             // Bound the updated relative volumes with eosvmin/max
             if (eosvmin != 0.0) {
+startLoop(18);
                 Foreach.block(0, numElem-1, (i:Long)=> {
                     if (vnew(i) < eosvmin) vnew(i) = eosvmin;
                 });
+endLoop(18);
             }
 
             if (eosvmax != 0.0) {
+startLoop(19);
                 Foreach.block(0, numElem-1, (i:Long)=> {
                     if (vnew(i) > eosvmax) vnew(i) = eosvmax;
                 });
+endLoop(19);
             }
 
             // This check may not make perfect sense in LULESH, but
             // it's representative of something in the full code -
             // just leave it in, please
+startLoop(20);
             Foreach.block(0, numElem-1, (i:Long)=> {
                 var vc:Double = domain.v(i);
                 if (eosvmin != 0.0) {
@@ -1515,6 +1577,7 @@ public final class Lulesh {
                     throw new VolumeException(i, vc);
                 }
             });
+endLoop(20);
 
             for (r in 0..(domain.numReg-1)) {
                 val numElemReg = domain.regElemSize(r);
@@ -1573,6 +1636,7 @@ public final class Lulesh {
         //loop to add load imbalance based on region number 
         for(j in 0..(rep-1)) {
             /* compress data, minimal set */
+startLoop(21);
             for (i in 0..(numElemReg-1)) {
             //Foreach.block(0, numElemReg-1, (i:Long)=> {
                 val elem = regElemList(i);
@@ -1583,7 +1647,9 @@ public final class Lulesh {
                 qq_old(i) = domain.qq(elem);
                 ql_old(i) = domain.ql(elem);
             }
+endLoop(21);
 
+startLoop(22);
             for (i in 0..(numElemReg-1)) {
             //Foreach.block(0, numElemReg-1, (i:Long)=> {
                 val elem = regElemList(i);
@@ -1591,9 +1657,11 @@ public final class Lulesh {
                 val vchalf = vnewc(elem) - delvc(i) * 0.5;
                 compHalfStep(i) = 1.0 / vchalf - 1.0;
             }
+endLoop(22);
 
             /* Check for v > eosvmax or v < eosvmin */
             if ( eosvmin != 0.0 ) {
+startLoop(23);
                 for (i in 0..(numElemReg-1)) {
                 //Foreach.block(0, numElemReg-1, (i:Long)=> {
                     val elem = regElemList(i);
@@ -1601,9 +1669,11 @@ public final class Lulesh {
                         compHalfStep(i) = compression(i);
                     }
                 }
+endLoop(23);
             }
 
             if (eosvmax != 0.0 ) {
+startLoop(24);
                 for (i in 0..(numElemReg-1)) {
                 //Foreach.block(0, numElemReg-1, (i:Long)=> {
                    val elem = regElemList(i);
@@ -1613,14 +1683,17 @@ public final class Lulesh {
                       compHalfStep(i) = 0.0;
                    }
                 }
+endLoop(24);
             }
 
+startLoop(25);
             work.clear(0, numElemReg);
             /*
             Foreach.block(0, numElemReg-1, (i:Long)=> {
                 work(i) = 0.0; 
             });
             */
+endLoop(25);
 
             calcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
                              p_old, e_old, q_old, compression, compHalfStep,
@@ -1631,6 +1704,7 @@ public final class Lulesh {
         }
 
         
+startLoop(33);
         for (i in 0..(numElemReg-1)) {
         //Foreach.block(0, numElemReg-1, (i:Long)=> {
             val elem = regElemList(i);
@@ -1638,6 +1712,7 @@ public final class Lulesh {
             domain.e(elem) = e_new(i);
             domain.q(elem) = q_new(i);
         }
+endLoop(33);
 
         calcSoundSpeedForElems(domain,
                           vnewc, rho0, e_new, p_new,
@@ -1673,6 +1748,7 @@ public final class Lulesh {
                 length:Long, regElemList:Rail[Long]) {
         val pHalfStep = Unsafe.allocRailUninitialized[Double](length);
 
+startLoop(26);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             e_new(i) = e_old(i) - 0.5 * delvc(i) * (p_old(i) + q_old(i))
@@ -1682,10 +1758,12 @@ public final class Lulesh {
                 e_new(i) = emin;
             }
         }
+endLoop(26);
 
         calcPressureForElems(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
                             pmin, p_cut, eosvmax, length, regElemList);
 
+startLoop(29);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             val vhalf = 1.0 / (1.0 + compHalfStep(i));
@@ -1710,7 +1788,9 @@ public final class Lulesh {
                      + 0.5 * delvc(i) 
                      * (3.0*(p_old(i)+q_old(i)) - 4.0*(pHalfStep(i)+q_new(i)));
         }
+endLoop(29);
 
+startLoop(30);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             e_new(i) += 0.5 * work(i);
@@ -1722,10 +1802,12 @@ public final class Lulesh {
                 e_new(i) = emin;
             }
         }
+endLoop(30);
 
         calcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                             pmin, p_cut, eosvmax, length, regElemList);
 
+startLoop(31);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             val sixth = 1.0 / 6.0;
@@ -1759,10 +1841,12 @@ public final class Lulesh {
                 e_new(i) = emin;
             }
         }
+endLoop(31);
 
         calcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
                             pmin, p_cut, eosvmax, length, regElemList);
 
+startLoop(32);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             val elem = regElemList(i);
@@ -1783,6 +1867,7 @@ public final class Lulesh {
                  if (Math.abs(q_new(i)) < q_cut) q_new(i) = 0.0;
             }
         }
+endLoop(32);
 
         Unsafe.dealloc(pHalfStep);
     }
@@ -1794,13 +1879,16 @@ public final class Lulesh {
                 p_cut:Double,eosvmax:Double,
                 length:Long, regElemList:Rail[Long]) {
 
+startLoop(27);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             val c1s = 2.0 / 3.0;
             bvc(i) = c1s * (compression(i) + 1.0);
             pbvc(i) = c1s;
         }
+endLoop(27);
 
+startLoop(28);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             val elem = regElemList(i);
@@ -1816,6 +1904,7 @@ public final class Lulesh {
             if  (p_new(i) <  pmin)
                 p_new(i) = pmin;
         }
+endLoop(28);
     }
 
     def calcSoundSpeedForElems(domain:Domain, vnewc:Rail[Double], 
@@ -1823,6 +1912,7 @@ public final class Lulesh {
                             pnewc:Rail[Double], pbvc:Rail[Double],
                             bvc:Rail[Double], ss4o3:Double,
                             length:Long, regElemList:Rail[Long]) {
+startLoop(34);
         for (i in 0..(length-1)) {
         //Foreach.block(0, length-1, (i:Long)=> {
             val elem = regElemList(i);
@@ -1835,15 +1925,18 @@ public final class Lulesh {
             }
             domain.ss(elem) = ssTmp;
         }
+endLoop(34);
     }
 
     def updateVolumesForElems(domain:Domain, vnew:Rail[Double]) {
+startLoop(35);
         Foreach.block(0, domain.numElem-1, (i:Long)=> {
             var tmpV:Double = vnew(i);
             // cutoff to avoid spurious volume change due to rounding error
             if (Math.abs(tmpV - 1.0) < domain.v_cut) tmpV = 1.0;
             domain.v(i) = tmpV;
         });
+endLoop(35);
     }
 
     /**
@@ -1854,6 +1947,7 @@ public final class Lulesh {
     def calcCourantConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
         val qqc2 = 64.0 * domain.qqc * domain.qqc;
 
+startLoop(36);
         val dtcourant_new = Foreach.blockReduce(0, length-1,
         (i:Long)=> {
             val indx = regElemList(i);
@@ -1874,6 +1968,7 @@ public final class Lulesh {
             dtf
         },
         (a:Double, b:Double) => Math.min(a,b), Double.MAX_VALUE);
+endLoop(36);
 
         domain.dtcourant = Math.min(domain.dtcourant, dtcourant_new);
     }
@@ -1886,6 +1981,7 @@ public final class Lulesh {
      * (prescribed) divided by vdov in the element.
      */
     def calcHydroConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
+startLoop(37);
         val dthydro_new = Foreach.blockReduce(0, length-1, (i:Long)=> {
             val indx = regElemList(i);
             var dthydro_tmp:Double;
@@ -1898,6 +1994,7 @@ public final class Lulesh {
             dthydro_tmp
         },
         (a:Double, b:Double) => Math.min(a,b), Double.MAX_VALUE);
+endLoop(37);
 
         domain.dthydro = Math.min(domain.dthydro, dthydro_new);
     }

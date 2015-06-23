@@ -4,7 +4,7 @@
 # SEDOV_SYNC_POS_VEL_LATE
 SYNCFLAG = -define SEDOV_SYNC_POS_VEL_EARLY
 
-X10FLAG = -O -VERBOSE_CHECKS -g -report postcompile=1 ${SYNCFLAG}
+X10FLAG = -O3 -VERBOSE_CHECKS -g -report postcompile=1 ${SYNCFLAG}
 ifdef NO_CHECKS
     X10FLAG += -NO_CHECKS
 endif
@@ -18,6 +18,11 @@ endif
 PROFILE ?=
 ifdef PROFILE
   X10FLAG += -gpt
+endif
+
+RECORD_LOOP_TIMES ?=
+ifdef RECORD_LOOP_TIMES
+  X10FLAG += -define __RECORD_LOOP_TIMES__
 endif
 
 BINDIR = bin
