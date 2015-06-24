@@ -1545,27 +1545,19 @@ endLoop(17);
             val eosvmax = domain.eosvmax;
 
             // Bound the updated relative volumes with eosvmin/max
-            if (eosvmin != 0.0) {
 startLoop(18);
-                Foreach.block(0, numElem-1, (i:Long)=> {
+            Foreach.block(0, numElem-1, (i:Long)=> {
+                if (eosvmin != 0.0) {
                     if (vnew(i) < eosvmin) vnew(i) = eosvmin;
-                });
-endLoop(18);
-            }
+                }
 
-            if (eosvmax != 0.0) {
-startLoop(19);
-                Foreach.block(0, numElem-1, (i:Long)=> {
+                if (eosvmax != 0.0) {
                     if (vnew(i) > eosvmax) vnew(i) = eosvmax;
-                });
-endLoop(19);
-            }
+                }
 
             // This check may not make perfect sense in LULESH, but
             // it's representative of something in the full code -
             // just leave it in, please
-startLoop(20);
-            Foreach.block(0, numElem-1, (i:Long)=> {
                 var vc:Double = domain.v(i);
                 if (eosvmin != 0.0) {
                     if (vc < eosvmin) vc = eosvmin;
@@ -1577,7 +1569,7 @@ startLoop(20);
                     throw new VolumeException(i, vc);
                 }
             });
-endLoop(20);
+endLoop(18); // fused loops 18-20
 
             for (r in 0..(domain.numReg-1)) {
                 val numElemReg = domain.regElemSize(r);
