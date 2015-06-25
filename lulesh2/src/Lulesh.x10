@@ -1610,14 +1610,6 @@ endLoop(18); // fused loops 18-20
         // These temporaries will be of different size for 
         // each call (due to different sized region element
         // lists)
-        val e_old = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val delvc = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val p_old = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val q_old = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val compression = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val compHalfStep = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val qq_old = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val ql_old = Unsafe.allocRailUninitialized[Double](numElemReg);
         val work = Unsafe.allocRailUninitialized[Double](numElemReg);
         val p_new = Unsafe.allocRailUninitialized[Double](numElemReg);
         val e_new = Unsafe.allocRailUninitialized[Double](numElemReg);
@@ -1629,96 +1621,58 @@ endLoop(18); // fused loops 18-20
         for(j in 0..(rep-1)) {
             /* compress data, minimal set */
 startLoop(21);
-            for (i in 0..(numElemReg-1)) {
-            //Foreach.block(0, numElemReg-1, (i:Long)=> {
+            Foreach.block(0, numElemReg-1, (i:Long)=> {
                 val elem = regElemList(i);
-                e_old(i) = domain.e(elem);
-                delvc(i) = domain.delv(elem);
-                p_old(i) = domain.p(elem);
-                q_old(i) = domain.q(elem);
-                qq_old(i) = domain.qq(elem);
-                ql_old(i) = domain.ql(elem);
-            }
-endLoop(21);
+                val e_old = domain.e(elem);
+                val delvc = domain.delv(elem);
+                var p_old:Double = domain.p(elem);
+                val q_old = domain.q(elem);
+                val qq_old = domain.qq(elem);
+                val ql_old = domain.ql(elem);
+                var compression:Double = 1.0 / vnewc(elem) - 1.0;
+                val vchalf = vnewc(elem) - delvc * 0.5;
+                var compHalfStep:Double = 1.0 / vchalf - 1.0;
 
-startLoop(22);
-            for (i in 0..(numElemReg-1)) {
-            //Foreach.block(0, numElemReg-1, (i:Long)=> {
-                val elem = regElemList(i);
-                compression(i) = 1.0 / vnewc(elem) - 1.0;
-                val vchalf = vnewc(elem) - delvc(i) * 0.5;
-                compHalfStep(i) = 1.0 / vchalf - 1.0;
-            }
-endLoop(22);
-
-            /* Check for v > eosvmax or v < eosvmin */
-            if ( eosvmin != 0.0 ) {
-startLoop(23);
-                for (i in 0..(numElemReg-1)) {
-                //Foreach.block(0, numElemReg-1, (i:Long)=> {
-                    val elem = regElemList(i);
+                if ( eosvmin != 0.0 ) {
                     if (vnewc(elem) <= eosvmin) { /* impossible due to calling func? */
-                        compHalfStep(i) = compression(i);
+                        compHalfStep = compression;
                     }
                 }
-endLoop(23);
-            }
 
-            if (eosvmax != 0.0 ) {
-startLoop(24);
-                for (i in 0..(numElemReg-1)) {
-                //Foreach.block(0, numElemReg-1, (i:Long)=> {
-                   val elem = regElemList(i);
+                if (eosvmax != 0.0 ) {
                    if (vnewc(elem) >= eosvmax) { /* impossible due to calling func? */
-                      p_old(i)        = 0.0;
-                      compression(i)  = 0.0;
-                      compHalfStep(i) = 0.0;
+                      p_old        = 0.0;
+                      compression  = 0.0;
+                      compHalfStep = 0.0;
                    }
                 }
-endLoop(24);
-            }
 
-startLoop(25);
-            work.clear(0, numElemReg);
-            /*
-            Foreach.block(0, numElemReg-1, (i:Long)=> {
                 work(i) = 0.0; 
-            });
-            */
-endLoop(25);
 
-            calcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
+                calcEnergyForElem(i, p_new, e_new, q_new, bvc, pbvc,
                              p_old, e_old, q_old, compression, compHalfStep,
                              vnewc, work, delvc, pmin,
                              p_cut, e_cut, q_cut, emin,
                              qq_old, ql_old, rho0, eosvmax,
-                             numElemReg, regElemList);
+                             elem);
+            });
+endLoop(21); // fused loops 21-32
         }
 
-        
 startLoop(33);
-        for (i in 0..(numElemReg-1)) {
-        //Foreach.block(0, numElemReg-1, (i:Long)=> {
+        Foreach.block(0, numElemReg-1, (i:Long)=> {
             val elem = regElemList(i);
             domain.p(elem) = p_new(i);
             domain.e(elem) = e_new(i);
             domain.q(elem) = q_new(i);
-        }
-endLoop(33);
 
-        calcSoundSpeedForElems(domain,
+            calcSoundSpeedForElem(i, domain,
                           vnewc, rho0, e_new, p_new,
                           pbvc, bvc, ss4o3,
-                          numElemReg, regElemList);
+                          elem);
+        });
+endLoop(33); // fused loops 33-34
 
-        Unsafe.dealloc(e_old);
-        Unsafe.dealloc(delvc);
-        Unsafe.dealloc(p_old);
-        Unsafe.dealloc(q_old);
-        Unsafe.dealloc(compression);
-        Unsafe.dealloc(compHalfStep);
-        Unsafe.dealloc(qq_old);
-        Unsafe.dealloc(ql_old);
         Unsafe.dealloc(work);
         Unsafe.dealloc(p_new);
         Unsafe.dealloc(e_new);
@@ -1727,197 +1681,156 @@ endLoop(33);
         Unsafe.dealloc(pbvc);
     }
 
-    private def calcEnergyForElems(p_new:Rail[Double],
+    private @Inline def calcEnergyForElem(i:Long, p_new:Rail[Double],
                 e_new:Rail[Double], q_new:Rail[Double], 
                 bvc:Rail[Double], pbvc:Rail[Double],
-                p_old:Rail[Double], e_old:Rail[Double], q_old:Rail[Double],
-                compression:Rail[Double], compHalfStep:Rail[Double],
+                p_old:Double, e_old:Double, q_old:Double,
+                compression:Double, compHalfStep:Double,
                 vnewc:Rail[Double], work:Rail[Double], 
-                delvc:Rail[Double], pmin:Double,
+                delvc:Double, pmin:Double,
                 p_cut:Double, e_cut:Double, q_cut:Double, emin:Double,
-                qq_old:Rail[Double], ql_old:Rail[Double],
+                qq_old:Double, ql_old:Double,
                 rho0:Double, eosvmax:Double,
-                length:Long, regElemList:Rail[Long]) {
-        val pHalfStep = Unsafe.allocRailUninitialized[Double](length);
+                elem:Long) {
 
-startLoop(26);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            e_new(i) = e_old(i) - 0.5 * delvc(i) * (p_old(i) + q_old(i))
-                     + 0.5 * work(i);
+        var e:Double = e_old - 0.5 * delvc * (p_old + q_old)
+                 + 0.5 * work(i);
 
-            if (e_new(i) < emin) {
-                e_new(i) = emin;
-            }
+        if (e < emin) {
+            e = emin;
         }
-endLoop(26);
 
-        calcPressureForElems(pHalfStep, bvc, pbvc, e_new, compHalfStep, vnewc,
-                            pmin, p_cut, eosvmax, length, regElemList);
+        val pHalfStep = calcPressureForElem(i, bvc, pbvc, e, compHalfStep,
+            vnewc, pmin, p_cut, eosvmax, elem);
 
-startLoop(29);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            val vhalf = 1.0 / (1.0 + compHalfStep(i));
+        val vhalf = 1.0 / (1.0 + compHalfStep);
 
-            if (delvc(i) > 0.0) {
-                q_new(i) /* = qq_old(i) = ql_old(i) */ = 0.0;
+        var q:Double;
+        if (delvc > 0.0) {
+            q /* = qq_old = ql_old */ = 0.0;
+        } else {
+            var ssc:Double = ( pbvc(i) * e
+                    + vhalf * vhalf * bvc(i) * pHalfStep ) 
+                / rho0;
+
+            if (ssc <= 0.1111111e-36) {
+                ssc = 0.3333333e-18;
             } else {
-                var ssc:Double = ( pbvc(i) * e_new(i)
-                        + vhalf * vhalf * bvc(i) * pHalfStep(i) ) 
-                    / rho0;
-
-                if (ssc <= 0.1111111e-36) {
-                    ssc = 0.3333333e-18;
-                } else {
-                    ssc = Math.sqrt(ssc);
-                }
-
-                q_new(i) = (ssc*ql_old(i) + qq_old(i));
+                ssc = Math.sqrt(ssc);
             }
 
-            e_new(i) = e_new(i) 
-                     + 0.5 * delvc(i) 
-                     * (3.0*(p_old(i)+q_old(i)) - 4.0*(pHalfStep(i)+q_new(i)));
+            q = (ssc*ql_old + qq_old);
         }
-endLoop(29);
 
-startLoop(30);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            e_new(i) += 0.5 * work(i);
+        e = e + 0.5 * delvc
+              * (3.0*(p_old+q_old) - 4.0*(pHalfStep+q));
 
-            if (Math.abs(e_new(i)) < e_cut) {
-                e_new(i) = 0.0;
-            }
-            if (e_new(i) < emin) {
-                e_new(i) = emin;
-            }
+        e += 0.5 * work(i);
+
+        if (Math.abs(e) < e_cut) {
+            e = 0.0;
         }
-endLoop(30);
+        if (e < emin) {
+            e = emin;
+        }
 
-        calcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
-                            pmin, p_cut, eosvmax, length, regElemList);
+        var p:Double = calcPressureForElem(i, bvc, pbvc, e, compression,
+                        vnewc, pmin, p_cut, eosvmax, elem);
 
-startLoop(31);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            val sixth = 1.0 / 6.0;
-            val elem = regElemList(i);
-            var q_tilde:Double;
+        val sixth = 1.0 / 6.0;
 
-            if (delvc(i) > 0.0) {
-                q_tilde = 0.0;
+        var q_tilde:Double;
+
+        if (delvc > 0.0) {
+            q_tilde = 0.0;
+        } else {
+            var ssc:Double = (pbvc(i) * e
+                    + vnewc(elem) * vnewc(elem) * bvc(i) * p )
+                 / rho0;
+
+            if (ssc <= 0.1111111e-36) {
+                ssc = 0.3333333e-18;
             } else {
-                var ssc:Double = (pbvc(i) * e_new(i)
-                        + vnewc(elem) * vnewc(elem) * bvc(i) * p_new(i) )
-                     / rho0;
-
-                if (ssc <= 0.1111111e-36) {
-                    ssc = 0.3333333e-18;
-                } else {
-                    ssc = Math.sqrt(ssc);
-                }
-
-                q_tilde = (ssc*ql_old(i) + qq_old(i));
+                ssc = Math.sqrt(ssc);
             }
 
-            e_new(i) = e_new(i) - (  7.0*(p_old(i)     + q_old(i))
-                                   - 8.0*(pHalfStep(i) + q_new(i))
-                                   + (p_new(i) + q_tilde)) * delvc(i)*sixth;
-
-            if (Math.abs(e_new(i)) < e_cut) {
-                e_new(i) = 0.0;
-            }
-            if (e_new(i) < emin) {
-                e_new(i) = emin;
-            }
+            q_tilde = (ssc*ql_old + qq_old);
         }
-endLoop(31);
 
-        calcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
-                            pmin, p_cut, eosvmax, length, regElemList);
+        e = e - (  7.0*(p_old     + q_old)
+                 - 8.0*(pHalfStep + q)
+                 + (p + q_tilde)) * delvc*sixth;
 
-startLoop(32);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            val elem = regElemList(i);
-
-            if (delvc(i) <= 0.0) {
-                var ssc:Double = (pbvc(i) * e_new(i)
-                        + vnewc(elem) * vnewc(elem) * bvc(i) * p_new(i) )
-                    / rho0;
-
-                 if (ssc <= 0.1111111e-36) {
-                    ssc = 0.3333333e-18;
-                 } else {
-                    ssc = Math.sqrt(ssc);
-                 }
-
-                 q_new(i) = (ssc*ql_old(i) + qq_old(i));
-
-                 if (Math.abs(q_new(i)) < q_cut) q_new(i) = 0.0;
-            }
+        if (Math.abs(e) < e_cut) {
+            e = 0.0;
         }
-endLoop(32);
+        if (e < emin) {
+            e = emin;
+        }
 
-        Unsafe.dealloc(pHalfStep);
+        p = calcPressureForElem(i, bvc, pbvc, e, compression,
+                        vnewc, pmin, p_cut, eosvmax, elem);
+
+        if (delvc <= 0.0) {
+            var ssc:Double = (pbvc(i) * e
+                    + vnewc(elem) * vnewc(elem) * bvc(i) * p )
+                / rho0;
+
+             if (ssc <= 0.1111111e-36) {
+                ssc = 0.3333333e-18;
+             } else {
+                ssc = Math.sqrt(ssc);
+             }
+
+             q = (ssc*ql_old + qq_old);
+
+             if (Math.abs(q) < q_cut) q = 0.0;
+        }
+
+        p_new(i) = p;
+        e_new(i) = e;
+        q_new(i) = q;
     }
 
-    def calcPressureForElems(p_new:Rail[Double], 
+    private @Inline def calcPressureForElem(i:Long, 
                 bvc:Rail[Double], pbvc:Rail[Double],
-                e_old:Rail[Double], compression:Rail[Double],
+                e_old:Double, compression:Double,
                 vnewc:Rail[Double], pmin:Double,
-                p_cut:Double,eosvmax:Double,
-                length:Long, regElemList:Rail[Long]) {
+                p_cut:Double, eosvmax:Double,
+                elem:Long):Double {
 
-startLoop(27);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            val c1s = 2.0 / 3.0;
-            bvc(i) = c1s * (compression(i) + 1.0);
-            pbvc(i) = c1s;
-        }
-endLoop(27);
+        val c1s = 2.0 / 3.0;
+        bvc(i) = c1s * (compression + 1.0);
+        pbvc(i) = c1s;
+      
+        var p_new:Double = bvc(i) * e_old;
 
-startLoop(28);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            val elem = regElemList(i);
-          
-            p_new(i) = bvc(i) * e_old(i);
+        if (Math.abs(p_new) < p_cut)
+            p_new = 0.0;
 
-            if (Math.abs(p_new(i)) < p_cut)
-                p_new(i) = 0.0;
+        if (vnewc(elem) >= eosvmax) /* impossible condition here? */
+            p_new = 0.0;
 
-            if (vnewc(elem) >= eosvmax) /* impossible condition here? */
-                p_new(i) = 0.0;
+        if  (p_new < pmin)
+            p_new = pmin;
 
-            if  (p_new(i) <  pmin)
-                p_new(i) = pmin;
-        }
-endLoop(28);
+        return p_new;
     }
 
-    def calcSoundSpeedForElems(domain:Domain, vnewc:Rail[Double], 
+    private @Inline def calcSoundSpeedForElem(i:Long,
+                            domain:Domain, vnewc:Rail[Double], 
                             rho0:Double, enewc:Rail[Double],
                             pnewc:Rail[Double], pbvc:Rail[Double],
                             bvc:Rail[Double], ss4o3:Double,
-                            length:Long, regElemList:Rail[Long]) {
-startLoop(34);
-        for (i in 0..(length-1)) {
-        //Foreach.block(0, length-1, (i:Long)=> {
-            val elem = regElemList(i);
-            var ssTmp:Double = (pbvc(i) * enewc(i) + vnewc(elem) * 
-                                vnewc(elem) * bvc(i) * pnewc(i)) / rho0;
-            if (ssTmp <= 0.1111111e-36) {
-                ssTmp = 0.3333333e-18;
-            } else {
-                ssTmp = Math.sqrt(ssTmp);
-            }
-            domain.ss(elem) = ssTmp;
+                            elem:Long) {
+        var ssTmp:Double = (pbvc(i) * enewc(i) + vnewc(elem) * 
+                            vnewc(elem) * bvc(i) * pnewc(i)) / rho0;
+        if (ssTmp <= 0.1111111e-36) {
+            ssTmp = 0.3333333e-18;
+        } else {
+            ssTmp = Math.sqrt(ssTmp);
         }
-endLoop(34);
+        domain.ss(elem) = ssTmp;
     }
 
     def updateVolumesForElems(domain:Domain, vnew:Rail[Double]) {
