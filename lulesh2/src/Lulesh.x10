@@ -1668,10 +1668,22 @@ startLoop(33);
             domain.e(elem) = e_new(i);
             domain.q(elem) = q_new(i);
 
-            calcSoundSpeedForElem(i, domain,
-                          vnewc, rho0, e_new, p_new,
-                          pbvc, bvc, ss4o3,
-                          elem);
+            val calcSoundSpeedForElem = (vnewc:Double, enewc:Double,
+                pnewc:Double, pbvc:Double, bvc:Double) => 
+            {
+                var ss:Double = (pbvc * enewc 
+                                  + vnewc * vnewc * bvc * pnewc) / rho0;
+                if (ss <= 0.1111111e-36) {
+                    ss = 0.3333333e-18;
+                } else {
+                    ss = Math.sqrt(ss);
+                }
+
+                ss
+            };
+
+            domain.ss(elem) = calcSoundSpeedForElem(vnewc(elem), e_new(i),
+                p_new(i), pbvc(i), bvc(i));
         });
 endLoop(33); // fused loops 33-34
 
@@ -1817,22 +1829,6 @@ endLoop(33); // fused loops 33-34
             p_new = pmin;
 
         return p_new;
-    }
-
-    private @Inline def calcSoundSpeedForElem(i:Long,
-                            domain:Domain, vnewc:Rail[Double], 
-                            rho0:Double, enewc:Rail[Double],
-                            pnewc:Rail[Double], pbvc:Rail[Double],
-                            bvc:Rail[Double], ss4o3:Double,
-                            elem:Long) {
-        var ssTmp:Double = (pbvc(i) * enewc(i) + vnewc(elem) * 
-                            vnewc(elem) * bvc(i) * pnewc(i)) / rho0;
-        if (ssTmp <= 0.1111111e-36) {
-            ssTmp = 0.3333333e-18;
-        } else {
-            ssTmp = Math.sqrt(ssTmp);
-        }
-        domain.ss(elem) = ssTmp;
     }
 
     def updateVolumesForElems(domain:Domain, vnew:Rail[Double]) {
