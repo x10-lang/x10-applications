@@ -169,8 +169,6 @@ public final class Domain {
     public val numReg:Int;
     /** Extra cost of more expensive regions */
     public val cost:Int;
-    /** Size of region sets */
-    public var regElemSize:Rail[Long];
     /** Region (material) number per domain element */
     public var regNumList:Rail[Long];
     /** Region indexset */
@@ -701,7 +699,7 @@ public final class Domain {
      */
     private @NonEscaping def createRegionIndexSets(nr:Int, balance:Int) {
         regNumList = new Rail[Long](numElem);
-        regElemSize = new Rail[Long](nr);
+        val regElemSize = new Rail[Long](nr);
         regElemList = new Rail[Rail[Long]](nr);
 
         srand(here.id as Int);

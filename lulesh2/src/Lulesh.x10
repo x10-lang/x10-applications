@@ -143,7 +143,7 @@ public final class Lulesh {
 
             //debug to see region sizes
             //for (var i:Long = 0; i < domain.numReg; i++)
-            //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemSize(i));
+            //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemList(i).size);
 
             while((domain.time < domain.stopTime) && (domain.cycle < opts.its)) {
                 timeIncrement(domain);
@@ -188,7 +188,6 @@ public final class Lulesh {
     private def printLoadImbalance(domain:Domain) {
         var repTimesNumElem:Int = 0n;
         for (r in 0..(domain.numReg-1)) {
-            val numElemReg = domain.regElemSize(r);
             var rep:Int;
             // Determine load imbalance for this region
             // round down the number with lowest cost
@@ -200,7 +199,7 @@ public final class Lulesh {
             // very expensive regions
             else
                 rep = 10n * (1n + domain.cost);
-            repTimesNumElem += rep * numElemReg;
+            repTimesNumElem += rep * domain.regElemList(r).size;
         }
         val maxLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
         val totalLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
@@ -341,12 +340,10 @@ public final class Lulesh {
 
         for (r in 0..(domain.numReg-1)) {
             /* evaluate time constraint */
-            calcCourantConstraintForElems(domain, domain.regElemSize(r),
-                                    domain.regElemList(r));
+            calcCourantConstraintForElems(domain, domain.regElemList(r));
 
             /* check hydro constraint */
-            calcHydroConstraintForElems(domain, domain.regElemSize(r),
-                                    domain.regElemList(r));
+            calcHydroConstraintForElems(domain, domain.regElemList(r));
         }
     }
 
@@ -1365,7 +1362,7 @@ endLoop(16);
         // initialize parameters
         val ptiny = 1.e-36;
         for (r in 0..(domain.numReg-1)) {
-            if (domain.regElemSize(r) > 0) {
+            if (domain.regElemList(r).size > 0) {
                 calcMonotonicQRegionForElems(domain, r, vnew, ptiny);
             }
         }
@@ -1379,7 +1376,7 @@ endLoop(16);
         val regElemList = domain.regElemList(r);
 
 startLoop(17);
-        Foreach.block(0, domain.regElemSize(r)-1, (ielem:Long)=> {
+        Foreach.block(0, regElemList.size-1, (ielem:Long)=> {
             val i = regElemList(ielem);
             val bcMask = domain.elemBC(i);
             var delvm:Double = 0.0, delvp:Double = 0.0;
@@ -1572,7 +1569,6 @@ startLoop(18);
 endLoop(18); // fused loops 18-20
 
             for (r in 0..(domain.numReg-1)) {
-                val numElemReg = domain.regElemSize(r);
                 val regElemList = domain.regElemList(r);
                 var rep:Int;
                 // Determine load imbalance for this region
@@ -1585,7 +1581,7 @@ endLoop(18); // fused loops 18-20
                 // very expensive regions
                 else
                     rep = 10n * (1n + domain.cost);
-                evalEOSForElems(domain, vnew, numElemReg, regElemList, rep);
+                evalEOSForElems(domain, vnew, regElemList, rep);
             }
         }
     }
@@ -1595,7 +1591,7 @@ endLoop(18); // fused loops 18-20
      * viscosity) for each element.
      */
     protected def evalEOSForElems(domain:Domain, vnewc:Rail[Double],
-                        numElemReg:Long, regElemList:Rail[Long], rep:Int) {
+                        regElemList:Rail[Long], rep:Int) {
         val e_cut = domain.e_cut;
         val p_cut = domain.p_cut;
         val ss4o3 = domain.ss4o3;
@@ -1610,6 +1606,7 @@ endLoop(18); // fused loops 18-20
         // These temporaries will be of different size for 
         // each call (due to different sized region element
         // lists)
+        val numElemReg = regElemList.size;
         val work = Unsafe.allocRailUninitialized[Double](numElemReg);
         val p_new = Unsafe.allocRailUninitialized[Double](numElemReg);
         val e_new = Unsafe.allocRailUninitialized[Double](numElemReg);
@@ -1849,11 +1846,11 @@ endLoop(35);
      * This constraint is calculated only in elements whose volumes are 
      * changing; that is, vdov != 0.0.
      */
-    def calcCourantConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
+    def calcCourantConstraintForElems(domain:Domain, regElemList:Rail[Long]) {
         val qqc2 = 64.0 * domain.qqc * domain.qqc;
 
 startLoop(36);
-        val dtcourant_new = Foreach.blockReduce(0, length-1,
+        val dtcourant_new = Foreach.blockReduce(0, regElemList.size-1,
         (i:Long)=> {
             val indx = regElemList(i);
             var dtf:Double;
@@ -1885,9 +1882,9 @@ endLoop(36);
      * for the element is some maximum allowable element volume change 
      * (prescribed) divided by vdov in the element.
      */
-    def calcHydroConstraintForElems(domain:Domain, length:Long, regElemList:Rail[Long]) {
+    def calcHydroConstraintForElems(domain:Domain, regElemList:Rail[Long]) {
 startLoop(37);
-        val dthydro_new = Foreach.blockReduce(0, length-1, (i:Long)=> {
+        val dthydro_new = Foreach.blockReduce(0, regElemList.size-1, (i:Long)=> {
             val indx = regElemList(i);
             var dthydro_tmp:Double;
             if (domain.vdov(indx) == 0.0) {
