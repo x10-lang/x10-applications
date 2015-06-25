@@ -467,10 +467,10 @@ public final class Domain {
 
     public def gatherGhosts(destId:Long, 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
-                sideLength:Long):Rail[Double] {
+                sideLength:Long,
+                transfer:Rail[Double]):void {
         val fields = accessFields(this);
         val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
-        val transfer = Unsafe.allocRailUninitialized[Double](boundaryRegion.size()*fields.size);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
@@ -481,8 +481,6 @@ public final class Domain {
                 }
             }
         }
-
-        return transfer;
     }
 
     public def updateBoundaryData(sourceId:Long, data:Rail[Double], 

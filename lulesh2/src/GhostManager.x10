@@ -20,12 +20,6 @@ public final class GhostManager {
         /** List of neighbors to which data must be sent. */
         public val neighborListSend:Rail[Long];
 
-        /**
-         * GlobalRails pointing to the recvBuffer entry
-         * for each neighbor in neighbotListSend.
-         */
-        public val remoteRecvBuffers:Rail[GlobalRail[Double]];
-
         /** List of neighbors from which data must be received. */
         public val neighborListRecv:Rail[Long];
 
@@ -35,9 +29,21 @@ public final class GhostManager {
         public var neighborsReceivedCount:Long;
 
         /**
+         * Pre-allocated buffers for sending ghost data.
+         */
+        public val sendBuffers:Rail[Rail[Double]{self!=null}]{self!=null};
+
+        /**
          * Pre-allocated buffers into which neighbors will place their data.
+         * Other Place's removeRecvBuffers contain GlobalRails pointing to these.
          */
         public val recvBuffers:Rail[Rail[Double]{self!=null}]{self!=null};
+
+        /**
+         * GlobalRails pointing to the recvBuffer entry
+         * for each neighbor in neighbotListSend.
+         */
+        public val remoteRecvBuffers:Rail[GlobalRail[Double]];
 
         /**
          * The pending update functions recevied from neighbors for the current cycle
@@ -82,6 +88,8 @@ public final class GhostManager {
             this.currentPhase = 0;
             this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
             this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
+                                                      (i:Long) => new Rail[Double](recvBufferSize(i)));
+            this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
                                                       (i:Long) => new Rail[Double](recvBufferSize(i)));
             val dummy = GlobalRail[Double](new Rail[Double](0));
             this.remoteRecvBuffers = new Rail[GlobalRail[Double]](neighborListSend.size, dummy);
@@ -250,8 +258,8 @@ public final class GhostManager {
         val phase = localState().currentPhase;
         val neighbors = localState().neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            // TODO: reduce local dynamic memory allocation by using pre-allocated local buffer.
-            val ghosts = sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength);
+            val ghosts = localState().sendBuffers(i);
+            sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength, ghosts);
             val target = localState().remoteRecvBuffers(i);
             Rail.uncountedCopy(ghosts, 0, target, 0, ghosts.size, ()=> {
                 postUpdateFunction(phase,  ()=>{
