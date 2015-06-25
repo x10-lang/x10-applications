@@ -110,18 +110,23 @@ public final class Lulesh {
         this.domainPlh = domainPlh;
 
         // initialize ghost updates
+        val elemsPerSide = opts.nx;
         this.massGhostMgr = new GhostManager(
                 () => domainPlh().loc.createNeighborList(false, true, true),
-                () => domainPlh().loc.createNeighborList(false, true, true));
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                (Long) => 0);
         this.posVelGhostMgr = new GhostManager(
                 () => domainPlh().loc.createNeighborList(false, false, true),
-                () => domainPlh().loc.createNeighborList(false, true, false));
+                () => domainPlh().loc.createNeighborList(false, true, false),
+                (Long) => 0);
         this.forceGhostMgr = new GhostManager(
                 () => domainPlh().loc.createNeighborList(false, true, true),
-                () => domainPlh().loc.createNeighborList(false, true, true));
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                (Long) => 0);
         this.gradientGhostMgr = new GhostManager(
                 () => domainPlh().loc.createNeighborList(true, true, true),
-                () => domainPlh().loc.createNeighborList(true, true, true));
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                (Long) => 3 * elemsPerSide * elemsPerSide);
     }
 
     public def run(opts:CommandLineOptions) {
