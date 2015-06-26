@@ -15,8 +15,8 @@ import x10.util.Stack;
 import x10.compiler.Inline;
 
 /** Manages updates of ghost data for LULESH. */
-public final class GhostManager {
-    static final class LocalState {
+public abstract class GhostManager {
+    static class LocalState {
         /** List of neighbors to which data must be sent. */
         public val neighborListSend:Rail[Long];
 
@@ -58,18 +58,11 @@ public final class GhostManager {
          */
         public var currentPhase:Long;
 
-        /**
-         * Boundary data received from other places, held for later combination
-         * with boundary data computed locally.
-         * TODO: Eventually this should be done directly from the recvBuffers.
-         */
-        var boundaryData:Rail[Rail[Double]];
-
         public var sendTime:Long = 0;
         public var processTime:Long = 0;
         public var waitTime:Long = 0;
 
-        final def getNeighborNumber(neighborId:Long) {
+        protected final def getNeighborNumber(neighborId:Long) {
             for (i in 0..(neighborListRecv.size-1)) {
                 if (neighborId == neighborListRecv(i)) {
                     return i;
@@ -78,7 +71,7 @@ public final class GhostManager {
             throw new IllegalArgumentException(here + " getNeighborNumber for " + neighborId);
         }
 
-        public def this(neighborListSend:Rail[Long], 
+        protected def this(neighborListSend:Rail[Long], 
                         neighborListRecv:Rail[Long],
                         recvBufferSize:(Long)=>Long) {
             this.neighborListSend = neighborListSend;
@@ -86,7 +79,6 @@ public final class GhostManager {
             this.neighborsReceivedCount = 0;
             this.updateFunctions = new Stack[()=>void]();
             this.currentPhase = 0;
-            this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
             this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
                                                       (i:Long) => new Rail[Double](recvBufferSize(i)));
             this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
@@ -100,20 +92,8 @@ public final class GhostManager {
 
     /**
      * Create a new GhostManager for ghost updates between all places.
-     * @param initNeighborsSend a closure that, when executed at a given place,
-     *     returns a list of the neighboring places to which to send
-     * @param initNeighborsRecv a closure that, when executed at a given place,
-     *     returns a list of the neighboring places from which to receive
-     * @param recvBufferSize a closure that, when executed at a given place and
-     *     given a neighbor number returns the size (in elements) of the Rail[Double]
-     *     that will be needed to receive updates from that neighbor
      */
-    public def this(initNeighborsSend:() => Rail[Long], 
-                    initNeighborsRecv:() => Rail[Long],
-                    recvBufferSize:(Long)=>Long) {
-        val ls = PlaceLocalHandle.make[LocalState](Place.places(), () => new LocalState(initNeighborsSend(), 
-                                                                                        initNeighborsRecv(),
-                                                                                        recvBufferSize));
+    protected def this(ls:PlaceLocalHandle[LocalState]) {
         this.localState = ls;
 
         // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
@@ -131,8 +111,6 @@ public final class GhostManager {
             }
         });
     }
-
-
 
     /** 
      * Wait for all ghosts to be received and then return.
@@ -154,43 +132,13 @@ public final class GhostManager {
         }
     }
 
-    /** 
-     * Wait for all boundary data to be received from neighboring places,
-     * and then combine it with boundary data computed at this place.
-     * Switch ghost manager phase from sending to using ghost data.
-     */
-    public final def waitAndCombineBoundaries(domainPlh:PlaceLocalHandle[Domain],
-            accessFields:(dom:Domain) => Rail[Rail[Double]],
-            sideLength:Long) {
-        val t1 = Timer.milliTime();
-        processUpdateFunctions();
-        val t2 = Timer.milliTime();
-        localState().processTime += (t2 - t1);
-        when (allNeighborsReceived()) {
-            val t3 = Timer.milliTime();
-            localState().waitTime += (t3 - t2);
-            processUpdateFunctions();
-            val boundaryData = localState().boundaryData;
-            for (i in 0..(boundaryData.size-1)) {
-                if (boundaryData(i) != null) {
-                    domainPlh().accumulateBoundaryData(localState().neighborListRecv(i), boundaryData(i), accessFields, sideLength);
-                    boundaryData(i) = null;
-                }
-            }
-            localState().currentPhase++;
-            localState().neighborsReceivedCount = 0;
-            val t4 = Timer.milliTime();
-            localState().processTime += (t4 - t3);
-        }
-    }
-
-    private def allNeighborsReceived():Boolean {
+    protected final def allNeighborsReceived():Boolean {
         val received = localState().neighborsReceivedCount;
         val expected = localState().neighborListRecv.size;
         return received == expected;
     }
 
-    private def processUpdateFunctions() {
+    protected final def processUpdateFunctions() {
         val functions = localState().updateFunctions;
         while (true) {
             var f:()=>void = null;
@@ -200,7 +148,7 @@ public final class GhostManager {
         }
     }
 
-    private @Inline def postUpdateFunction(posterPhase:Long, updateFunction:()=>void) {
+    protected final @Inline def postUpdateFunction(posterPhase:Long, updateFunction:()=>void) {
         val state = localState();
         if (posterPhase == state.currentPhase) {
             updateFunction();
@@ -211,92 +159,5 @@ public final class GhostManager {
                 state.neighborsReceivedCount++;
             }
         }
-    }
-
-    private def getNeighborNumber(neighborId:Long) = localState().getNeighborNumber(neighborId);
-
-    /**
-     * Update boundary data at all neighboring places, overwriting with data
-     * from this place's boundary region.
-     * @param domainPlh domain data at each place
-     * @param accessFields a closure which returns an array of the fields to be
-     *   updated as Rail[Rail[Double]]
-     * @param sideLength the length of each side of the boundary region
-     */
-    public def updateBoundaryData(domainPlh:PlaceLocalHandle[Domain], 
-                        accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        sideLength:Long) {
-        val start = Timer.milliTime();
-        atomic localState().currentPhase++;
-        val sourceId = here.id;
-        val sourceDom = domainPlh();
-        val phase = localState().currentPhase;
-        val neighbors = localState().neighborListSend;
-        for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
-            at(Place(neighbors(i))) @Uncounted async {
-                postUpdateFunction(phase, ()=>{ 
-                    domainPlh().updateBoundaryData(sourceId, boundaryData, accessFields, sideLength); 
-                });
-            }
-        }
-        localState().sendTime += Timer.milliTime() - start;
-    }
-
-    /**
-     * Update ghost data for plane boundaries at neighboring places with plane
-     * boundary data from this place.  Plane ghost data are stored contiguously
-     * for each plane *after* all locally-managed data at each place. 
-     */
-    public def updatePlaneGhosts(domainPlh:PlaceLocalHandle[Domain], 
-                        accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        sideLength:Long) {
-        val start = Timer.milliTime();
-        atomic localState().currentPhase++;
-        val sourceId = here.id;
-        val sourceDom = domainPlh();
-        val phase = localState().currentPhase;
-        val neighbors = localState().neighborListSend;
-        for (i in 0..(neighbors.size-1)) {
-            val ghosts = localState().sendBuffers(i);
-            sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength, ghosts);
-            val target = localState().remoteRecvBuffers(i);
-            Rail.uncountedCopy(ghosts, 0, target, 0, ghosts.size, ()=> {
-                postUpdateFunction(phase,  ()=>{
-                    var ghostOffset:Long = sideLength*sideLength*sideLength;
-                    val ghostRegionSize = (sideLength)*(sideLength);
-                    val neighborIdx = localState().getNeighborNumber(sourceId);
-                    ghostOffset += neighborIdx * ghostRegionSize;
-                    domainPlh().updateGhosts(localState().recvBuffers(neighborIdx), 
-                                             accessFields, ghostRegionSize, ghostOffset);
-                });
-            });
-        }
-        localState().sendTime += Timer.milliTime() - start;
-    }
-
-    /**
-     * Send boundary data from this place to neighboring places to be combined
-     * later by waitAndCombineBoundaries.
-     * @see waitAndCombineBoundaries
-     */
-    public def gatherBoundariesToCombine(domainPlh:PlaceLocalHandle[Domain], 
-                        accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        sideLength:Long) {
-        val start = Timer.milliTime();
-        atomic localState().currentPhase++;
-        val sourceId = here.id;
-        val sourceDom = domainPlh();
-        val phase = localState().currentPhase;
-        val neighbors = localState().neighborListSend;
-        for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), accessFields, sideLength);
-            at(Place(neighbors(i))) @Uncounted async {
-                postUpdateFunction(phase, ()=>{ 
-                    localState().boundaryData(getNeighborNumber(sourceId)) = boundaryData;
-                });
-            }
-        }
-        localState().sendTime += Timer.milliTime() - start;
     }
 }

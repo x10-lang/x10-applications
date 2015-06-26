@@ -49,13 +49,13 @@ public final class Lulesh {
     protected val domainPlh:PlaceLocalHandle[Domain];
 
     /** Manager for nodal mass updates between all neighbors */
-    protected val massGhostMgr:GhostManager;
+    protected val massGhostMgr:BoundaryGhostManager;
     /** Manager for positions and velocity updates between all neighbors */
-    protected val posVelGhostMgr:GhostManager;
+    protected val posVelGhostMgr:BoundaryGhostManager;
     /** Manager for force updates between all neighbors */
-    protected val forceGhostMgr:GhostManager;
+    protected val forceGhostMgr:BoundaryGhostManager;
     /** Manager for position gradient updates between plane neighbors */
-    protected val gradientGhostMgr:GhostManager;
+    protected val gradientGhostMgr:PlaneGhostManager;
 
     static val NUM_LOOPS = 38;
     /** Time (in ns) spent executing each of the parallel loops in LULESH. */
@@ -111,19 +111,19 @@ public final class Lulesh {
 
         // initialize ghost updates
         val elemsPerSide = opts.nx;
-        this.massGhostMgr = new GhostManager(
+        this.massGhostMgr = BoundaryGhostManager.make(
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 (Long) => 0);
-        this.posVelGhostMgr = new GhostManager(
+        this.posVelGhostMgr = BoundaryGhostManager.make(
                 () => domainPlh().loc.createNeighborList(false, false, true),
                 () => domainPlh().loc.createNeighborList(false, true, false),
                 (Long) => 0);
-        this.forceGhostMgr = new GhostManager(
+        this.forceGhostMgr = BoundaryGhostManager.make(
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 (Long) => 0);
-        this.gradientGhostMgr = new GhostManager(
+        this.gradientGhostMgr = PlaneGhostManager.make(
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 (Long) => 3 * elemsPerSide * elemsPerSide);

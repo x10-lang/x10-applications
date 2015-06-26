@@ -11,6 +11,7 @@
 
 import x10.compiler.NonEscaping;
 import x10.util.ArrayList;
+import x10.regionarray.Region;
 
 /** 
  * Represents a domain's location in the grid decomposition for LULESH.
@@ -79,7 +80,7 @@ public final class DomainLoc(
      * @param hi include domains that are further from the origin than this domain
      * @param lo include domains that are closer to the origin than this domain
      */
-    public def createNeighborList(planeOnly:Boolean, hi:Boolean, lo:Boolean) {
+    public def createNeighborList(planeOnly:Boolean, hi:Boolean, lo:Boolean):Rail[Long] {
         val p = tp * tp;
         val r = tp;
         val c = 1;
@@ -127,6 +128,48 @@ public final class DomainLoc(
         }
 
         return nl.toRail();
+    }
+
+    /**
+     * Return the region of ghost elements that senderLoc and receiverLoc
+     * exchange. 
+     * @param senderLoc is the DomainLoc of the sending domain in the grid
+     * @param receiverLoc is the DomainLoc of the receiving domain in the grid
+     * @param edgeMax the maximum number of values per dimension of the boundary
+     */
+    public static def getBoundaryRegion(senderLoc:DomainLoc, receiverLoc:DomainLoc, edgeMax:Long) {
+        val xDiff = receiverLoc.x - senderLoc.x;
+        val yDiff = receiverLoc.y - senderLoc.y;
+        val zDiff = receiverLoc.z - senderLoc.z;
+
+        val xRange:LongRange;
+        if (xDiff == -1n) {
+            xRange = 0..0;
+        } else if (xDiff == 1n) {
+            xRange = edgeMax..edgeMax;
+        } else {
+            xRange = 0..edgeMax;
+        }
+
+        val yRange:LongRange;
+        if (yDiff == -1n) {
+            yRange = 0..0;
+        } else if (yDiff == 1n) {
+            yRange = edgeMax..edgeMax;
+        } else {
+            yRange = 0..edgeMax;
+        }
+
+        val zRange:LongRange;
+        if (zDiff == -1n) {
+            zRange = 0..0;
+        } else if (zDiff == 1n) {
+            zRange = edgeMax..edgeMax;
+        } else {
+            zRange = 0..edgeMax;
+        }
+
+        return Region.makeRectangular(xRange, yRange, zRange);
     }
 
     public def toString() {

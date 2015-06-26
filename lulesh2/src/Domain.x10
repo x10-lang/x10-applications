@@ -410,38 +410,7 @@ public final class Domain {
      */
     public def getBoundaryRegion(neighborId:Long, edgeMax:Long) {
         val neighborLoc = DomainLoc.make(neighborId, loc.tp);
-        val xDiff = neighborLoc.x - loc.x;
-        val yDiff = neighborLoc.y - loc.y;
-        val zDiff = neighborLoc.z - loc.z;
-
-        val xRange:LongRange;
-        if (xDiff == -1n) {
-            xRange = 0..0;
-        } else if (xDiff == 1n) {
-            xRange = edgeMax..edgeMax;
-        } else {
-            xRange = 0..edgeMax;
-        }
-
-        val yRange:LongRange;
-        if (yDiff == -1n) {
-            yRange = 0..0;
-        } else if (yDiff == 1n) {
-            yRange = edgeMax..edgeMax;
-        } else {
-            yRange = 0..edgeMax;
-        }
-
-        val zRange:LongRange;
-        if (zDiff == -1n) {
-            zRange = 0..0;
-        } else if (zDiff == 1n) {
-            zRange = edgeMax..edgeMax;
-        } else {
-            zRange = 0..edgeMax;
-        }
-
-        return Region.makeRectangular(xRange, yRange, zRange);
+        return DomainLoc.getBoundaryRegion(loc, neighborLoc, edgeMax);
     }
 
     public def gatherBoundaryData(destId:Long, 
