@@ -16,7 +16,12 @@ import x10.compiler.Inline;
 
 /** Manages updates of ghost data for LULESH. */
 public abstract class GhostManager {
-    static class LocalState {
+    // Made Unserializable to catch programming errors.
+    // This object should never be sent across Places.
+    static class LocalState implements x10.io.Unserializable {
+        /** PlaceLocalHandle to the Domain */
+        public val domainPlh:PlaceLocalHandle[Domain];
+
         /** List of neighbors to which data must be sent. */
         public val neighborListSend:Rail[Long];
 
@@ -46,6 +51,16 @@ public abstract class GhostManager {
         public val remoteRecvBuffers:Rail[GlobalRail[Double]];
 
         /**
+         * The number of elements along a 'side'
+         */
+        public val sideLength:Long;
+
+        /**
+         * Function to extract the data fields being managed from the domain
+         */
+        public val accessFields:(Domain) => Rail[Rail[Double]];
+
+        /**
          * The pending update functions recevied from neighbors for the current cycle
          */
         public val updateFunctions:Stack[()=>void];
@@ -71,14 +86,20 @@ public abstract class GhostManager {
             throw new IllegalArgumentException(here + " getNeighborNumber for " + neighborId);
         }
 
-        protected def this(neighborListSend:Rail[Long], 
-                        neighborListRecv:Rail[Long],
-                        recvBufferSize:(Long)=>Long) {
+        protected def this(domainPlh:PlaceLocalHandle[Domain],
+                           neighborListSend:Rail[Long], 
+                           neighborListRecv:Rail[Long],
+                           sideLength:Long,
+                           accessFields:(Domain) => Rail[Rail[Double]],
+                           recvBufferSize:(Long)=>Long) {
+            this.domainPlh = domainPlh;
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
             this.neighborsReceivedCount = 0;
             this.updateFunctions = new Stack[()=>void]();
             this.currentPhase = 0;
+            this.sideLength = sideLength;
+            this.accessFields = accessFields;
             this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
                                                       (i:Long) => new Rail[Double](recvBufferSize(i)));
             this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
@@ -91,7 +112,7 @@ public abstract class GhostManager {
     public val localState:PlaceLocalHandle[LocalState];
 
     /**
-     * Create a new GhostManager for ghost updates between all places.
+     * Complete initialization of this GhostManager instance from the LocalState.
      */
     protected def this(ls:PlaceLocalHandle[LocalState]) {
         this.localState = ls;

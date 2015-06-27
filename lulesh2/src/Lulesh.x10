@@ -109,24 +109,28 @@ public final class Lulesh {
             () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide));
         this.domainPlh = domainPlh;
 
-        // initialize ghost updates
-        val elemsPerSide = opts.nx;
-        this.massGhostMgr = BoundaryGhostManager.make(
+        // initialize ghost update managers
+        this.massGhostMgr = BoundaryGhostManager.make(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
+                opts.nx+1,
+                (dom:Domain) => [dom.nodalMass],
                 (Long) => 0);
-        this.posVelGhostMgr = BoundaryGhostManager.make(
+        this.posVelGhostMgr = BoundaryGhostManager.make(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, false, true),
                 () => domainPlh().loc.createNeighborList(false, true, false),
+                opts.nx+1,
+                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
                 (Long) => 0);
-        this.forceGhostMgr = BoundaryGhostManager.make(
+        this.forceGhostMgr = BoundaryGhostManager.make(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
+                opts.nx+1,
+                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
                 (Long) => 0);
-        this.gradientGhostMgr = PlaneGhostManager.make(
-                () => domainPlh().loc.createNeighborList(true, true, true),
-                () => domainPlh().loc.createNeighborList(true, true, true),
-                (Long) => 3 * elemsPerSide * elemsPerSide);
+        this.gradientGhostMgr = PlaneGhostManager.make(domainPlh, opts.nx, 
+                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta], 
+                3);
     }
 
     public def run(opts:CommandLineOptions) {
@@ -137,10 +141,8 @@ public final class Lulesh {
                 printLoadImbalance(domain);
             }
 
-            val nodesPerSide = domain.sizeX+1;
-            val accessMass = (dom:Domain) => [dom.nodalMass];
-            massGhostMgr.gatherBoundariesToCombine(domainPlh, accessMass, nodesPerSide); 
-            massGhostMgr.waitAndCombineBoundaries(domainPlh, accessMass, nodesPerSide);
+            massGhostMgr.gatherBoundariesToCombine();
+            massGhostMgr.waitAndCombineBoundaries();
 
             Team.WORLD.barrier();
 
@@ -276,11 +278,7 @@ public final class Lulesh {
         lagrangeElements(domain);
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
 
-        val nodesPerSide = domain.sizeX+1;
-        posVelGhostMgr.updateBoundaryData(domainPlh, 
-            (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-            nodesPerSide
-        );
+        posVelGhostMgr.updateBoundaryData();
 }
 
         calcTimeConstraintsForElems(domain);
@@ -310,12 +308,8 @@ public final class Lulesh {
 
         calcPositionForNodes(domain, delt);
 
-@Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {
-        val nodesPerSide = domain.sizeX+1;
-        posVelGhostMgr.updateBoundaryData(domainPlh,
-            (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-            nodesPerSide
-        );
+@Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
+        posVelGhostMgr.updateBoundaryData();
         posVelGhostMgr.waitForGhosts();
 }
     }
@@ -368,13 +362,8 @@ endLoop(0);
 
         calcVolumeForceForElems(domain);
 
-        val nodesPerSide = domain.sizeX+1;
-        val accessForce = (dom:Domain) => [dom.fx, dom.fy, dom.fz];
-        forceGhostMgr.gatherBoundariesToCombine(domainPlh, 
-            accessForce,
-            nodesPerSide
-        );
-        forceGhostMgr.waitAndCombineBoundaries(domainPlh, accessForce, nodesPerSide);
+        forceGhostMgr.gatherBoundariesToCombine();
+        forceGhostMgr.waitAndCombineBoundaries();
     }
 
     /** Calculate the volume force contribution for each mesh element. */
@@ -1195,11 +1184,7 @@ endLoop(14);
             /* Calculate velocity gradients */
             calcMonotonicQGradientsForElems(domain, vnew);
 
-            val elementsPerSide = domain.sizeX;
-            gradientGhostMgr.updatePlaneGhosts(domainPlh, 
-                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
-                elementsPerSide
-            );
+            gradientGhostMgr.updatePlaneGhosts();
             gradientGhostMgr.waitForGhosts();
 
             calcMonotonicQForElems(domain, vnew);

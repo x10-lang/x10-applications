@@ -15,22 +15,23 @@ import x10.util.Stack;
 import x10.compiler.Inline;
 
 /**
- * Manage ghost data exchange across Planes.
+ * GhostManager specialized for the case of data that is only 
+ * exchanged between neighboring Domains that share a plane.
  */
 public final class PlaneGhostManager extends GhostManager {
 
-    public static def make(initNeighborsSend:() => Rail[Long], 
-                           initNeighborsRecv:() => Rail[Long],
-                           recvBufferSize:(Long)=>Long) {
-        return new PlaneGhostManager(initNeighborsSend, initNeighborsRecv, recvBufferSize);
+    public static def make(domainPlh:PlaceLocalHandle[Domain], sideLength:Long, 
+                           accessFields:(Domain) => Rail[Rail[Double]], numFields:Long) {
+        return new PlaneGhostManager(domainPlh, sideLength, accessFields, numFields);
     }
 
-    protected def this(initNeighborsSend:() => Rail[Long], 
-                       initNeighborsRecv:() => Rail[Long],
-                       recvBufferSize:(Long)=>Long) {
-        super(PlaceLocalHandle.make[LocalState](Place.places(), () => new LocalState(initNeighborsSend(), 
-                                                                                     initNeighborsRecv(),
-                                                                                     recvBufferSize)));
+    protected def this(domainPlh:PlaceLocalHandle[Domain], sideLength:Long,
+                       accessFields:(Domain) => Rail[Rail[Double]], numFields:Long) {
+        super(PlaceLocalHandle.make[LocalState](Place.places(), () => {
+            val neighbors = domainPlh().loc.createNeighborList(true, true, true);
+            return new LocalState(domainPlh, neighbors, neighbors, sideLength, accessFields,
+                                 (Long)=>numFields*sideLength*sideLength); 
+        }));
     }
 
     /**
@@ -38,30 +39,32 @@ public final class PlaneGhostManager extends GhostManager {
      * boundary data from this place.  Plane ghost data are stored contiguously
      * for each plane *after* all locally-managed data at each place. 
      */
-    public def updatePlaneGhosts(domainPlh:PlaceLocalHandle[Domain], 
-                        accessFields:(dom:Domain) => Rail[Rail[Double]],
-                        sideLength:Long) {
+    public def updatePlaneGhosts() {
         val start = Timer.milliTime();
-        atomic localState().currentPhase++;
+        val src_ls = localState();
+        atomic src_ls.currentPhase++;
         val sourceId = here.id;
-        val sourceDom = domainPlh();
-        val phase = localState().currentPhase;
-        val neighbors = localState().neighborListSend;
+        val sourceDom = src_ls.domainPlh();
+        val phase = src_ls.currentPhase;
+        val neighbors = src_ls.neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val ghosts = localState().sendBuffers(i);
-            sourceDom.gatherGhosts(neighbors(i), accessFields, sideLength, ghosts);
-            val target = localState().remoteRecvBuffers(i);
+            val ghosts = src_ls.sendBuffers(i);
+            sourceDom.gatherGhosts(neighbors(i), src_ls.accessFields, src_ls.sideLength, ghosts);
+            val target = src_ls.remoteRecvBuffers(i);
             Rail.uncountedCopy(ghosts, 0, target, 0, ghosts.size, ()=> {
                 postUpdateFunction(phase,  ()=>{
+                    val dst_ls = localState();
+                    val sideLength = dst_ls.sideLength;
                     var ghostOffset:Long = sideLength*sideLength*sideLength;
-                    val ghostRegionSize = (sideLength)*(sideLength);
-                    val neighborIdx = localState().getNeighborNumber(sourceId);
+                    val ghostRegionSize = sideLength*sideLength;
+                    val neighborIdx = dst_ls.getNeighborNumber(sourceId);
                     ghostOffset += neighborIdx * ghostRegionSize;
-                    domainPlh().updateGhosts(localState().recvBuffers(neighborIdx), 
-                                             accessFields, ghostRegionSize, ghostOffset);
+                    dst_ls.domainPlh().updateGhosts(dst_ls.recvBuffers(neighborIdx), 
+                                                    dst_ls.accessFields, 
+                                                    ghostRegionSize, ghostOffset);
                 });
             });
         }
-        localState().sendTime += Timer.milliTime() - start;
+        src_ls.sendTime += Timer.milliTime() - start;
     }
 }
