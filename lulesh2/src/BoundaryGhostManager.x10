@@ -13,6 +13,7 @@ import x10.compiler.Uncounted;
 import x10.util.Timer;
 import x10.util.Stack;
 import x10.compiler.Inline;
+import x10.regionarray.Region;
 
 /**
  * Manage ghost data exchange across Boundaries of all 
@@ -35,6 +36,7 @@ public final class BoundaryGhostManager extends GhostManager {
                            accessFields:(Domain) => Rail[Rail[Double]],
                            recvBufferSize:(Long)=>Long) {
             super(domainPlh, neighborListSend, neighborListRecv, sideLength, accessFields, recvBufferSize);
+
             this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
         }
     }
@@ -85,7 +87,8 @@ public final class BoundaryGhostManager extends GhostManager {
             val boundaryData = ls.boundaryData;
             for (i in 0..(boundaryData.size-1)) {
                 if (boundaryData(i) != null) {
-                    ls.domainPlh().accumulateBoundaryData(ls.neighborListRecv(i), boundaryData(i), 
+                    ls.domainPlh().accumulateBoundaryData(ls.neighborListRecv(i), ls.recvRegions(i), 
+                                                          boundaryData(i), 
                                                           ls.accessFields, ls.sideLength);
                     boundaryData(i) = null;
                 }
@@ -110,13 +113,14 @@ public final class BoundaryGhostManager extends GhostManager {
         val phase = src_ls.currentPhase;
         val neighbors = src_ls.neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), src_ls.accessFields, 
-                                                            src_ls.sideLength);
+            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i),
+                                                            src_ls.accessFields, src_ls.sideLength);
             at(Place(neighbors(i))) @Uncounted async {
                 postUpdateFunction(phase, ()=>{
                     val dst_ls = localState();
-                    dst_ls.domainPlh().updateBoundaryData(sourceId, boundaryData, dst_ls.accessFields, 
-                                                          dst_ls.sideLength);
+                    val sendNum = getNeighborNumber(sourceId);
+                    dst_ls.domainPlh().updateBoundaryData(sourceId, dst_ls.recvRegions(sendNum), boundaryData, 
+                                                          dst_ls.accessFields, dst_ls.sideLength);
                 });
             }
         }
@@ -137,7 +141,8 @@ public final class BoundaryGhostManager extends GhostManager {
         val phase = src_ls.currentPhase;
         val neighbors = src_ls.neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), src_ls.accessFields, src_ls.sideLength);
+            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i), 
+                                                            src_ls.accessFields, src_ls.sideLength);
             at(Place(neighbors(i))) @Uncounted async {
                 postUpdateFunction(phase, ()=>{
                     val bd = (localState() as BoundaryLocalState).boundaryData;

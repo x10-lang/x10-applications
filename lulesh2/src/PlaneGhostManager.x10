@@ -49,7 +49,7 @@ public final class PlaneGhostManager extends GhostManager {
         val neighbors = src_ls.neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val ghosts = src_ls.sendBuffers(i);
-            sourceDom.gatherGhosts(neighbors(i), src_ls.accessFields, src_ls.sideLength, ghosts);
+            sourceDom.gatherGhosts(neighbors(i), src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength, ghosts);
             val target = src_ls.remoteRecvBuffers(i);
             Rail.uncountedCopy(ghosts, 0, target, 0, ghosts.size, ()=> {
                 postUpdateFunction(phase,  ()=>{

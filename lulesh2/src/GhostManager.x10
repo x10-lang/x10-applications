@@ -13,6 +13,7 @@ import x10.compiler.Uncounted;
 import x10.util.Timer;
 import x10.util.Stack;
 import x10.compiler.Inline;
+import x10.regionarray.Region;
 
 /** Manages updates of ghost data for LULESH. */
 public abstract class GhostManager {
@@ -32,6 +33,16 @@ public abstract class GhostManager {
          * Count of neighbors which have given us update functions this cycle.
          */
         public var neighborsReceivedCount:Long;
+
+        /**
+         * Precomputed Regions for packing data being sent to neighbors
+         */
+        val sendRegions:Rail[Region(3){rect}];
+
+        /**
+         * Precomputed Regions for unpacking data being received from neighbors
+         */
+        val recvRegions:Rail[Region(3){rect}];
 
         /**
          * Pre-allocated buffers for sending ghost data.
@@ -106,6 +117,18 @@ public abstract class GhostManager {
                                                       (i:Long) => new Rail[Double](recvBufferSize(i)));
             val dummy = GlobalRail[Double](new Rail[Double](0));
             this.remoteRecvBuffers = new Rail[GlobalRail[Double]](neighborListSend.size, dummy);
+            val hereLoc = domainPlh().loc;
+            this.sendRegions = new Rail[Region(3){rect}](neighborListSend.size, (i:Long)=> {
+                val neighborId = neighborListSend(i);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
+                DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
+            });
+
+            this.recvRegions = new Rail[Region(3){rect}](neighborListRecv.size, (i:Long)=> {
+                val neighborId = neighborListRecv(i);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
+                DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
+            });
         }
     }
 

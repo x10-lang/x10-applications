@@ -402,22 +402,11 @@ public final class Domain {
         return volume / 12.0;
     }
 
-    /** 
-     * Return the region of ghost elements for this place to exchange with
-     * the given neighboring place.
-     * @param neighborId the id of the neighboring domain in the grid
-     * @param edgeMax the maximum number of values per dimension of the boundary
-     */
-    public def getBoundaryRegion(neighborId:Long, edgeMax:Long) {
-        val neighborLoc = DomainLoc.make(neighborId, loc.tp);
-        return DomainLoc.getBoundaryRegion(loc, neighborLoc, edgeMax);
-    }
-
     public def gatherBoundaryData(destId:Long, 
+                boundaryRegion:Region(3){rect},
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 sideLength:Long):Rail[Double] {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
         val transfer = Unsafe.allocRailUninitialized[Double](boundaryRegion.size()*fields.size);
 
         var idx:Long = 0;
@@ -435,11 +424,11 @@ public final class Domain {
     }
 
     public def gatherGhosts(destId:Long, 
+                boundaryRegion:Region(3){rect},
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 sideLength:Long,
                 transfer:Rail[Double]):void {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(destId, sideLength-1);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
@@ -452,11 +441,12 @@ public final class Domain {
         }
     }
 
-    public def updateBoundaryData(sourceId:Long, data:Rail[Double], 
+    public def updateBoundaryData(sourceId:Long, 
+                boundaryRegion:Region(3){rect},
+                data:Rail[Double], 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 sideLength:Long) {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(sourceId, sideLength-1);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
@@ -469,11 +459,12 @@ public final class Domain {
         }
     }
 
-    public def accumulateBoundaryData(sourceId:Long, data:Rail[Double], 
+    public def accumulateBoundaryData(sourceId:Long, 
+                boundaryRegion:Region(3){rect},
+                data:Rail[Double], 
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 sideLength:Long) {
         val fields = accessFields(this);
-        val boundaryRegion = getBoundaryRegion(sourceId, sideLength-1);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
