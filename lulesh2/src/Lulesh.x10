@@ -381,12 +381,11 @@ endLoop(0);
 
             // check for negative element volume
 startLoop(4);
-            for (k in 0..(numElem-1)) {
-                // TODO parallel loop
+            Foreach.block(0, numElem-1, (k:Long)=> {
                 if (determ(k) <= 0.0) {
                     throw new VolumeException(k, determ(k));
                 }
-            }
+            });
 endLoop(4);
 
             calcHourglassControlForElems(domain, determ, hgcoef);
@@ -1053,15 +1052,15 @@ startLoop(14);
         Foreach.block(0, domain.numElem-1,
         (min_k:Long, max_k:Long) => {
             /** shape function derivatives */
-            @StackAllocate val bStore = @StackAllocate new Rail[Double](24);
+            @StackAllocate val bStore = @StackAllocateUninitialized new Rail[Double](24);
             val B = Array_2.makeView[Double](bStore, 3, 8);
-            @StackAllocate val D = @StackAllocate new Rail[Double](6);
-            @StackAllocate val x_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val y_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val z_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val xd_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val yd_local = @StackAllocate new Rail[Double](8);
-            @StackAllocate val zd_local = @StackAllocate new Rail[Double](8);
+            @StackAllocate val D = @StackAllocateUninitialized new Rail[Double](6);
+            @StackAllocate val x_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val y_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val z_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val xd_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val yd_local = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val zd_local = @StackAllocateUninitialized new Rail[Double](8);
 
             for (k in min_k..max_k) {
                 collectDomainNodesToElemNodes(domain, k, x_local, y_local, z_local);
