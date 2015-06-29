@@ -49,13 +49,13 @@ public final class Lulesh {
     protected val domainPlh:PlaceLocalHandle[Domain];
 
     /** Manager for nodal mass updates between all neighbors */
-    protected val massGhostMgr:BoundaryGhostManager;
+    protected val massGhostMgr:GhostManager;
     /** Manager for positions and velocity updates between all neighbors */
-    protected val posVelGhostMgr:BoundaryGhostManager;
+    protected val posVelGhostMgr:GhostManager;
     /** Manager for force updates between all neighbors */
-    protected val forceGhostMgr:BoundaryGhostManager;
+    protected val forceGhostMgr:GhostManager;
     /** Manager for position gradient updates between plane neighbors */
-    protected val gradientGhostMgr:PlaneGhostManager;
+    protected val gradientGhostMgr:GhostManager;
 
     static val NUM_LOOPS = 38;
     /** Time (in ns) spent executing each of the parallel loops in LULESH. */
@@ -110,22 +110,25 @@ public final class Lulesh {
         this.domainPlh = domainPlh;
 
         // initialize ghost update managers
-        this.massGhostMgr = BoundaryGhostManager.make(domainPlh,
+        this.massGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 opts.nx+1,
                 (dom:Domain) => [dom.nodalMass]);
-        this.posVelGhostMgr = BoundaryGhostManager.make(domainPlh,
+        this.posVelGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, false, true),
                 () => domainPlh().loc.createNeighborList(false, true, false),
                 opts.nx+1,
                 (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd]);
-        this.forceGhostMgr = BoundaryGhostManager.make(domainPlh,
+        this.forceGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 opts.nx+1,
                 (dom:Domain) => [dom.fx, dom.fy, dom.fz]);
-        this.gradientGhostMgr = PlaneGhostManager.make(domainPlh, opts.nx, 
+        this.gradientGhostMgr = new GhostManager(domainPlh, 
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                opts.nx, 
                 (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta]);
     }
 
