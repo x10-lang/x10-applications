@@ -881,9 +881,9 @@ startLoop(6);
                 calcElemFBHourglassForce(xd1, yd1, zd1, hourgam,
                       coefficient, hgfx, hgfy, hgfz);
 
-                Rail.copy(hgfx, 0, fx_elem, i3, 8);
-                Rail.copy(hgfy, 0, fy_elem, i3, 8);
-                Rail.copy(hgfz, 0, fz_elem, i3, 8);
+                for (i in 0..7) fx_elem(i3+i) = hgfx(i);
+                for (i in 0..7) fy_elem(i3+i) = hgfy(i);
+                for (i in 0..7) fz_elem(i3+i) = hgfz(i);
             }
         });
 endLoop(6);
