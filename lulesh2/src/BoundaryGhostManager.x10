@@ -21,36 +21,17 @@ import x10.regionarray.Region;
  */
 public final class BoundaryGhostManager extends GhostManager {
 
-    static final class BoundaryLocalState extends LocalState {
-        /**
-         * Boundary data received from other places, held for later combination
-         * with boundary data computed locally.
-         * TODO: Eventually this should be done directly from the recvBuffers.
-         */
-        val boundaryData:Rail[Rail[Double]];
-
-        protected def this(domainPlh:PlaceLocalHandle[Domain],
-                           neighborListSend:Rail[Long], 
-                           neighborListRecv:Rail[Long],
-                           sideLength:Long,
-                           accessFields:(Domain) => Rail[Rail[Double]]) {
-            super(domainPlh, neighborListSend, neighborListRecv, sideLength, accessFields);
-
-            this.boundaryData = new Rail[Rail[Double]](neighborListRecv.size);
-        }
-    }
-
     protected def this(domainPlh:PlaceLocalHandle[Domain], 
                        initNeighborsSend:() => Rail[Long], 
                        initNeighborsRecv:() => Rail[Long],
                        sideLength:Long,
                        accessFields:(Domain) => Rail[Rail[Double]]) {
         super(PlaceLocalHandle.make[LocalState](Place.places(), 
-                                               () => new BoundaryLocalState(domainPlh, 
-                                                                            initNeighborsSend(), 
-                                                                            initNeighborsRecv(),
-                                                                            sideLength,
-                                                                            accessFields)));
+                                               () => new LocalState(domainPlh, 
+                                                                    initNeighborsSend(), 
+                                                                    initNeighborsRecv(),
+                                                                    sideLength,
+                                                                    accessFields)));
     }
 
     public static def make(domainPlh:PlaceLocalHandle[Domain],
@@ -63,36 +44,29 @@ public final class BoundaryGhostManager extends GhostManager {
     }
 
 
-    private def getNeighborNumber(neighborId:Long) = localState().getNeighborNumber(neighborId);
-
     /** 
      * Wait for all boundary data to be received from neighboring places,
      * and then combine it with boundary data computed at this place.
      * Switch ghost manager phase from sending to using ghost data.
+     *
+     * Since gatherBoundariesToCombine does not need to push an update function
+     * we can skip calling processUpdateFunctions here (stack will always be empty).
      */
     public final def waitAndCombineBoundaries() {
         val t1 = Timer.milliTime();
-        val ls:BoundaryLocalState = localState() as BoundaryLocalState;
-        processUpdateFunctions();
-        val t2 = Timer.milliTime();
-        ls.processTime += (t2 - t1);
+        val ls = localState();
         when (allNeighborsReceived()) {
-            val t3 = Timer.milliTime();
-            ls.waitTime += (t3 - t2);
-            processUpdateFunctions();
-            val boundaryData = ls.boundaryData;
-            for (i in 0..(boundaryData.size-1)) {
-                if (boundaryData(i) != null) {
-                    ls.domainPlh().accumulateBoundaryData(ls.neighborListRecv(i), ls.recvRegions(i), 
-                                                          boundaryData(i), 
-                                                          ls.accessFields, ls.sideLength);
-                    boundaryData(i) = null;
-                }
+            val t2 = Timer.milliTime();
+            ls.waitTime += (t2 - t1);
+            val dom = ls.domainPlh();
+            for (i in 0..(ls.recvBuffers.size-1)) {
+                dom.accumulateBoundaryData(ls.neighborListRecv(i), ls.recvRegions(i), 
+                                           ls.recvBuffers(i), ls.accessFields, ls.sideLength);
             }
             ls.currentPhase++;
             ls.neighborsReceivedCount = 0;
-            val t4 = Timer.milliTime();
-            ls.processTime += (t4 - t3);
+            val t3 = Timer.milliTime();
+            ls.processTime += (t3 - t2);
         }
     }
 
@@ -115,7 +89,7 @@ public final class BoundaryGhostManager extends GhostManager {
             Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
                 postUpdateFunction(phase, ()=>{
                     val dst_ls = localState();
-                    val sendNum = getNeighborNumber(sourceId);
+                    val sendNum = dst_ls.getNeighborNumber(sourceId);
                     dst_ls.domainPlh().updateBoundaryData(sourceId, dst_ls.recvRegions(sendNum), 
                                                           dst_ls.recvBuffers(sendNum), 
                                                           dst_ls.accessFields, dst_ls.sideLength);
@@ -136,19 +110,14 @@ public final class BoundaryGhostManager extends GhostManager {
         atomic src_ls.currentPhase++;
         val sourceId = here.id;
         val sourceDom = src_ls.domainPlh();
-        val phase = src_ls.currentPhase;
         val neighbors = src_ls.neighborListSend;
         for (i in 0..(neighbors.size-1)) {
             val data = src_ls.sendBuffers(i);
             sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i), data,
                                          src_ls.accessFields, src_ls.sideLength);
             Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
-                postUpdateFunction(phase, ()=>{
-                    val dst_ls = localState() as BoundaryLocalState;
-                    val bd = dst_ls.boundaryData;
-                    val sendNum = getNeighborNumber(sourceId);
-                    bd(sendNum) = dst_ls.recvBuffers(sendNum);
-                });
+                val dst_ls = localState();
+                atomic dst_ls.neighborsReceivedCount++;
             });
         }
         src_ls.sendTime += Timer.milliTime() - start;
