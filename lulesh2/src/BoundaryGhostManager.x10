@@ -139,15 +139,17 @@ public final class BoundaryGhostManager extends GhostManager {
         val phase = src_ls.currentPhase;
         val neighbors = src_ls.neighborListSend;
         for (i in 0..(neighbors.size-1)) {
-            val boundaryData = sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i),
-                                                            src_ls.sendBuffers(i),
-                                                            src_ls.accessFields, src_ls.sideLength);
-            at(Place(neighbors(i))) @Uncounted async {
+            val data = src_ls.sendBuffers(i);
+            sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i), data,
+                                         src_ls.accessFields, src_ls.sideLength);
+            Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
                 postUpdateFunction(phase, ()=>{
-                    val bd = (localState() as BoundaryLocalState).boundaryData;
-                    bd(getNeighborNumber(sourceId)) = boundaryData;
+                    val dst_ls = localState() as BoundaryLocalState;
+                    val bd = dst_ls.boundaryData;
+                    val sendNum = getNeighborNumber(sourceId);
+                    bd(sendNum) = dst_ls.recvBuffers(sendNum);
                 });
-            }
+            });
         }
         src_ls.sendTime += Timer.milliTime() - start;
     }

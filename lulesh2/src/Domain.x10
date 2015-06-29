@@ -406,7 +406,7 @@ public final class Domain {
                 boundaryRegion:Region(3){rect},
                 transfer:Rail[Double],                
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
-                sideLength:Long):Rail[Double] {
+                sideLength:Long):void {
         val fields = accessFields(this);
         var idx:Long = 0;
         for (field in fields) {
@@ -418,7 +418,6 @@ public final class Domain {
                 }
             }
         }
-        return transfer;
     }
 
     public def gatherGhosts(destId:Long, 
