@@ -17,7 +17,7 @@ import x10.regionarray.Region;
 
 /** Manages updates of ghost data for LULESH. */
 public final class GhostManager {
-    // Made Unserializable to catch programming errors;
+    // LocalState is Unserializable to catch programming errors;
     // instances of this class should never be sent across Places.
     static class LocalState implements x10.io.Unserializable {
         /** PlaceLocalHandle to the Domain */
@@ -47,12 +47,12 @@ public final class GhostManager {
         /**
          * Precomputed Regions for packing data being sent to neighbors
          */
-        val sendRegions:Rail[Region(3){rect}];
+        val sendRegions:Rail[Region(3){rect}]{self!=null};
 
         /**
          * Precomputed Regions for unpacking data being received from neighbors
          */
-        val recvRegions:Rail[Region(3){rect}];
+        val recvRegions:Rail[Region(3){rect}]{self!=null};
 
         /**
          * Pre-allocated buffers for sending ghost data.
@@ -70,12 +70,12 @@ public final class GhostManager {
          * GlobalRails pointing to the recvBuffer entry
          * for each neighbor in neighborListSend.
          */
-        public val remoteRecvBuffers:Rail[GlobalRail[Double]];
+        public val remoteRecvBuffers:Rail[GlobalRail[Double]]{self!=null};
 
         /**
          * The pending update functions recevied from neighbors for the current cycle
          */
-        public val updateFunctions:Stack[()=>void];
+        public val updateFunctions:Stack[()=>void]{self!=null};
 
         /**
          * The current phase of the computation with regard to ghost cell updates.
@@ -99,7 +99,7 @@ public final class GhostManager {
         }
 
         protected def this(domainPlh:PlaceLocalHandle[Domain],
-                           neighborListSend:Rail[Long], 
+                           neighborListSend:Rail[Long],
                            neighborListRecv:Rail[Long],
                            sideLength:Long,
                            accessFields:(Domain) => Rail[Rail[Double]]) {
@@ -139,30 +139,27 @@ public final class GhostManager {
 
     /**
      * Create a GhostManager to coordinate data exchange.
-     * @param domainPlh The domain containing the data to manage
+     * @param domainPlh The PlaceLocalHandle to the Domain containing the data to manage
      * @param initNeighborsSend function to compute the neighbors to which data should be sent
-     * @param initNeighborsSend function to compute the neighbors from which data should be received
+     * @param initNeighborsRecv function to compute the neighbors from which data should be received
      * @param sideLength the number of data elements along a 'side' 
      * @param accessFields a function to extract the fields being managed from a Domain.
      */
-    public def this(domainPlh:PlaceLocalHandle[Domain], 
-                    initNeighborsSend:() => Rail[Long], 
+    public def this(domainPlh:PlaceLocalHandle[Domain],
+                    initNeighborsSend:() => Rail[Long],
                     initNeighborsRecv:() => Rail[Long],
                     sideLength:Long,
                     accessFields:(Domain) => Rail[Rail[Double]]) {
         // First, create the LocalState of the GhostManager at each Place.
-        val ls = PlaceLocalHandle.make[LocalState](Place.places(), 
-                                                   () => new LocalState(domainPlh, 
-                                                                        initNeighborsSend(), 
-                                                                        initNeighborsRecv(),
-                                                                        sideLength,
-                                                                        accessFields));
+        val ls = PlaceLocalHandle.make[LocalState](Place.places(), () => { 
+            new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields)
+        });
         this.localState = ls;
 
         // Now initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
         Place.places().broadcastFlat(()=> {
             val ls2 = ls();
-            // The finish is needed to prevent interactions between the specialized
+            // The finish is required to prevent interactions between the specialized
             // finish implementation used by broadcastFlat and the implementation of resilient at.
             finish for (i in ls2.neighborListSend.range) {
               val senderId = here.id;
@@ -233,13 +230,10 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceId = here.id;
         val sourceDom = src_ls.domainPlh();
-        val neighbors = src_ls.neighborListSend;
-        for (i in 0..(neighbors.size-1)) {
+        for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
-            sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i), data,
-                                         src_ls.accessFields, src_ls.sideLength);
+            sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
             Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
                 val dst_ls = localState();
                 atomic dst_ls.neighborsReceivedCount++;
@@ -260,9 +254,8 @@ public final class GhostManager {
             val t2 = Timer.nanoTime();
             ls.waitTime += (t2 - t1);
             val dom = ls.domainPlh();
-            for (i in 0..(ls.recvBuffers.size-1)) {
-                dom.accumulateBoundaryData(ls.neighborListRecv(i), ls.recvRegions(i), 
-                                           ls.recvBuffers(i), ls.accessFields, ls.sideLength);
+            for (i in ls.recvBuffers.range) {
+                dom.accumulateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
             }
             ls.currentPhase++;
             ls.neighborsReceivedCount = 0;
@@ -281,17 +274,14 @@ public final class GhostManager {
         val sourceId = here.id;
         val sourceDom = src_ls.domainPlh();
         val phase = src_ls.currentPhase;
-        val neighbors = src_ls.neighborListSend;
-        for (i in 0..(neighbors.size-1)) {
+        for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
-            sourceDom.gatherBoundaryData(neighbors(i), src_ls.sendRegions(i), data, 
-                                         src_ls.accessFields, src_ls.sideLength);
+            sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
             Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
                 postUpdateFunction(phase, ()=>{
                     val dst_ls = localState();
-                    val sendNum = dst_ls.getNeighborNumber(sourceId);
-                    dst_ls.domainPlh().updateBoundaryData(sourceId, dst_ls.recvRegions(sendNum), 
-                                                          dst_ls.recvBuffers(sendNum), 
+                    val sender = dst_ls.getNeighborNumber(sourceId);
+                    dst_ls.domainPlh().updateBoundaryData(dst_ls.recvBuffers(sender), dst_ls.recvRegions(sender), 
                                                           dst_ls.accessFields, dst_ls.sideLength);
                 });
            });
@@ -311,20 +301,18 @@ public final class GhostManager {
         val sourceId = here.id;
         val sourceDom = src_ls.domainPlh();
         val phase = src_ls.currentPhase;
-        val neighbors = src_ls.neighborListSend;
-        for (i in 0..(neighbors.size-1)) {
-            val ghosts = src_ls.sendBuffers(i);
-            sourceDom.gatherGhosts(neighbors(i), src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength, ghosts);
-            val target = src_ls.remoteRecvBuffers(i);
-            Rail.uncountedCopy(ghosts, 0, target, 0, ghosts.size, ()=> {
+        for (i in src_ls.neighborListSend.range) {
+            val data = src_ls.sendBuffers(i);
+            sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
+            Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
                 postUpdateFunction(phase,  ()=>{
                     val dst_ls = localState();
                     val sideLength = dst_ls.sideLength;
-                    var ghostOffset:Long = sideLength*sideLength*sideLength;
+                    val localDataSize = sideLength*sideLength*sideLength;
                     val ghostRegionSize = sideLength*sideLength;
-                    val neighborIdx = dst_ls.getNeighborNumber(sourceId);
-                    ghostOffset += neighborIdx * ghostRegionSize;
-                    dst_ls.domainPlh().updateGhosts(dst_ls.recvBuffers(neighborIdx), 
+                    val sender = dst_ls.getNeighborNumber(sourceId);
+                    val ghostOffset = localDataSize + sender * ghostRegionSize;
+                    dst_ls.domainPlh().updateGhosts(dst_ls.recvBuffers(sender), 
                                                     dst_ls.accessFields, 
                                                     ghostRegionSize, ghostOffset);
                 });

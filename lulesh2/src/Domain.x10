@@ -402,47 +402,24 @@ public final class Domain {
         return volume / 12.0;
     }
 
-    public def gatherBoundaryData(destId:Long, 
-                boundaryRegion:Region(3){rect},
-                transfer:Rail[Double],                
-                accessFields:(dom:Domain) => Rail[Rail[Double]],
-                sideLength:Long):void {
+    public def gatherData(buffer:Rail[Double], boundaryRegion:Region(3){rect},
+                          accessFields:(dom:Domain) => Rail[Rail[Double]], sideLength:Long):void {
         val fields = accessFields(this);
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
                 for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
                     for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        transfer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
+                        buffer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
                     }
                 }
             }
         }
     }
 
-    public def gatherGhosts(destId:Long, 
-                boundaryRegion:Region(3){rect},
-                accessFields:(dom:Domain) => Rail[Rail[Double]],
-                sideLength:Long,
-                transfer:Rail[Double]):void {
-        val fields = accessFields(this);
-        var idx:Long = 0;
-        for (field in fields) {
-            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
-                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
-                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        transfer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
-                    }
-                }
-            }
-        }
-    }
-
-    public def updateBoundaryData(sourceId:Long, 
-                boundaryRegion:Region(3){rect},
-                data:Rail[Double], 
-                accessFields:(dom:Domain) => Rail[Rail[Double]],
-                sideLength:Long) {
+    public def updateBoundaryData(data:Rail[Double], boundaryRegion:Region(3){rect},
+                                  accessFields:(dom:Domain) => Rail[Rail[Double]],
+                                  sideLength:Long) {
         val fields = accessFields(this);
         var idx:Long = 0;
         for (field in fields) {
@@ -456,11 +433,9 @@ public final class Domain {
         }
     }
 
-    public def accumulateBoundaryData(sourceId:Long, 
-                boundaryRegion:Region(3){rect},
-                data:Rail[Double], 
-                accessFields:(dom:Domain) => Rail[Rail[Double]],
-                sideLength:Long) {
+    public def accumulateBoundaryData(data:Rail[Double], boundaryRegion:Region(3){rect},
+                                      accessFields:(dom:Domain) => Rail[Rail[Double]],
+                                      sideLength:Long) {
         val fields = accessFields(this);
         var idx:Long = 0;
         for (field in fields) {
@@ -479,13 +454,11 @@ public final class Domain {
      * contiguously in planes for each neighboring place after locally
      * managed data for each field.
      */
-    public def updateGhosts(data:Rail[Double], 
-                accessFields:(dom:Domain) => Rail[Rail[Double]],
-                ghostRegionSize:Long, ghostOffset:Long) {
+    public def updateGhosts(data:Rail[Double], accessFields:(dom:Domain) => Rail[Rail[Double]],
+                            ghostRegionSize:Long, ghostOffset:Long) {
         val fields = accessFields(this);
         var idx:Long = 0;
-        for (j in 0..(fields.size-1)) {
-            val field = fields(j);
+        for (field in fields) {
             for (i in 0..(ghostRegionSize-1)) {
                 field(ghostOffset+i) = data(idx++);
             }
