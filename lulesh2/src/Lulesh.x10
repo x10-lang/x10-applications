@@ -114,23 +114,19 @@ public final class Lulesh {
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 opts.nx+1,
-                (dom:Domain) => [dom.nodalMass],
-                (Long) => 0);
+                (dom:Domain) => [dom.nodalMass]);
         this.posVelGhostMgr = BoundaryGhostManager.make(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, false, true),
                 () => domainPlh().loc.createNeighborList(false, true, false),
                 opts.nx+1,
-                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-                (Long) => 0);
+                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd]);
         this.forceGhostMgr = BoundaryGhostManager.make(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 opts.nx+1,
-                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
-                (Long) => 0);
+                (dom:Domain) => [dom.fx, dom.fy, dom.fz]);
         this.gradientGhostMgr = PlaneGhostManager.make(domainPlh, opts.nx, 
-                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta], 
-                3);
+                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta]);
     }
 
     public def run(opts:CommandLineOptions) {

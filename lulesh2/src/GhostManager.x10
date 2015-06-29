@@ -101,8 +101,7 @@ public abstract class GhostManager {
                            neighborListSend:Rail[Long], 
                            neighborListRecv:Rail[Long],
                            sideLength:Long,
-                           accessFields:(Domain) => Rail[Rail[Double]],
-                           recvBufferSize:(Long)=>Long) {
+                           accessFields:(Domain) => Rail[Rail[Double]]) {
             this.domainPlh = domainPlh;
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
@@ -111,24 +110,27 @@ public abstract class GhostManager {
             this.currentPhase = 0;
             this.sideLength = sideLength;
             this.accessFields = accessFields;
-            this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
-                                                      (i:Long) => new Rail[Double](recvBufferSize(i)));
-            this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
-                                                      (i:Long) => new Rail[Double](recvBufferSize(i)));
-            val dummy = GlobalRail[Double](new Rail[Double](0));
-            this.remoteRecvBuffers = new Rail[GlobalRail[Double]](neighborListSend.size, dummy);
-            val hereLoc = domainPlh().loc;
-            this.sendRegions = new Rail[Region(3){rect}](neighborListSend.size, (i:Long)=> {
-                val neighborId = neighborListSend(i);
-                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
-                DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
-            });
 
-            this.recvRegions = new Rail[Region(3){rect}](neighborListRecv.size, (i:Long)=> {
+            val numFields = accessFields(domainPlh()).size;
+            val hereLoc = domainPlh().loc;
+            val rr = this.recvRegions = new Rail[Region(3){rect}](neighborListRecv.size, (i:Long)=> {
                 val neighborId = neighborListRecv(i);
                 val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
                 DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
             });
+            this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
+                                                                  (i:Long) => new Rail[Double](rr(i).size() * numFields));
+
+            val sr = this.sendRegions = new Rail[Region(3){rect}](neighborListSend.size, (i:Long)=> {
+                val neighborId = neighborListSend(i);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
+                DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
+            });
+            this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListSend.size, 
+                                                                  (i:Long) => new Rail[Double](sr(i).size() * numFields));
+
+            val dummy = GlobalRail[Double](new Rail[Double](0));
+            this.remoteRecvBuffers = new Rail[GlobalRail[Double]](neighborListSend.size, dummy);
         }
     }
 

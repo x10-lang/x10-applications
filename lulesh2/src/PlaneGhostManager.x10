@@ -21,16 +21,15 @@ import x10.compiler.Inline;
 public final class PlaneGhostManager extends GhostManager {
 
     public static def make(domainPlh:PlaceLocalHandle[Domain], sideLength:Long, 
-                           accessFields:(Domain) => Rail[Rail[Double]], numFields:Long) {
-        return new PlaneGhostManager(domainPlh, sideLength, accessFields, numFields);
+                           accessFields:(Domain) => Rail[Rail[Double]]) {
+        return new PlaneGhostManager(domainPlh, sideLength, accessFields);
     }
 
     protected def this(domainPlh:PlaceLocalHandle[Domain], sideLength:Long,
-                       accessFields:(Domain) => Rail[Rail[Double]], numFields:Long) {
+                       accessFields:(Domain) => Rail[Rail[Double]]) {
         super(PlaceLocalHandle.make[LocalState](Place.places(), () => {
             val neighbors = domainPlh().loc.createNeighborList(true, true, true);
-            return new LocalState(domainPlh, neighbors, neighbors, sideLength, accessFields,
-                                 (Long)=>numFields*sideLength*sideLength); 
+            return new LocalState(domainPlh, neighbors, neighbors, sideLength, accessFields);
         }));
     }
 

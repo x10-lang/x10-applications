@@ -404,11 +404,10 @@ public final class Domain {
 
     public def gatherBoundaryData(destId:Long, 
                 boundaryRegion:Region(3){rect},
+                transfer:Rail[Double],                
                 accessFields:(dom:Domain) => Rail[Rail[Double]],
                 sideLength:Long):Rail[Double] {
         val fields = accessFields(this);
-        val transfer = Unsafe.allocRailUninitialized[Double](boundaryRegion.size()*fields.size);
-
         var idx:Long = 0;
         for (field in fields) {
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
@@ -419,7 +418,6 @@ public final class Domain {
                 }
             }
         }
-
         return transfer;
     }
 
