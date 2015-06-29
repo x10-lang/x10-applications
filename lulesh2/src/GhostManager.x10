@@ -138,7 +138,12 @@ public final class GhostManager {
     public val localState:PlaceLocalHandle[LocalState];
 
     /**
-     * 
+     * Create a GhostManager to coordinate data exchange.
+     * @param domainPlh The domain containing the data to manage
+     * @param initNeighborsSend function to compute the neighbors to which data should be sent
+     * @param initNeighborsSend function to compute the neighbors from which data should be received
+     * @param sideLength the number of data elements along a 'side' 
+     * @param accessFields a function to extract the fields being managed from a Domain.
      */
     public def this(domainPlh:PlaceLocalHandle[Domain], 
                     initNeighborsSend:() => Rail[Long], 
@@ -170,13 +175,13 @@ public final class GhostManager {
         });
     }
 
-    protected final def allNeighborsReceived():Boolean {
+    private final def allNeighborsReceived():Boolean {
         val received = localState().neighborsReceivedCount;
         val expected = localState().neighborListRecv.size;
         return received == expected;
     }
 
-    protected final def processUpdateFunctions() {
+    private final def processUpdateFunctions() {
         val functions = localState().updateFunctions;
         while (true) {
             var f:()=>void = null;
@@ -186,15 +191,15 @@ public final class GhostManager {
         }
     }
 
-    protected final @Inline def postUpdateFunction(posterPhase:Long, updateFunction:()=>void) {
-        val state = localState();
-        if (posterPhase == state.currentPhase) {
+    private final @Inline def postUpdateFunction(posterPhase:Long, updateFunction:()=>void) {
+        val ls = localState();
+        if (posterPhase == ls.currentPhase) {
             updateFunction();
-            atomic { state.neighborsReceivedCount++; }
+            atomic ls.neighborsReceivedCount++;
         } else {
             atomic {
-                state.updateFunctions.push(updateFunction);
-                state.neighborsReceivedCount++;
+                ls.updateFunctions.push(updateFunction);
+                ls.neighborsReceivedCount++;
             }
         }
     }
@@ -204,28 +209,28 @@ public final class GhostManager {
      * Used to switch ghost manager phase from sending to using ghost data.
      */
     public final def waitForGhosts() {
-        val t1 = Timer.milliTime();
+        val t1 = Timer.nanoTime();
+        val ls = localState();
         processUpdateFunctions();
-        val t2 = Timer.milliTime();
-        localState().processTime += (t2 - t1);
+        val t2 = Timer.nanoTime();
+        ls.processTime += (t2 - t1);
         when (allNeighborsReceived()) {
-            val t3 = Timer.milliTime();
-            localState().waitTime += (t3 - t2);
+            val t3 = Timer.nanoTime();
+            ls.waitTime += (t3 - t2);
             processUpdateFunctions();
-            localState().currentPhase++;
-            localState().neighborsReceivedCount = 0;
-            val t4 = Timer.milliTime();
-            localState().processTime += (t4 - t3);
+            ls.currentPhase++;
+            ls.neighborsReceivedCount = 0;
+            ls.processTime += Timer.nanoTime() - t3;
         }
     }
 
     /**
-     * Send boundary data from this place to neighboring places to be combined
-     * later by waitAndCombineBoundaries.
+     * Send boundary data from this place to neighboring places to be 
+     * combined later by waitAndCombineBoundaries.
      * @see waitAndCombineBoundaries
      */
     public def gatherBoundariesToCombine() {
-        val start = Timer.milliTime();
+        val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
         val sourceId = here.id;
@@ -240,22 +245,19 @@ public final class GhostManager {
                 atomic dst_ls.neighborsReceivedCount++;
             });
         }
-        src_ls.sendTime += Timer.milliTime() - start;
+        src_ls.sendTime += Timer.nanoTime() - start;
     }
 
     /** 
      * Wait for all boundary data to be received from neighboring places,
      * and then combine it with boundary data computed at this place.
      * Switch ghost manager phase from sending to using ghost data.
-     *
-     * Since gatherBoundariesToCombine does not need to push an update function
-     * we can skip calling processUpdateFunctions here (stack will always be empty).
      */
     public final def waitAndCombineBoundaries() {
-        val t1 = Timer.milliTime();
+        val t1 = Timer.nanoTime();
         val ls = localState();
         when (allNeighborsReceived()) {
-            val t2 = Timer.milliTime();
+            val t2 = Timer.nanoTime();
             ls.waitTime += (t2 - t1);
             val dom = ls.domainPlh();
             for (i in 0..(ls.recvBuffers.size-1)) {
@@ -264,8 +266,7 @@ public final class GhostManager {
             }
             ls.currentPhase++;
             ls.neighborsReceivedCount = 0;
-            val t3 = Timer.milliTime();
-            ls.processTime += (t3 - t2);
+            ls.processTime += Timer.nanoTime() - t2;
         }
     }
 
@@ -274,7 +275,7 @@ public final class GhostManager {
      * from this place's boundary region.
      */
     public def updateBoundaryData() {
-        val start = Timer.milliTime();
+        val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
         val sourceId = here.id;
@@ -295,7 +296,7 @@ public final class GhostManager {
                 });
            });
         }
-        localState().sendTime += Timer.milliTime() - start;
+        localState().sendTime += Timer.nanoTime() - start;
     }
 
     /**
@@ -304,7 +305,7 @@ public final class GhostManager {
      * for each plane *after* all locally-managed data at each place. 
      */
     public def updatePlaneGhosts() {
-        val start = Timer.milliTime();
+        val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
         val sourceId = here.id;
@@ -329,6 +330,6 @@ public final class GhostManager {
                 });
             });
         }
-        src_ls.sendTime += Timer.milliTime() - start;
+        src_ls.sendTime += Timer.nanoTime() - start;
     }
 }
