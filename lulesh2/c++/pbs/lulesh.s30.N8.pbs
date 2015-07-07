@@ -1,14 +1,24 @@
 #PBS -q regular
 #PBS -l mppwidth=48
-#PBS -l walltime=00:15:00
+#PBS -l walltime=00:90:00
 
 cd $PBS_O_WORKDIR
 
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 4 -n 8 ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 4 -n 8 ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 4 -n 8 ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 8 -ss ./lulesh2.0 -s 30
 
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 8 -ss ./lulesh2.0 -s 30
+
+aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 8 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 8 -ss ./lulesh2.0 -s 30
 
