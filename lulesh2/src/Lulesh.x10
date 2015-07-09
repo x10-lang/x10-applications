@@ -318,7 +318,7 @@ public final class Lulesh {
      * material states.
      */
     protected def lagrangeElements(domain:Domain) {
-        val vnew = Unsafe.allocRailUninitialized[Double](domain.numElem); // new relative vol -- temp
+        val vnew = Unsafe.allocNonGCRailUninitialized[Double](domain.numElem); // new relative vol -- temp
 
         calcLagrangeElements(domain, vnew);
 
@@ -328,7 +328,7 @@ public final class Lulesh {
 
         updateVolumesForElems(domain, vnew);
 
-        Unsafe.dealloc(vnew);
+        Unsafe.deallocNonGC(vnew);
     }
 
     def calcTimeConstraintsForElems(domain:Domain) {
@@ -418,9 +418,9 @@ endLoop(1);
 
         val numElem = domain.numElem;
         val numElem8 = numElem * 8;
-        val fx_elem = Unsafe.allocRailUninitialized[Double](numElem8);
-        val fy_elem = Unsafe.allocRailUninitialized[Double](numElem8);
-        val fz_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+        val fx_elem = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val fy_elem = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val fz_elem = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
 
 startLoop(2);
         Foreach.block(0, domain.numElem-1,
@@ -470,10 +470,9 @@ startLoop(3);
         });
 endLoop(3);
 
-        // force GC to reuse space for large temporary arrays
-        Unsafe.dealloc(fx_elem);
-        Unsafe.dealloc(fy_elem);
-        Unsafe.dealloc(fz_elem);
+        Unsafe.deallocNonGC(fx_elem);
+        Unsafe.deallocNonGC(fy_elem);
+        Unsafe.deallocNonGC(fz_elem);
     }
 
     /**
@@ -624,12 +623,12 @@ endLoop(3);
                                      determ:Rail[Double], hgcoef:Double) {
         val numElem = domain.numElem;
         val numElem8 = numElem * 8;
-        val dvdx = Unsafe.allocRailUninitialized[Double](numElem8);
-        val dvdy = Unsafe.allocRailUninitialized[Double](numElem8);
-        val dvdz = Unsafe.allocRailUninitialized[Double](numElem8);
-        val x8n  = Unsafe.allocRailUninitialized[Double](numElem8);
-        val y8n  = Unsafe.allocRailUninitialized[Double](numElem8);
-        val z8n  = Unsafe.allocRailUninitialized[Double](numElem8);
+        val dvdx = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val dvdy = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val dvdz = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val x8n  = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val y8n  = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val z8n  = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
 
 startLoop(5);
         Foreach.block(0, numElem-1,
@@ -674,13 +673,12 @@ endLoop(5);
                                         hgcoef);
         }
 
-        // force GC to reuse space for large temporary arrays
-        Unsafe.dealloc(dvdx);
-        Unsafe.dealloc(dvdy);
-        Unsafe.dealloc(dvdz);
-        Unsafe.dealloc(x8n);
-        Unsafe.dealloc(y8n);
-        Unsafe.dealloc(z8n);
+        Unsafe.deallocNonGC(dvdx);
+        Unsafe.deallocNonGC(dvdy);
+        Unsafe.deallocNonGC(dvdz);
+        Unsafe.deallocNonGC(x8n);
+        Unsafe.deallocNonGC(y8n);
+        Unsafe.deallocNonGC(z8n);
     }
 
     /**
@@ -746,9 +744,9 @@ endLoop(5);
 
         val numElem = domain.numElem;
         val numElem8 = numElem * 8;
-        val fx_elem = Unsafe.allocRailUninitialized[Double](numElem8);
-        val fy_elem = Unsafe.allocRailUninitialized[Double](numElem8);
-        val fz_elem = Unsafe.allocRailUninitialized[Double](numElem8);
+        val fx_elem = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val fy_elem = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
+        val fz_elem = Unsafe.allocNonGCRailUninitialized[Double](numElem8);
 
         // initialize hourglass gamma
         @StackAllocate val gammaStore = @StackAllocateUninitialized new Rail[Double](32);
@@ -911,9 +909,9 @@ startLoop(7);
 endLoop(7);
 
         // force GC to reuse space for large temporary arrays
-        Unsafe.dealloc(fx_elem);
-        Unsafe.dealloc(fy_elem);
-        Unsafe.dealloc(fz_elem);
+        Unsafe.deallocNonGC(fx_elem);
+        Unsafe.deallocNonGC(fy_elem);
+        Unsafe.deallocNonGC(fz_elem);
     }
 
     private @Inline final def calcElemFBHourglassForce(
@@ -1595,12 +1593,12 @@ endLoop(18); // fused loops 18-20
         // each call (due to different sized region element
         // lists)
         val numElemReg = regElemList.size;
-        val work = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val p_new = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val e_new = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val q_new = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val bvc = Unsafe.allocRailUninitialized[Double](numElemReg);
-        val pbvc = Unsafe.allocRailUninitialized[Double](numElemReg);
+        val work = Unsafe.allocNonGCRailUninitialized[Double](numElemReg);
+        val p_new = Unsafe.allocNonGCRailUninitialized[Double](numElemReg);
+        val e_new = Unsafe.allocNonGCRailUninitialized[Double](numElemReg);
+        val q_new = Unsafe.allocNonGCRailUninitialized[Double](numElemReg);
+        val bvc = Unsafe.allocNonGCRailUninitialized[Double](numElemReg);
+        val pbvc = Unsafe.allocNonGCRailUninitialized[Double](numElemReg);
 
         //loop to add load imbalance based on region number 
         for(j in 0..(rep-1)) {
@@ -1670,12 +1668,12 @@ startLoop(33);
         });
 endLoop(33); // fused loops 33-34
 
-        Unsafe.dealloc(work);
-        Unsafe.dealloc(p_new);
-        Unsafe.dealloc(e_new);
-        Unsafe.dealloc(q_new);
-        Unsafe.dealloc(bvc);
-        Unsafe.dealloc(pbvc);
+        Unsafe.deallocNonGC(work);
+        Unsafe.deallocNonGC(p_new);
+        Unsafe.deallocNonGC(e_new);
+        Unsafe.deallocNonGC(q_new);
+        Unsafe.deallocNonGC(bvc);
+        Unsafe.deallocNonGC(pbvc);
     }
 
     private @Inline def calcEnergyForElem(i:Long, p_new:Rail[Double],
