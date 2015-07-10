@@ -5,6 +5,7 @@
 cd $PBS_O_WORKDIR
 
 export MPICH_MAX_THREAD_SAFETY=multiple
+export GC_LARGE_ALLOC_WARN_INTERVAL=100000
 export X10RT_RXTX=1
 
 aprun -e X10_NTHREADS=6 -S 1 -d 6 -n 27 -ss ./bin/lulesh2.0 -s 50
