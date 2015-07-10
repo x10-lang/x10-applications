@@ -370,10 +370,10 @@ endLoop(0);
         val numElem = domain.numElem;
         if (numElem != 0) {
             val hgcoef = domain.hgcoef;
-            val sigxx  = new Rail[Double](numElem);
-            val sigyy  = new Rail[Double](numElem);
-            val sigzz  = new Rail[Double](numElem);
-            val determ = new Rail[Double](numElem);
+            val sigxx  = Unsafe.allocRailUninitialized[Double](numElem);
+            val sigyy  = Unsafe.allocRailUninitialized[Double](numElem);
+            val sigzz  = Unsafe.allocRailUninitialized[Double](numElem);
+            val determ = Unsafe.allocRailUninitialized[Double](numElem);
 
             initStressTermsForElems(domain, sigxx, sigyy, sigzz);
 
@@ -390,10 +390,10 @@ endLoop(4);
 
             calcHourglassControlForElems(domain, determ, hgcoef);
 
-            Unsafe.dealloc(sigxx);
-            Unsafe.dealloc(sigyy);
-            Unsafe.dealloc(sigzz);
             Unsafe.dealloc(determ);
+            Unsafe.dealloc(sigzz);
+            Unsafe.dealloc(sigyy);
+            Unsafe.dealloc(sigxx);
         }
     }
 
