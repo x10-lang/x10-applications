@@ -165,26 +165,58 @@ public final class Lulesh {
             val elapsedTimeMillis = Timer.milliTime() - start;
             domain.elapsedTimeMillis = Team.WORLD.allreduce(elapsedTimeMillis, Team.MAX);
 
-            if (PRINT_COMM_TIME) {
-                val printGhostManager = (name:String, mgr:GhostManager) => {
-                    Console.OUT.printf("%d %10s ghosts wait %4.3f (ms) process %4.3f (ms) send %4.3f (ms)\n", here.id, name, mgr.localState().waitTime/1e6, mgr.localState().processTime/1e6, mgr.localState().sendTime/1e6);
-                };
-                printGhostManager("pos/vel", posVelGhostMgr);
-                printGhostManager("force", forceGhostMgr);
-                printGhostManager("gradient", gradientGhostMgr);
-                Console.OUT.printf("%d allreduce %4d (ms)\n", here.id, domain.allreduceTime);
-            }
         } // at(place) async
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
         verifyAndWriteFinalOutput(elapsedTime, domainPlh());
 
+        var reportCommTime:Boolean = PRINT_COMM_TIME;
 @Ifdef("__RECORD_LOOP_TIMES__") {
+        reportCommTime = true;
+        val allTimes = new Rail[Rail[Long]](Place.numPlaces());
+        for (p in Place.places()) {
+            allTimes(p.id) = at (p) Lulesh.loopTimes;
+        }
         Console.OUT.println("### Loop times (in microseconds) ###");
+        Console.OUT.print("LoopID,");
+        for (i in allTimes.range) {
+            Console.OUT.print(Place(i)+",");
+        }
+        Console.OUT.println();
         for (i in 0..(NUM_LOOPS-1)) {
-            Console.OUT.printf("%3ld %8ld\n", i, loopTimes(i) / 1000);
+            Console.OUT.print(i+",");
+            for (j in allTimes.range) {
+                Console.OUT.printf("%8ld,", allTimes(j)(i) / 1000);
+            }
+            Console.OUT.println();
         }
 }
+
+        if (reportCommTime) {
+            val allCommTimes = new Rail[Rail[Long]](Place.numPlaces());
+            for (p in Place.places()) {
+                allCommTimes(p.id) = at (p) [posVelGhostMgr.localState().waitTime, posVelGhostMgr.localState().processTime, 
+                                             posVelGhostMgr.localState().sendTime, forceGhostMgr.localState().waitTime, 
+                                             forceGhostMgr.localState().processTime, forceGhostMgr.localState().sendTime, 
+                                             gradientGhostMgr.localState().waitTime, gradientGhostMgr.localState().processTime, 
+                                             gradientGhostMgr.localState().sendTime, domainPlh().allreduceTime];
+            }
+            Console.OUT.println("### Communication related times (in microseconds) ###");
+            Console.OUT.print("PhaseLabel,");
+            for (i in allCommTimes.range) {
+                Console.OUT.print(Place(i)+",");
+            }
+            Console.OUT.println();
+            val labels = ["pos/vel_wait","pos/vel_process","pos/vel_send","force_wait","force_process","force_send",
+                          "gradient_wait","gradient_process","gradient_send", "all_reduce"];
+            for (i in labels.range) {
+                Console.OUT.print(labels(i)+",");
+                for (j in allCommTimes.range) {
+                    Console.OUT.printf("%8ld,", allCommTimes(j)(i) / 1000);
+                }
+                Console.OUT.println();
+            }
+        }
     }
 
     /**
