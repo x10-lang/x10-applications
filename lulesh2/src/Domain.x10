@@ -879,14 +879,14 @@ public final class Domain {
 
     public def allocateGradients(allElem:Long) {
         // Position gradients
-        delx_xi = new Rail[Double](numElem);
-        delx_eta = new Rail[Double](numElem);
-        delx_zeta = new Rail[Double](numElem);
+        delx_xi = Unsafe.allocRailUninitialized[Double](numElem);
+        delx_eta = Unsafe.allocRailUninitialized[Double](numElem);
+        delx_zeta = Unsafe.allocRailUninitialized[Double](numElem);
 
         // Velocity gradients
-        delv_xi = new Rail[Double](allElem);
-        delv_eta = new Rail[Double](allElem);
-        delv_zeta = new Rail[Double](allElem);
+        delv_xi = Unsafe.allocRailUninitialized[Double](allElem);
+        delv_eta = Unsafe.allocRailUninitialized[Double](allElem);
+        delv_zeta = Unsafe.allocRailUninitialized[Double](allElem);
     }
 
     public def deallocateGradients() {
@@ -900,15 +900,15 @@ public final class Domain {
     }
 
     public def allocateStrains() {
-        dxx = new Rail[Double](numElem);
-        dyy = new Rail[Double](numElem);
-        dzz = new Rail[Double](numElem);
+        dxx = Unsafe.allocRailUninitialized[Double](numElem);
+        dyy = Unsafe.allocRailUninitialized[Double](numElem);
+        dzz = Unsafe.allocRailUninitialized[Double](numElem);
     }
 
     public def deallocateStrains() {
-      dzz = null;
-      dyy = null;
-      dxx = null;
+        Unsafe.dealloc(dzz); dzz = null;
+        Unsafe.dealloc(dyy); dyy = null;
+        Unsafe.dealloc(dxx); dxx = null;
     }
 
 
