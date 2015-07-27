@@ -17,8 +17,6 @@ import x10.regionarray.Region;
 
 /** Manages updates of ghost data for LULESH. */
 public final class GhostManager {
-    private static val USE_ASYNC_COPY:Boolean = System.getenv("LULESH_GM_USE_AT") == null;
-
     // LocalState is Unserializable to catch programming errors;
     // instances of this class should never be sent across Places.
     static class LocalState implements x10.io.Unserializable {
@@ -237,19 +235,10 @@ public final class GhostManager {
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
             sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
-            if (USE_ASYNC_COPY) {
-                Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
-                    val dst_ls = localState();
-                    atomic dst_ls.neighborsReceivedCount++;
-                });
-            } else {
-                at(Place(src_ls.neighborListSend(i))) @Uncounted async {
-                    val dst_ls = localState();
-                    val sender = dst_ls.getNeighborNumber(sourceId);
-                    Rail.copy(data, 0, dst_ls.recvBuffers(sender), 0, data.size);
-                    atomic dst_ls.neighborsReceivedCount++;
-                }
-            }
+            Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
+                val dst_ls = localState();
+                atomic dst_ls.neighborsReceivedCount++;
+            });
         }
         src_ls.sendTime += Timer.nanoTime() - start;
     }
@@ -289,25 +278,14 @@ public final class GhostManager {
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
             sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
-            if (USE_ASYNC_COPY) {
-                Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
-                    postUpdateFunction(phase, ()=>{
-                        val dst_ls = localState();
-                        val sender = dst_ls.getNeighborNumber(sourceId);
-                        dst_ls.domainPlh().updateBoundaryData(dst_ls.recvBuffers(sender), dst_ls.recvRegions(sender), 
-                                                              dst_ls.accessFields, dst_ls.sideLength);
-                    });
+            Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
+                postUpdateFunction(phase, ()=>{
+                    val dst_ls = localState();
+                    val sender = dst_ls.getNeighborNumber(sourceId);
+                    dst_ls.domainPlh().updateBoundaryData(dst_ls.recvBuffers(sender), dst_ls.recvRegions(sender), 
+                                                          dst_ls.accessFields, dst_ls.sideLength);
                 });
-            } else {
-                at(Place(src_ls.neighborListSend(i))) @Uncounted async {
-                    postUpdateFunction(phase, ()=>{
-                        val dst_ls = localState();
-                        val sender = dst_ls.getNeighborNumber(sourceId);
-                        dst_ls.domainPlh().updateBoundaryData(data, dst_ls.recvRegions(sender), 
-                                                              dst_ls.accessFields, dst_ls.sideLength);
-                    });
-                }
-            }
+            });
         }
         localState().sendTime += Timer.nanoTime() - start;
     }
@@ -327,35 +305,19 @@ public final class GhostManager {
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
             sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
-            if (USE_ASYNC_COPY) {
-                Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
-                    postUpdateFunction(phase,  ()=>{
-                        val dst_ls = localState();
-                        val sideLength = dst_ls.sideLength;
-                        val localDataSize = sideLength*sideLength*sideLength;
-                        val ghostRegionSize = sideLength*sideLength;
-                        val sender = dst_ls.getNeighborNumber(sourceId);
-                        val ghostOffset = localDataSize + sender * ghostRegionSize;
-                        dst_ls.domainPlh().updateGhosts(dst_ls.recvBuffers(sender), 
-                                                        dst_ls.accessFields, 
-                                                        ghostRegionSize, ghostOffset);
-                    });
+            Rail.uncountedCopy(data, 0, src_ls.remoteRecvBuffers(i), 0, data.size, ()=> {
+                postUpdateFunction(phase,  ()=>{
+                    val dst_ls = localState();
+                    val sideLength = dst_ls.sideLength;
+                    val localDataSize = sideLength*sideLength*sideLength;
+                    val ghostRegionSize = sideLength*sideLength;
+                    val sender = dst_ls.getNeighborNumber(sourceId);
+                    val ghostOffset = localDataSize + sender * ghostRegionSize;
+                    dst_ls.domainPlh().updateGhosts(dst_ls.recvBuffers(sender), 
+                                                    dst_ls.accessFields, 
+                                                    ghostRegionSize, ghostOffset);
                 });
-            } else {
-                at(Place(src_ls.neighborListSend(i))) @Uncounted async {
-                    postUpdateFunction(phase,  ()=>{
-                        val dst_ls = localState();
-                        val sideLength = dst_ls.sideLength;
-                        val localDataSize = sideLength*sideLength*sideLength;
-                        val ghostRegionSize = sideLength*sideLength;
-                        val sender = dst_ls.getNeighborNumber(sourceId);
-                        val ghostOffset = localDataSize + sender * ghostRegionSize;
-                        dst_ls.domainPlh().updateGhosts(data,
-                                                        dst_ls.accessFields, 
-                                                        ghostRegionSize, ghostOffset);
-                    });
-                }
-            }
+            });
         }
         src_ls.sendTime += Timer.nanoTime() - start;
     }
