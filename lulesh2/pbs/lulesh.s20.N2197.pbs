@@ -10,8 +10,8 @@ aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 2197 ./c++/lulesh2.0 -s 20
 
 export MPICH_MAX_THREAD_SAFETY=multiple
 
-aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 2197 ./bin/lulesh2.0 -s 20
-aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 2197 ./bin/lulesh2.0 -s 20
-aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 2197 ./bin/lulesh2.0 -s 20
-aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 2197 ./bin/lulesh2.0 -s 20
-aprun -e X10_NTHREADS=4 -S 1 -d 6 -n 2197 ./bin/lulesh2.0 -s 20
+aprun -e X10_NTHREADS=4 -S 1 -cc numa_node -ss -n 2197 ./bin/lulesh2.0 -s 20
+aprun -e X10_NTHREADS=4 -S 1 -cc numa_node -ss -n 2197 ./bin/lulesh2.0 -s 20
+aprun -e X10_NTHREADS=4 -S 1 -cc numa_node -ss -n 2197 ./bin/lulesh2.0 -s 20
+aprun -e X10_NTHREADS=4 -S 1 -cc numa_node -ss -n 2197 ./bin/lulesh2.0 -s 20
+aprun -e X10_NTHREADS=4 -S 1 -cc numa_node -ss -n 2197 ./bin/lulesh2.0 -s 20
