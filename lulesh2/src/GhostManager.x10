@@ -90,7 +90,6 @@ public final class GhostManager {
         public var sendTime:Long = 0;
         public var processTime:Long = 0;
         public var waitTime:Long = 0;
-        public var allGhostTime:Long = 0;
 
         protected final def getNeighborNumber(neighborId:Long) {
             for (i in 0..(neighborListRecv.size-1)) {
@@ -204,22 +203,6 @@ public final class GhostManager {
         }
     }
 
-    /* 
-     * TEMPORARY INSTRUMENTION TO SIMPLIFY PERFORMANCE UNDERSTANDING.
-     * THE CALLS TO TEAM.BARRIER IN THIS CODE ARE ONLY TO ENSURE COMPLETE
-     * SEPARATION BETWEEN PARALLEL FORLOOPS AND COMMUNICATION.
-     */
-    public final def startGhostPhase() {
-      val gt = Timer.nanoTime();
-      x10.util.Team.WORLD.barrier();
-      return gt;
-    }
-
-    public final def endGhostPhase(st:long) {
-      x10.util.Team.WORLD.barrier();
-      localState().allGhostTime += Timer.nanoTime() - st;
-    }
-     
     /** 
      * Wait for all ghosts to be received and then return.
      * Used to switch ghost manager phase from sending to using ghost data.

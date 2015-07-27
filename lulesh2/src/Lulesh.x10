@@ -196,11 +196,11 @@ public final class Lulesh {
             val allCommTimes = new Rail[Rail[Long]](Place.numPlaces());
             for (p in Place.places()) {
                 allCommTimes(p.id) = at (p) [posVelGhostMgr.localState().waitTime, posVelGhostMgr.localState().processTime, 
-                                             posVelGhostMgr.localState().sendTime, posVelGhostMgr.localState().allGhostTime, 
+                                             posVelGhostMgr.localState().sendTime,
 					     forceGhostMgr.localState().waitTime, forceGhostMgr.localState().processTime, 
-					     forceGhostMgr.localState().sendTime, forceGhostMgr.localState().allGhostTime, 
+					     forceGhostMgr.localState().sendTime,
                                              gradientGhostMgr.localState().waitTime, gradientGhostMgr.localState().processTime, 
-                                             gradientGhostMgr.localState().sendTime, gradientGhostMgr.localState().allGhostTime, 
+                                             gradientGhostMgr.localState().sendTime,
                                              domainPlh().allreduceTime];
             }
             Console.OUT.println("### Communication related times (in microseconds) ###");
@@ -209,9 +209,9 @@ public final class Lulesh {
                 Console.OUT.print(Place(i)+",");
             }
             Console.OUT.println();
-            val labels = ["pos/vel_wait","pos/vel_process","pos/vel_send","pos/vel_total_ghost",
-                          "force_wait","force_process","force_send","force_total_ghost",
-                          "gradient_wait","gradient_process","gradient_send","gradient_total_ghost",
+            val labels = ["pos/vel_wait","pos/vel_process","pos/vel_send",
+                          "force_wait","force_process","force_send",
+                          "gradient_wait","gradient_process","gradient_send",
                           "all_reduce"];
             for (i in labels.range) {
                 Console.OUT.print(labels(i)+",");
@@ -344,10 +344,8 @@ public final class Lulesh {
         calcPositionForNodes(domain, delt);
 
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
-        val gt = posVelGhostMgr.startGhostPhase();
         posVelGhostMgr.updateBoundaryData();
         posVelGhostMgr.waitForGhosts();
-        posVelGhostMgr.endGhostPhase(gt);
 }
     }
 
@@ -399,10 +397,8 @@ endLoop(0);
 
         calcVolumeForceForElems(domain);
 
-        val gt = forceGhostMgr.startGhostPhase();
         forceGhostMgr.gatherBoundariesToCombine();
         forceGhostMgr.waitAndCombineBoundaries();
-        forceGhostMgr.endGhostPhase(gt);
     }
 
     /** Calculate the volume force contribution for each mesh element. */
@@ -1222,10 +1218,8 @@ endLoop(14);
             /* Calculate velocity gradients */
             calcMonotonicQGradientsForElems(domain, vnew);
 
-            val gt = gradientGhostMgr.startGhostPhase();
             gradientGhostMgr.updatePlaneGhosts();
             gradientGhostMgr.waitForGhosts();
-            gradientGhostMgr.endGhostPhase(gt);
 
             calcMonotonicQForElems(domain, vnew);
 
