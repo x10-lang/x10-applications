@@ -4,23 +4,24 @@
 
 cd $PBS_O_WORKDIR
 
-aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=6 -S 1 -d 6 -n 1 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
 
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=4 -S 1 -d 4 -n 1 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
 
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 1 -ss ./lulesh2.0 -s 30
-aprun -e OMP_NUM_THREADS=1 -S 1 -d 1 -n 1 -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1 -cc numa_node -ss ./lulesh2.0 -s 30
+
 
 
 
