@@ -1,6 +1,6 @@
 #PBS -q regular
 #PBS -l mppwidth=4392
-#PBS -l walltime=06:00:00
+#PBS -l walltime=04:45:00
 
 cd $PBS_O_WORKDIR
 
