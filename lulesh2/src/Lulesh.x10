@@ -670,12 +670,12 @@ endLoop(3);
 startLoop(5);
         Foreach.block(0, numElem-1,
         (min_i:Long, max_i:Long) => {
-            @StackAllocate val x1 = @StackAllocate new Rail[Double](8);
-            @StackAllocate val y1 = @StackAllocate new Rail[Double](8);
-            @StackAllocate val z1 = @StackAllocate new Rail[Double](8);
-            @StackAllocate val pfx = @StackAllocate new Rail[Double](8);
-            @StackAllocate val pfy = @StackAllocate new Rail[Double](8);
-            @StackAllocate val pfz = @StackAllocate new Rail[Double](8);
+            @StackAllocate val x1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val y1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val z1 = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val pfx = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val pfy = @StackAllocateUninitialized new Rail[Double](8);
+            @StackAllocate val pfz = @StackAllocateUninitialized new Rail[Double](8);
             for (i in min_i..max_i) {
                 collectDomainNodesToElemNodes(domain, i, x1, y1, z1);
 
