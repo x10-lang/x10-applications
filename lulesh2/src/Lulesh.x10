@@ -43,7 +43,8 @@ import x10.util.Timer;
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
 public final class Lulesh {
-    static PRINT_COMM_TIME = false;
+    static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
+    static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
 
     /** The simulation domain at each place. */
     protected val domainPlh:PlaceLocalHandle[Domain];
@@ -140,10 +141,14 @@ public final class Lulesh {
                 printLoadImbalance(domain);
             }
 
-            massGhostMgr.gatherBoundariesToCombine();
-            massGhostMgr.waitAndCombineBoundaries();
+            if (SYNCH_GHOST_EXCHANGE) {
+                massGhostMgr.exchangeAndCombineBoundaryData();
+            } else {
+                massGhostMgr.gatherBoundariesToCombine();
+                massGhostMgr.waitAndCombineBoundaries();
+            }
 
-            Team.WORLD.barrier();
+	    Team.WORLD.barrier();
 
             val start = Timer.milliTime();
 
@@ -397,8 +402,12 @@ endLoop(0);
 
         calcVolumeForceForElems(domain);
 
-        forceGhostMgr.gatherBoundariesToCombine();
-        forceGhostMgr.waitAndCombineBoundaries();
+        if (SYNCH_GHOST_EXCHANGE) {
+            forceGhostMgr.exchangeAndCombineBoundaryData();
+        } else {
+            forceGhostMgr.gatherBoundariesToCombine();
+            forceGhostMgr.waitAndCombineBoundaries();
+        }
     }
 
     /** Calculate the volume force contribution for each mesh element. */
