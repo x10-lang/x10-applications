@@ -349,8 +349,12 @@ public final class Lulesh {
         calcPositionForNodes(domain, delt);
 
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
-        posVelGhostMgr.updateBoundaryData();
-        posVelGhostMgr.waitForGhosts();
+        if (SYNCH_GHOST_EXCHANGE) {
+            posVelGhostMgr.exchangeBoundaryData();
+        } else {
+            posVelGhostMgr.updateBoundaryData();
+            posVelGhostMgr.waitForGhosts();
+        }
 }
     }
 
@@ -1227,8 +1231,12 @@ endLoop(14);
             /* Calculate velocity gradients */
             calcMonotonicQGradientsForElems(domain, vnew);
 
-            gradientGhostMgr.updatePlaneGhosts();
-            gradientGhostMgr.waitForGhosts();
+            if (SYNCH_GHOST_EXCHANGE) {
+                gradientGhostMgr.exchangePlaneGhosts();
+            } else {
+                gradientGhostMgr.updatePlaneGhosts();
+                gradientGhostMgr.waitForGhosts();
+            }
 
             calcMonotonicQForElems(domain, vnew);
 

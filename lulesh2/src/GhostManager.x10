@@ -253,6 +253,7 @@ public final class GhostManager {
         }
     }
 
+
     /**
      * Send boundary data from this place to neighboring places to be 
      * combined later by waitAndCombineBoundaries.
@@ -297,11 +298,17 @@ public final class GhostManager {
     }
 
     /**
-     * Collective exchange and combine of boundary data.
+     * Collective exchange and combine of boundary data as an
+     * get-based alternative to gatherBoundariesToCombine; waitAndCombineBoundaries.
+     *
+     * The internal steps are:
      *  (a) pack my data into send buffers
      *  (b) global barrier
      *  (c) get data from neighbors
      *  (d) unpack & accumulate data from neighbors
+     * It assumes that there is at least one other collective operation between
+     * calls to exhangeAndCombinedBoundaryData (to avoid needing a barrier before
+     * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
         val t1 = Timer.nanoTime();
@@ -325,7 +332,7 @@ public final class GhostManager {
         finish {
             for (i in ls.neighborListRecv.range) {
                 Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
-             }
+            }
         }
         val t4 = Timer.nanoTime();
         ls.sendTime += (t4 - t3);
@@ -337,9 +344,15 @@ public final class GhostManager {
        ls.processTime += (Timer.nanoTime() - t4);
     }
 
-    /**
+
+   /**
      * Update boundary data at all neighboring places, overwriting with data
      * from this place's boundary region.
+     * 
+     * This method updates (overwrites) boundary data at neighboring places
+     * with boundary data from this place. It is combined with
+     * a subsequent call to waitForGhosts to implement a full exchange of the
+     * boundary ghost data between neighbors.
      */
     public def updateBoundaryData() {
         val start = Timer.nanoTime();
@@ -364,9 +377,60 @@ public final class GhostManager {
     }
 
     /**
-     * Update ghost data for plane boundaries at neighboring places with plane
-     * boundary data from this place.  Plane ghost data are stored contiguously
-     * for each plane *after* all locally-managed data at each place. 
+     * Collective exchange of boundary data as an
+     * get-based alternative to updateBoundaryData; waitForGhosts
+     *
+     * The internal steps are:
+     *  (a) pack my data into send buffers
+     *  (b) global barrier
+     *  (c) get data from neighbors
+     *  (d) unpack & accumulate data from neighbors
+     * It assumes that there is at least one other collective operation between
+     * calls to exhangeBoundaryData (to avoid needing a barrier before
+     * updating the sendBuffers).
+     */
+    public final def exchangeBoundaryData() {
+        val t1 = Timer.nanoTime();
+        val ls = localState();
+        val dom = ls.domainPlh();
+
+        // (a) pack my outgoing data into the send buffers
+        for (i in ls.neighborListSend.range) {
+            dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
+        }
+
+        // (b) wait for everyone else to have packed their data
+        val t2 = Timer.nanoTime();
+        ls.processTime += (t2 - t1);
+        Team.WORLD.barrier();
+        val t3 = Timer.nanoTime();
+        ls.waitTime += (t3 - t2);
+
+        // (c) get the packed data from my neighbors
+        finish {
+            for (i in ls.neighborListRecv.range) {
+                Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+            }
+        }
+        val t4 = Timer.nanoTime();
+        ls.sendTime += (t4 - t3);
+
+        // (d) combine
+        for (i in ls.recvBuffers.range) {
+            dom.updateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
+        }
+        ls.processTime += (Timer.nanoTime() - t4);
+    }
+
+
+   /**
+     * Plane ghost data are stored contiguously
+     * for each plane *after* all locally-managed data at each place.
+     *
+     * This method updates ghost data for plane boundaries at neighboring
+     * places with plane boundary data from this place. It is combined with
+     * a subsequent call to waitForGhosts to implement a full exchange of the
+     * Plane ghost data between neighbors.
      */
     public def updatePlaneGhosts() {
         val start = Timer.nanoTime();
@@ -393,5 +457,58 @@ public final class GhostManager {
             });
         }
         src_ls.sendTime += Timer.nanoTime() - start;
+    }
+
+    /**
+     * Plane ghost data are stored contiguously
+     * for each plane *after* all locally-managed data at each place.
+     * 
+     * This method implements a collective get-based exchange of Plane
+     * ghost data as an alternate to the sequence updatePlaneGhosts; waitForGhosts).
+     *
+     * The steps are:
+     *  (a) pack my data into send buffers
+     *  (b) global barrier
+     *  (c) get data from neighbors
+     *  (d) unpack & accumulate data from neighbors
+     * It assumes that there is at least one other collective operation between
+     * calls to exhangePlaneGhosts (to avoid needing a barrier before updating the
+     * sendBuffers).
+     */
+    public final def exchangePlaneGhosts() {
+        val t1 = Timer.nanoTime();
+        val ls = localState();
+        val dom = ls.domainPlh();
+
+        // (a) pack my outgoing data into the send buffers
+        for (i in ls.neighborListSend.range) {
+            dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
+        }
+
+        // (b) wait for everyone else to have packed their data
+        val t2 = Timer.nanoTime();
+        ls.processTime += (t2 - t1);
+        Team.WORLD.barrier();
+        val t3 = Timer.nanoTime();
+        ls.waitTime += (t3 - t2);
+
+        // (c) get the packed data from my neighbors
+        finish {
+            for (i in ls.neighborListRecv.range) {
+                Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+            }
+        }
+        val t4 = Timer.nanoTime();
+        ls.sendTime += (t4 - t3);
+
+        // (d) combine
+        val sideLength = ls.sideLength;
+        val localDataSize = sideLength*sideLength*sideLength;
+        val ghostRegionSize = sideLength*sideLength;
+        for (i in ls.recvBuffers.range) {
+            val ghostOffset = localDataSize + i * ghostRegionSize;
+            dom.updateGhosts(ls.recvBuffers(i), ls.accessFields, ghostRegionSize, ghostOffset);
+        }
+        ls.processTime += (Timer.nanoTime() - t4);
     }
 }
