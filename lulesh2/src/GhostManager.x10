@@ -173,34 +173,43 @@ public final class GhostManager {
         });
         this.localState = ls;
 
-        // Now initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
+        // Next, gather the GlobalRails I need to communicate with my neighbors
         Place.places().broadcastFlat(()=> {
             val ls2 = ls();
-            // The finish is required to prevent interactions between the specialized
-            // finish implementation used by broadcastFlat and the implementation of resilient at.
-            finish for (i in ls2.neighborListSend.range) {
-              val senderId = here.id;
-              ls2.remoteRecvBuffers(i) = at (Place(ls2.neighborListSend(i))) {
-                  val ls3 = ls();
-                  val bufIdx = ls3.getRecvNeighborNumber(senderId);
-                  GlobalRail[Double](ls3.recvBuffers(bufIdx))
-              };
-            }
-        });
+            val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
+            val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
 
-        // Now initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-        Place.places().broadcastFlat(()=> {
-            val ls2 = ls();
-            // The finish is required to prevent interactions between the specialized
-            // finish implementation used by broadcastFlat and the implementation of resilient at.
-            finish for (i in ls2.neighborListRecv.range) {
-              val recvId = here.id;
-              ls2.remoteSendBuffers(i) = at (Place(ls2.neighborListRecv(i))) {
-                  val ls3 = ls();
-                  val bufIdx = ls3.getSendNeighborNumber(recvId);
-                  GlobalRail[Double](ls3.sendBuffers(bufIdx))
-              };
+            finish {
+                if (Lulesh.SYNCH_GHOST_EXCHANGE) {
+                    // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
+                    val recvId = here.id;
+                    for (i in ls2.neighborListRecv.range) {
+                        at (Place(ls2.neighborListRecv(i))) async {
+                            val ls3 = ls();
+                            val bufIdx = ls3.getSendNeighborNumber(recvId);
+                            val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
+                            at (rsb_gr.home) async {
+                                rsb_gr()(i) = gr;
+                            }
+                        }
+                    }
+                } else {
+                    // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
+                    val senderId = here.id;
+                    for (i in ls2.neighborListSend.range) {
+                        at (Place(ls2.neighborListSend(i))) async {
+                            val ls3 = ls();
+                            val bufIdx = ls3.getRecvNeighborNumber(senderId);
+                            val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
+                            at (rrb_gr.home) async {
+                                rrb_gr()(i) = gr;
+                            }
+                        }
+                    }
+                }
             }
+            rrb_gr.forget();
+            rsb_gr.forget();
         });
     }
 
