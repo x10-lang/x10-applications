@@ -172,6 +172,45 @@ public final class GhostManager {
             new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields)
         });
         this.localState = ls;
+
+        // Next, gather the GlobalRails I need to communicate with my neighbors
+        Place.places().broadcastFlat(()=> {
+            val ls2 = ls();
+            val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
+            val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
+
+            finish {
+                if (Lulesh.SYNCH_GHOST_EXCHANGE) {
+                    // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
+                    val recvId = here.id;
+                    for (i in ls2.neighborListRecv.range) {
+                        at (Place(ls2.neighborListRecv(i))) async {
+                            val ls3 = ls();
+                            val bufIdx = ls3.getSendNeighborNumber(recvId);
+                            val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
+                            at (rsb_gr.home) async {
+                                rsb_gr()(i) = gr;
+                            }
+                        }
+                    }
+                } else {
+                    // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
+                    val senderId = here.id;
+                    for (i in ls2.neighborListSend.range) {
+                        at (Place(ls2.neighborListSend(i))) async {
+                            val ls3 = ls();
+                            val bufIdx = ls3.getRecvNeighborNumber(senderId);
+                            val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
+                            at (rrb_gr.home) async {
+                                rrb_gr()(i) = gr;
+                            }
+                        }
+                    }
+                }
+            }
+            rrb_gr.forget();
+            rsb_gr.forget();
+        });
     }
 
     private final def allNeighborsReceived():Boolean {
@@ -201,48 +240,6 @@ public final class GhostManager {
                 ls.neighborsReceivedCount++;
             }
         }
-    }
-
-    /**
-     * Collect GlobalRails to my neighbors' communication buffers
-     */
-    def localViewBufferExchange() {
-        val ls = localState;
-        val ls2 = ls();
-        val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
-        val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
-
-        finish {
-            if (Lulesh.SYNCH_GHOST_EXCHANGE) {
-                // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-                val recvId = here.id;
-                for (i in ls2.neighborListRecv.range) {
-                    at (Place(ls2.neighborListRecv(i))) async {
-                        val ls3 = ls();
-                        val bufIdx = ls3.getSendNeighborNumber(recvId);
-                        val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
-                        at (rsb_gr.home) async {
-                            rsb_gr()(i) = gr;
-                        }
-                    }
-                }
-            } else {
-                // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
-                val senderId = here.id;
-                for (i in ls2.neighborListSend.range) {
-                    at (Place(ls2.neighborListSend(i))) async {
-                        val ls3 = ls();
-                        val bufIdx = ls3.getRecvNeighborNumber(senderId);
-                        val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
-                        at (rrb_gr.home) async {
-                            rrb_gr()(i) = gr;
-                        }
-                    }
-                }
-            }
-        }
-        rrb_gr.forget();
-        rsb_gr.forget();
     }
 
     /** 
