@@ -229,7 +229,7 @@ public final class GhostManager {
     }
 
     private static final def someNeighborDied(ls:LocalState):Boolean {
-        if (true || x10.xrx.Runtime.RESILIENT_MODE == 0n) return false;
+        if (x10.xrx.Runtime.RESILIENT_MODE == 0n) return false;
         val suspects = Lulesh.SYNCH_GHOST_EXCHANGE ? ls.neighborListRecv : ls.neighborListSend;
         for (s in suspects) {
             if (Place.isDead(s)) {
