@@ -178,38 +178,47 @@ public final class GhostManager {
             val ls2 = ls();
             val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
             val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
+            val counter = new Cell[Int](0n);
+            val counter_gr = GlobalRef[Cell[Int]](counter);
 
-            finish {
-                if (Lulesh.SYNCH_GHOST_EXCHANGE) {
-                    // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-                    val recvId = here.id;
-                    for (i in ls2.neighborListRecv.range) {
-                        at (Place(ls2.neighborListRecv(i))) async {
-                            val ls3 = ls();
-                            val bufIdx = ls3.getSendNeighborNumber(recvId);
-                            val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
-                            at (rsb_gr.home) async {
-                                rsb_gr()(i) = gr;
-                            }
+            if (Lulesh.SYNCH_GHOST_EXCHANGE) {
+                // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
+                val recvId = here.id;
+                counter.set(ls2.neighborListRecv.size as Int);
+                for (i in ls2.neighborListRecv.range) {
+                    at (Place(ls2.neighborListRecv(i))) @Uncounted async {
+                        val ls3 = ls();
+                        val bufIdx = ls3.getSendNeighborNumber(recvId);
+                        val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
+                        at (rsb_gr.home) @Uncounted async {
+                            rsb_gr()(i) = gr;
+                            atomic { counter_gr().set(counter_gr()()-1n); }
                         }
                     }
-                } else {
-                    // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
-                    val senderId = here.id;
-                    for (i in ls2.neighborListSend.range) {
-                        at (Place(ls2.neighborListSend(i))) async {
-                            val ls3 = ls();
-                            val bufIdx = ls3.getRecvNeighborNumber(senderId);
-                            val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
-                            at (rrb_gr.home) async {
-                                rrb_gr()(i) = gr;
-                            }
+                }
+            } else {
+                // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
+                val senderId = here.id;
+                counter.set(ls2.neighborListSend.size as Int);
+                for (i in ls2.neighborListSend.range) {
+                    at (Place(ls2.neighborListSend(i))) @Uncounted async {
+                        val ls3 = ls();
+                        val bufIdx = ls3.getRecvNeighborNumber(senderId);
+                        val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
+                        at (rrb_gr.home) @Uncounted async {
+                            rrb_gr()(i) = gr;
+                            atomic { counter_gr().set(counter_gr()()-1n); }
                         }
                     }
                 }
             }
+
+            // wait to receive all the messages back
+            when (counter() == 0n || someNeighborDied(ls2)) { }
+
             rrb_gr.forget();
             rsb_gr.forget();
+            counter_gr.forget();
         });
     }
 
@@ -217,6 +226,18 @@ public final class GhostManager {
         val received = localState().neighborsReceivedCount;
         val expected = localState().neighborListRecv.size;
         return received == expected;
+    }
+
+    private static final def someNeighborDied(ls:LocalState):Boolean {
+        if (true || x10.xrx.Runtime.RESILIENT_MODE == 0n) return false;
+        val suspects = Lulesh.SYNCH_GHOST_EXCHANGE ? ls.neighborListRecv : ls.neighborListSend;
+        for (s in suspects) {
+            if (Place.isDead(s)) {
+                Console.OUT.println(here+" detected that neighbor "+Place(s)+" is dead; raising DPE");
+                throw new DeadPlaceException(Place(s));
+            }
+        }
+        return false;
     }
 
     private final def processUpdateFunctions() {
@@ -252,7 +273,7 @@ public final class GhostManager {
         processUpdateFunctions();
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        when (allNeighborsReceived()) {
+        when (allNeighborsReceived() || someNeighborDied(ls)) {
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
             processUpdateFunctions();
@@ -293,7 +314,7 @@ public final class GhostManager {
     public final def waitAndCombineBoundaries() {
         val t1 = Timer.nanoTime();
         val ls = localState();
-        when (allNeighborsReceived()) {
+        when (allNeighborsReceived() || someNeighborDied(ls)) {
             val t2 = Timer.nanoTime();
             ls.waitTime += (t2 - t1);
             val dom = ls.domainPlh();
