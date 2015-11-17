@@ -12,8 +12,9 @@ package com.ibm.m3rlite.example;
 
 import com.ibm.m3rlite.Job;
 import com.ibm.m3rlite.ResilientEngine;
+
+import x10.util.List;
 import x10.util.Pair;
-import x10.util.ArrayList;
 
 /**
  * KMeans for Resilient M3R Lite, this version uses ResilientStore for source and sink
@@ -154,7 +155,7 @@ public class ResilientKMeansM3R_2 implements Job[Long,Coords, Long,Coords, Long,
     public def partition(k:Long) = k;
 
     // K2=cluster ID, V2=coordinates, K3=cluster ID, V3=new coordinates of the cluster
-    public def reducer(a:Long, b:Iterable[Coords], output:ArrayList[Pair[Long,Coords]]) {
+    public def reducer(a:Long, b:Iterable[Coords], output:List[Pair[Long,Coords]]) {
         if (b == null) return ; // no data to process
         var pos:Coords = new Coords(ND, 0.0);
         var c:Long = 0;

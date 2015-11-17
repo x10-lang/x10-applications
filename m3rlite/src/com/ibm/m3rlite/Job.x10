@@ -1,6 +1,7 @@
 package com.ibm.m3rlite;
+
+import x10.util.List;
 import x10.util.Pair;
-import x10.util.ArrayList;
 
 /**
  * A Job provides all the user-supplied code needed by the engine to execute
@@ -86,5 +87,5 @@ public interface Job[K1,V1,K2,V2,K3,V3] {
 	 * <p>This is an experimental feature -- an attempt to exploit a global control
 	 * construct within reducers.
 	 */
-	def reducer(K2,Iterable[V2], ArrayList[Pair[K3,V3]]):void;
+	def reducer(K2,Iterable[V2], List[Pair[K3,V3]]):void;
 }

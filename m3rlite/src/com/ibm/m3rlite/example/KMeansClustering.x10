@@ -1,11 +1,11 @@
 package com.ibm.m3rlite.example;
-import com.ibm.m3rlite.Job;
-import x10.util.Pair;
-import x10.util.ArrayList;
+
 import com.ibm.m3rlite.Engine;
+import com.ibm.m3rlite.Job;
 
+import x10.util.List;
+import x10.util.Pair;
 import x10.util.Random;
-
 
 
 public class KMeansClustering
@@ -135,7 +135,7 @@ public class KMeansClustering
 	}
 
 	// (K3 = cluster ID, V3 = center of cluster)
-	public def reducer(a:Long, b:Iterable[Long], sink:ArrayList[Pair[Long, Rail[Double]]]): void {
+	public def reducer(a:Long, b:Iterable[Long], sink:List[Pair[Long, Rail[Double]]]): void {
 		var sum:Double=0.0; 
 		var j : Long;
 

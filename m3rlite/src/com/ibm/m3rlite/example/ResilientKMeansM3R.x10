@@ -12,9 +12,10 @@ package com.ibm.m3rlite.example;
 
 import com.ibm.m3rlite.Job;
 import com.ibm.m3rlite.ResilientEngine;
-import x10.util.Pair;
-import x10.util.ArrayList;
+
 import x10.util.concurrent.AtomicLong;
+import x10.util.List;
+import x10.util.Pair;
 
 /**
  * KMeans for Resilient M3R Lite
@@ -98,7 +99,7 @@ public class ResilientKMeansM3R implements Job[Long,Long,Long,Long,Long,Rail[Dou
     public def partition(k:Long) = k;
 
     // K2=cluster ID, V2=data ID, K3=cluster ID, V3=new center of the cluster
-    public def reducer(a:Long, b:Iterable[Long], output:ArrayList[Pair[Long, Rail[Double]]]) {
+    public def reducer(a:Long, b:Iterable[Long], output:List[Pair[Long, Rail[Double]]]) {
         if (b == null) return ; // no data to process
         var pos:Rail[Double] = new Rail[Double](ND, 0.0);
         var c:Long = 0;

@@ -19,7 +19,7 @@ import x10.util.logging.LogFactory;
 import x10.util.Option;
 import x10.util.OptionsParser;
 import x10.util.HashMap;
-import x10.util.ArrayList;
+import x10.util.List;
 import x10.io.File;
 
 /**
@@ -247,7 +247,7 @@ public class ResilientHMM(S:Int, O:Int, N:Long, maxIter:Long, eps:Double, fileNa
 	/**
 	 * reducer() appends received learnt HMM result to local learnt HMM
 	 */
-	public def reducer(k2:Long, v2:Iterable[HMMModel], output:ArrayList[Pair[Long, HMMModel]]) {
+	public def reducer(k2:Long, v2:Iterable[HMMModel], output:List[Pair[Long, HMMModel]]) {
 		val s1 = System.nanoTime();
 		for (v in v2) {
 			logger.debug(String.format("reducer(): process received hmm (k2=%d)", [k2 as Any]));

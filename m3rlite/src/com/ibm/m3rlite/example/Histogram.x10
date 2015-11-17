@@ -1,8 +1,11 @@
 package com.ibm.m3rlite.example;
-import com.ibm.m3rlite.Job;
-import x10.util.Pair;
-import x10.util.ArrayList;
+
 import com.ibm.m3rlite.Engine;
+import com.ibm.m3rlite.Job;
+
+import x10.util.ArrayList;
+import x10.util.List;
+import x10.util.Pair;
 
 /**
  * An example of the user of the MRLite API. At each place, a rail contains
@@ -36,7 +39,7 @@ public class Histogram(plh:PlaceLocalHandle[Rail[Long]],
 		s(v,k);
 	}
 
-	public def reducer(a:Long, b:Iterable[Long], sink:ArrayList[Pair[Long, Long]]): void {
+	public def reducer(a:Long, b:Iterable[Long], sink:List[Pair[Long, Long]]): void {
 		var sum:Long=0L; 
 		if (b !=null) for (x in b) sum += 1;
 		sink.add(Pair(a as Long, sum));

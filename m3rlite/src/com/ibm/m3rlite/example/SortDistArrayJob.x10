@@ -1,14 +1,15 @@
 package com.ibm.m3rlite.example;
 
-import com.ibm.m3rlite.Job;
-import x10.util.Pair;
-import x10.util.ArrayList;
 import com.ibm.m3rlite.Engine;
-import x10.array.DistArray_Block_1;
-import x10.util.Random;
+import com.ibm.m3rlite.Job;
+
 import x10.array.DistArray;
-import x10.util.RailUtils;
+import x10.array.DistArray_Block_1;
 import x10.util.HashMap;
+import x10.util.List;
+import x10.util.Pair;
+import x10.util.RailUtils;
+import x10.util.Random;
 
 
 public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArray_Block_1[Long]) 
@@ -72,7 +73,7 @@ implements Job[Long,Long,Long,Pair[Long, Long],Long,Rail[Pair[Long,Long]]] {
 	}
 
 	public def reducer(a:Long, b:Iterable[Pair[Long, Long]], 
-			sink:ArrayList[Pair[Long, Rail[Pair[Long,Long]]]]): void {
+			sink:List[Pair[Long, Rail[Pair[Long,Long]]]]): void {
 		if (b !=null) {
 			var size:Long = 0;
 			for (x in b) size++;

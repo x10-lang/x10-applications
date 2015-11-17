@@ -1,15 +1,14 @@
 package com.ibm.m3rlite.example;
+
 import com.ibm.m3rlite.Job;
-import x10.util.Pair;
-import x10.util.Triple;
-import x10.util.ArrayList;
 import com.ibm.m3rlite.ResilientEngine;
 
-import x10.util.Random;
-
 import x10.lang.Math;
-
 import x10.util.concurrent.AtomicLong;
+import x10.util.List;
+import x10.util.Pair;
+import x10.util.Random;
+import x10.util.Triple;
 
 
 class DVector 
@@ -544,7 +543,7 @@ class ResilientSparseMV
 	}
 
 	// (K3 = starting row number, V3 = mv result)
-	public def reducer(a:Triple[Long,Long,Long], b:Iterable[DVector], sink:ArrayList[Pair[Long, DVector]]): void {
+	public def reducer(a:Triple[Long,Long,Long], b:Iterable[DVector], sink:List[Pair[Long, DVector]]): void {
 		var i : Long;
 
 		if (b !=null){
