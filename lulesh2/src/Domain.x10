@@ -406,10 +406,16 @@ public final class Domain {
                           accessFields:(dom:Domain) => Rail[Rail[Double]], sideLength:Long):void {
         val fields = accessFields(this);
         var idx:Long = 0;
+        val min0 = boundaryRegion.min(0);
+        val max0 = boundaryRegion.max(0);
+        val min1 = boundaryRegion.min(1);
+        val max1 = boundaryRegion.max(1);
+        val min2 = boundaryRegion.min(2);
+        val max2 = boundaryRegion.max(2);
         for (field in fields) {
-            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
-                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
-                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
+            for (z in min2..max2) {
+                for (y in min1..max1) {
+                    for (x in min0..max0) {
                         buffer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
                     }
                 }
@@ -422,10 +428,16 @@ public final class Domain {
                                   sideLength:Long) {
         val fields = accessFields(this);
         var idx:Long = 0;
+        val min0 = boundaryRegion.min(0);
+        val max0 = boundaryRegion.max(0);
+        val min1 = boundaryRegion.min(1);
+        val max1 = boundaryRegion.max(1);
+        val min2 = boundaryRegion.min(2);
+        val max2 = boundaryRegion.max(2);
         for (field in fields) {
-            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
-                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
-                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
+            for (z in min2..max2) {
+                for (y in min1..max1) {
+                    for (x in min0..max0) {
                         field(x + y*sideLength + z*sideLength*sideLength) = data(idx++);
                     }
                 }
@@ -438,10 +450,16 @@ public final class Domain {
                                       sideLength:Long) {
         val fields = accessFields(this);
         var idx:Long = 0;
+        val min0 = boundaryRegion.min(0);
+        val max0 = boundaryRegion.max(0);
+        val min1 = boundaryRegion.min(1);
+        val max1 = boundaryRegion.max(1);
+        val min2 = boundaryRegion.min(2);
+        val max2 = boundaryRegion.max(2);
         for (field in fields) {
-            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
-                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
-                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
+            for (z in min2..max2) {
+                for (y in min1..max1) {
+                    for (x in min0..max0) {
                         field(x + y*sideLength + z*sideLength*sideLength) += data(idx++);
                     }
                 }
