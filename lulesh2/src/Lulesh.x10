@@ -383,10 +383,7 @@ public final class Lulesh {
 
         for (r in 0..(domain.numReg-1)) {
             /* evaluate time constraint */
-            calcCourantConstraintForElems(domain, domain.regElemList(r));
-
-            /* check hydro constraint */
-            calcHydroConstraintForElems(domain, domain.regElemList(r));
+            calcTimeConstraintForElems(domain, domain.regElemList(r));
         }
     }
 
@@ -864,22 +861,12 @@ startLoop(6);
                     val hourmody = hourmod(y8n);
                     val hourmodz = hourmod(z8n);
 
-                    val setHourgam = (idx:Long) => {
+                    for (idx in 0..7) {
                         hourgam(idx,i1) = gamma(i1,idx) 
                             - volinv * (dvdx(i3+idx) * hourmodx
                                       + dvdy(i3+idx) * hourmody
                                       + dvdz(i3+idx) * hourmodz);
-                    };
-
-                    // TODO can re-roll this loop?
-                    setHourgam(0);
-                    setHourgam(1);
-                    setHourgam(2);
-                    setHourgam(3);
-                    setHourgam(4);
-                    setHourgam(5);
-                    setHourgam(6);
-                    setHourgam(7);
+                    }
                 }
 
                 /* compute forces */
@@ -1655,12 +1642,12 @@ endLoop(18); // fused loops 18-20
         val bvc = Unsafe.allocRailUninitialized[Double](numElemReg);
         val pbvc = Unsafe.allocRailUninitialized[Double](numElemReg);
 
-        //loop to add load imbalance based on region number 
-        for(j in 0..(rep-1)) {
             /* compress data, minimal set */
 startLoop(21);
-            Foreach.block(0, numElemReg-1, (i:Long)=> {
-                val elem = regElemList(i);
+        Foreach.block(0, numElemReg-1, (i:Long)=> {
+            val elem = regElemList(i);
+        //loop to add load imbalance based on region number 
+            for(j in 0..(rep-1)) {
                 val e_old = domain.e(elem);
                 val delvc = domain.delv(elem);
                 var p_old:Double = domain.p(elem);
@@ -1693,13 +1680,8 @@ startLoop(21);
                              p_cut, e_cut, q_cut, emin,
                              qq_old, ql_old, rho0, eosvmax,
                              elem);
-            });
-endLoop(21); // fused loops 21-32
-        }
+            }
 
-startLoop(33);
-        Foreach.block(0, numElemReg-1, (i:Long)=> {
-            val elem = regElemList(i);
             domain.p(elem) = p_new(i);
             domain.e(elem) = e_new(i);
             domain.q(elem) = q_new(i);
@@ -1721,7 +1703,7 @@ startLoop(33);
             domain.ss(elem) = calcSoundSpeedForElem(vnewc(elem), e_new(i),
                 p_new(i), pbvc(i), bvc(i));
         });
-endLoop(33); // fused loops 33-34
+endLoop(21); // fused loops 21-34
 
         Unsafe.dealloc(work);
         Unsafe.dealloc(p_new);
@@ -1878,38 +1860,58 @@ startLoop(35);
 endLoop(35);
     }
 
-    /**
-     * Calculate the Courant time constraint Delta t_{courant}.
-     * This constraint is calculated only in elements whose volumes are 
-     * changing; that is, vdov != 0.0.
-     */
-    def calcCourantConstraintForElems(domain:Domain, regElemList:Rail[Long]) {
+    private static struct TimeConstraint(dtcourant:Double, dthydro:Double) {
+        public def min(that:TimeConstraint) {
+            return TimeConstraint(
+                    Math.min(this.dtcourant, that.dtcourant),
+                    Math.min(this.dthydro, that.dthydro));
+        }
+    }
+
+    def calcTimeConstraintForElems(domain:Domain, regElemList:Rail[Long]) {
         val qqc2 = 64.0 * domain.qqc * domain.qqc;
 
 startLoop(36);
-        val dtcourant_new = Foreach.blockReduce(0, regElemList.size-1,
-        (i:Long)=> {
-            val indx = regElemList(i);
-            var dtf:Double;
-            if (domain.vdov(indx) == 0.0) {
-                // only calculate time constraint for element whose volume is changing
-                dtf = Double.MAX_VALUE;
-            } else {
-                dtf = domain.ss(indx) * domain.ss(indx);
-                if (domain.vdov(indx) < 0.0) {
-                    dtf = dtf
-                    + qqc2 * domain.arealg(indx) * domain.arealg(indx)
-                    * domain.vdov(indx) * domain.vdov(indx);
-                }
-                dtf = Math.sqrt(dtf);
-                dtf = domain.arealg(indx) / dtf;
-            }
-            dtf
-        },
-        (a:Double, b:Double) => Math.min(a,b), Double.MAX_VALUE);
-endLoop(36);
+        val newConstraint = Foreach.blockReduce(0, regElemList.size-1,
+            (i:Long)=> {
+                val indx = regElemList(i);
+                TimeConstraint(
+                    calcCourantConstraintForElem(domain, indx, qqc2),
+                    calcHydroConstraintForElem(domain, indx)
+                )
+            },
+            (a:TimeConstraint, b:TimeConstraint)=> {a.min(b)},
+            TimeConstraint(domain.dtcourant, domain.dthydro)
+        );
+endLoop(36); // fused loops 36-37
 
-        domain.dtcourant = Math.min(domain.dtcourant, dtcourant_new);
+        domain.dtcourant = newConstraint.dtcourant;
+        domain.dthydro = newConstraint.dthydro;
+    }
+
+    /**
+     * Calculate the Courant time constraint Delta t_{courant}.
+     * The constraints are calculated only in elements whose volumes are 
+     * changing. When an element is undergoing volume change, Delta t_{thydro}
+     * for the element is some maximum allowable element volume change 
+     * (prescribed) divided by vdov in the element.
+     */
+    private @Inline def calcCourantConstraintForElem(domain:Domain, indx:Long, qqc2:Double) {
+        var dtf:Double;
+        if (domain.vdov(indx) == 0.0) {
+            // only calculate time constraint for element whose volume is changing
+            dtf = Double.MAX_VALUE;
+        } else {
+            dtf = domain.ss(indx) * domain.ss(indx);
+            if (domain.vdov(indx) < 0.0) {
+                dtf = dtf
+                + qqc2 * domain.arealg(indx) * domain.arealg(indx)
+                * domain.vdov(indx) * domain.vdov(indx);
+            }
+            dtf = Math.sqrt(dtf);
+            dtf = domain.arealg(indx) / dtf;
+        }
+        return dtf;
     }
 
     /**
@@ -1919,23 +1921,15 @@ endLoop(36);
      * for the element is some maximum allowable element volume change 
      * (prescribed) divided by vdov in the element.
      */
-    def calcHydroConstraintForElems(domain:Domain, regElemList:Rail[Long]) {
-startLoop(37);
-        val dthydro_new = Foreach.blockReduce(0, regElemList.size-1, (i:Long)=> {
-            val indx = regElemList(i);
-            var dthydro_tmp:Double;
-            if (domain.vdov(indx) == 0.0) {
-                // only calculate hydro time constraint for element whose volume is changing
-                dthydro_tmp = Double.MAX_VALUE;
-            } else {
-                dthydro_tmp = domain.dvovmax / (Math.abs(domain.vdov(indx))+1.0e-20);
-            }
-            dthydro_tmp
-        },
-        (a:Double, b:Double) => Math.min(a,b), Double.MAX_VALUE);
-endLoop(37);
-
-        domain.dthydro = Math.min(domain.dthydro, dthydro_new);
+    private @Inline def calcHydroConstraintForElem(domain:Domain, indx:Long) {
+        var dthydro_tmp:Double;
+        if (domain.vdov(indx) == 0.0) {
+            // only calculate hydro time constraint for element whose volume is changing
+            dthydro_tmp = Double.MAX_VALUE;
+        } else {
+            dthydro_tmp = domain.dvovmax / (Math.abs(domain.vdov(indx))+1.0e-20);
+        }
+        return dthydro_tmp;
     }
 
     def verifyAndWriteFinalOutput(elapsedTime:Double, domain:Domain) {
