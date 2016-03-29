@@ -153,6 +153,7 @@ public final class GhostManager {
     }
 
     public val localState:PlaceLocalHandle[LocalState];
+    public val singlePlace:Boolean;
 
     /**
      * Create a GhostManager to coordinate data exchange.
@@ -173,44 +174,50 @@ public final class GhostManager {
         });
         this.localState = ls;
 
-        // Next, gather the GlobalRails I need to communicate with my neighbors
-        Place.places().broadcastFlat(()=> {
-            val ls2 = ls();
-            val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
-            val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
+        if (Place.numPlaces() == 1) {
+            singlePlace = true;
+        } else {
+            singlePlace = false;
 
-            finish {
-                if (Lulesh.SYNCH_GHOST_EXCHANGE) {
-                    // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-                    val recvId = here.id;
-                    for (i in ls2.neighborListRecv.range) {
-                        at (Place(ls2.neighborListRecv(i))) async {
-                            val ls3 = ls();
-                            val bufIdx = ls3.getSendNeighborNumber(recvId);
-                            val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
-                            at (rsb_gr.home) async {
-                                rsb_gr()(i) = gr;
+            // Next, gather the GlobalRails I need to communicate with my neighbors
+            Place.places().broadcastFlat(()=> {
+                val ls2 = ls();
+                val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
+                val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
+
+                finish {
+                    if (Lulesh.SYNCH_GHOST_EXCHANGE) {
+                        // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
+                        val recvId = here.id;
+                        for (i in ls2.neighborListRecv.range) {
+                            at (Place(ls2.neighborListRecv(i))) async {
+                                val ls3 = ls();
+                                val bufIdx = ls3.getSendNeighborNumber(recvId);
+                                val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
+                                at (rsb_gr.home) async {
+                                    rsb_gr()(i) = gr;
+                                }
                             }
                         }
-                    }
-                } else {
-                    // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
-                    val senderId = here.id;
-                    for (i in ls2.neighborListSend.range) {
-                        at (Place(ls2.neighborListSend(i))) async {
-                            val ls3 = ls();
-                            val bufIdx = ls3.getRecvNeighborNumber(senderId);
-                            val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
-                            at (rrb_gr.home) async {
-                                rrb_gr()(i) = gr;
+                    } else {
+                        // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
+                        val senderId = here.id;
+                        for (i in ls2.neighborListSend.range) {
+                            at (Place(ls2.neighborListSend(i))) async {
+                                val ls3 = ls();
+                                val bufIdx = ls3.getRecvNeighborNumber(senderId);
+                                val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
+                                at (rrb_gr.home) async {
+                                    rrb_gr()(i) = gr;
+                                }
                             }
                         }
                     }
                 }
-            }
-            rrb_gr.forget();
-            rsb_gr.forget();
-        });
+                rrb_gr.forget();
+                rsb_gr.forget();
+            });
+        }
     }
 
     private final def allNeighborsReceived():Boolean {
@@ -247,6 +254,7 @@ public final class GhostManager {
      * Used to switch ghost manager phase from sending to using ghost data.
      */
     public final def waitForGhosts() {
+        if (singlePlace) return;
         val t1 = Timer.nanoTime();
         val ls = localState();
         processUpdateFunctions();
@@ -269,6 +277,7 @@ public final class GhostManager {
      * @see waitAndCombineBoundaries
      */
     public def gatherBoundariesToCombine() {
+        if (singlePlace) return;
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
@@ -291,6 +300,7 @@ public final class GhostManager {
      * Switch ghost manager phase from sending to using ghost data.
      */
     public final def waitAndCombineBoundaries() {
+        if (singlePlace) return;
         val t1 = Timer.nanoTime();
         val ls = localState();
         when (allNeighborsReceived()) {
@@ -320,6 +330,7 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
+        if (singlePlace) return;
         val t1 = Timer.nanoTime();
         val ls = localState();
         val dom = ls.domainPlh();
@@ -364,6 +375,7 @@ public final class GhostManager {
      * boundary ghost data between neighbors.
      */
     public def updateBoundaryData() {
+        if (singlePlace) return;
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
@@ -399,6 +411,7 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeBoundaryData() {
+        if (singlePlace) return;
         val t1 = Timer.nanoTime();
         val ls = localState();
         val dom = ls.domainPlh();
@@ -442,6 +455,7 @@ public final class GhostManager {
      * Plane ghost data between neighbors.
      */
     public def updatePlaneGhosts() {
+        if (singlePlace) return;
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
@@ -485,6 +499,7 @@ public final class GhostManager {
      * sendBuffers).
      */
     public final def exchangePlaneGhosts() {
+        if (singlePlace) return;
         val t1 = Timer.nanoTime();
         val ls = localState();
         val dom = ls.domainPlh();
