@@ -388,18 +388,10 @@ public final class Lulesh {
     }
 
     protected def calcForceForNodes(domain:Domain) {
-startLoop(0);
-        domain.fx.clear();
-        domain.fy.clear();
-        domain.fz.clear();
         /*
-        Foreach.block(0, domain.numNode-1, (i:Long)=> {
-            domain.fx(i) = 0.0;
-            domain.fy(i) = 0.0;
-            domain.fz(i) = 0.0;
-        });
-        */
-endLoop(0);
+         * note: no need to clear force arrays (loop 0) as elements are
+         * overwritten in loop 3
+         */
 
         calcVolumeForceForElems(domain);
 
