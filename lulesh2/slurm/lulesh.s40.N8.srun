@@ -1,0 +1,23 @@
+#!/bin/bash -l
+#SBATCH --partition=regular
+#SBATCH --qos=low
+#SBATCH --nodes=4
+#SBATCH --cpus-per-task 12
+#SBATCH --time=00:30:00
+#SBATCH -J lulesh.s40.N8
+
+source /global/homes/j/jjmiltho/x10/x10.profile
+
+export MPICH_MAX_THREAD_SAFETY=multiple
+export GC_LARGE_ALLOC_WARN_INTERVAL=100000
+
+for threads in 12 11 10
+do
+  export X10_NTHREADS=$threads
+  echo X10_NTHREADS=$threads
+  for repeat in `seq 1 5`
+  do
+    srun -n 8 -c 12 ./bin/lulesh2.0 -s 40
+  done
+done
+

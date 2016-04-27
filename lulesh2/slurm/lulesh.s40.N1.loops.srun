@@ -1,0 +1,21 @@
+#!/bin/bash -l
+#SBATCH --partition=regular
+#SBATCH --qos=low
+#SBATCH --nodes=1
+#SBATCH --time=01:00:00
+#SBATCH --cpus-per-task=12
+#SBATCH --ntasks-per-node=2
+#SBATCH -J lulesh.s40.N1
+
+module load impi
+source /global/homes/j/jjmiltho/x10/x10.profile
+
+export MPICH_MAX_THREAD_SAFETY=multiple
+export GC_LARGE_ALLOC_WARN_INTERVAL=100000
+
+for threads in 1 2 3 4 5 6 7 8 9 10 11 12 13
+do
+  export X10_NTHREADS=$threads
+  srun -n 1 -c 12 ./bin/lulesh2.0 -s 40
+done
+
