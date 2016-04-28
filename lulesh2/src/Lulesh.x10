@@ -6,7 +6,7 @@
  *  You may obtain a copy of the License at
  *      http://www.opensource.org/licenses/eclipse-1.0.php
  *
- *  (C) Copyright IBM Corporation 2014-2015.
+ *  (C) Copyright IBM Corporation 2014-2016.
  */
 
 import x10.array.Array_2;
@@ -34,13 +34,16 @@ import x10.util.Timer;
  *  -h              : This message
  * </p>
  * @see <a href="https://codesign.llnl.gov/lulesh.php">Co-design at Lawrence
-    Livermore National Lab - LULESH</a>
+ *  Livermore National Lab - LULESH</a>
  * @see "Hydrodynamics Challenge Problem, Lawrence Livermore National 
  *  Laboratory. Technical Report, LLNL-TR-490254"
  * @see "I. Karlin, J. Keasler, R. Neely. LULESH 2.0 Updates and Changes. 
  *  August 2013, pages 1-9, LLNL-TR-641973."
  * @see "I. Karlin et al. LULESH Programming Model and Performance Ports 
-    Overview, December 2012, pages 1-17, LLNL-TR-608824."
+ *  Overview, December 2012, pages 1-17, LLNL-TR-608824."
+ * @see J. Milthorpe, D. Grove, B. Herta, O. Tardieu.
+ *  "Exploring the APGAS Programming Model Using the LULESH Proxy Application"
+ *  Technical Report RC25555 (WAT1509-050), IBM Research, 2015
  */
 public final class Lulesh {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
