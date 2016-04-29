@@ -52,6 +52,9 @@ lulesh2.0: $(OBJECTS2.0)
 	@echo "Linking"
 	$(CXX) $(OBJECTS2.0) $(LDFLAGS) -lm -o $@
 
+kernel: lulesh_kernel.cc
+	$(CXX) $(CXXFLAGS) lulesh_kernel.cc lulesh-init.cc -o $@
+
 clean:
 	/bin/rm -f *.o *~ $(OBJECTS) $(LULESH_EXEC)
 	/bin/rm -rf *.dSYM
