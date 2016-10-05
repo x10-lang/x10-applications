@@ -108,6 +108,7 @@ public class JacobiSeq {
         var k:long = 0;
 
         while ((k<mits)&&(error>tol)) {
+            error = 0.0
             Array.swap(u, uold);
 
             for (i in 1..(n-2)) {
