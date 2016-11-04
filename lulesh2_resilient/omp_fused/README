@@ -1,0 +1,5 @@
+This is a modified version of LULESH in which a number of parallel loops have been fused together.
+
+Specifically, loops 18-20, 21-34 and 36-37 have been fused.
+
+For details on the LULESH benchmark itself, see ../c++/README .

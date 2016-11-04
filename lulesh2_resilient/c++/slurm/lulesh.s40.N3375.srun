@@ -1,0 +1,20 @@
+#!/bin/bash -l
+#SBATCH --partition=regular
+#SBATCH --qos=low
+#SBATCH --nodes=1688
+#SBATCH --cpus-per-task 12
+#SBATCH --time=00:50:00
+#SBATCH -J lulesh.s40.N3375
+
+export MPICH_MAX_THREAD_SAFETY=multiple
+export GC_LARGE_ALLOC_WARN_INTERVAL=100000
+
+for threads in 12 
+do
+  export OMP_NUM_THREADS=$threads
+  for repeat in `seq 1 5`
+  do
+    srun -n 3375 -c 12 ./lulesh2.0 -s 40
+  done
+done
+
