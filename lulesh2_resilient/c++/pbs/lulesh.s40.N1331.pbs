@@ -1,0 +1,23 @@
+#PBS -q regular
+#PBS -l mppwidth=7992
+#PBS -l walltime=06:30:00
+
+cd $PBS_O_WORKDIR
+
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=6 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=5 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40
+aprun -e OMP_NUM_THREADS=4 -S 1 -n 1331 -cc numa_node -ss ./lulesh2.0 -s 40

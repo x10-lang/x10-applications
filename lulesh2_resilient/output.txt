@@ -1,0 +1,81 @@
+Running problem size 20^3 per domain until completion
+Num places: 8
+Num threads: 8
+Num spare places: 1
+Total number of elements: 64000
+
+To run other sizes, use -s <integer>.
+To run a fixed number of iterations, use -i <integer>.
+To run a more or less balanced region set, use -b <integer>.
+To change the relative costs of regions, use -c <integer>.
+To print out progress, use -p
+To write an output file for VisIt, use -v
+See help (-h) for more options
+
+Place(0) ==> ch1[Place(1)] dead=false ; ch2[Place(4)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(5) ==> parent[Place(4)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(2) ==> parent[Place(1)] dead=false ; 
+Place(7) ==> parent[Place(6)] dead=false ; 
+Place(3) ==> parent[Place(1)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Starting team warm up ...
+Place(0) ==> ch1[Place(1)] dead=false ; ch2[Place(4)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(5) ==> parent[Place(4)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(7) ==> parent[Place(6)] dead=false ; 
+Place(3) ==> parent[Place(1)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(2) ==> parent[Place(1)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(0) reduce done ...
+Place(0) ==> ch1[Place(1)] dead=false ; ch2[Place(4)] dead=false ; 
+Place(2) ==> parent[Place(1)] dead=false ; 
+Place(5) ==> parent[Place(4)] dead=false ; 
+Place(1) ==> 
+Place(4) ==> 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(7) ==> parent[Place(6)] dead=false ; 
+Place(3) ==> parent[Place(1)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(0) allreduce done ...
+Place(0) ==> ch1[Place(1)] dead=false ; ch2[Place(4)] dead=false ; 
+Place(5) ==> parent[Place(4)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(2) ==> parent[Place(1)] dead=false ; 
+Place(3) ==> parent[Place(1)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(7) ==> parent[Place(6)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(0) barrier done ...
+Place(0) ==> ch1[Place(1)] dead=false ; ch2[Place(4)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(5) ==> parent[Place(4)] dead=false ; 
+Place(3) ==> parent[Place(1)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(2) ==> parent[Place(1)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(7) ==> parent[Place(6)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(6) ==> parent[Place(4)] dead=false ; ch1[Place(7)] dead=false ; 
+Place(0) scatter done ...
+Place(0) ==> ch1[Place(1)] dead=false ; ch2[Place(4)] dead=false ; 
+Place(4) ==> parent[Place(0)] dead=false ; ch1[Place(5)] dead=false ; ch2[Place(6)] dead=false ; 
+Place(1) ==> parent[Place(0)] dead=false ; ch1[Place(2)] dead=false ; ch2[Place(3)] dead=false ; 
+Place(3) ==> parent[Place(1)] dead=false ; 
+Place(5) ==> parent[Place(4)] dead=false ; 
