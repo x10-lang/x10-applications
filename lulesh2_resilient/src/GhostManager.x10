@@ -18,7 +18,6 @@ import x10.util.Timer;
 
 /** Manages updates of ghost data for LULESH. */
 public final class GhostManager {
-    static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
     // LocalState is Unserializable to catch programming errors;
     // instances of this class should never be sent across Places.
     static class LocalState implements x10.io.Unserializable {
@@ -352,9 +351,7 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
         team.barrier();
-        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -434,11 +431,7 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        
-        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
         team.barrier();
-        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
-        
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -526,9 +519,7 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
         team.barrier();
-        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
