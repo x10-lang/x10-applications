@@ -19,7 +19,6 @@ class DomainSnapshot implements Cloneable {
         val numNode = domain.x.size as Long;
         val numElem = domain.e.size as Long;        
         data = new Rail[Double](6*numNode + 6*numElem + 7);
-        
         var srcOff:Long = 0;
         data(srcOff++) = numNode;
         data(srcOff++) = numElem;

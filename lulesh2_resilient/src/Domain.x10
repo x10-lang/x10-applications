@@ -26,7 +26,7 @@ import x10.util.Random;
  */
 public final class Domain {
     // TODO persistent region, element and node members should be val not var
-     static VERBOSE = System.getenv("LULESH_VERBOSE_DOMAIN") != null;
+
     // Cutoffs (treat as constants)
     /** energy tolerance */
     public val e_cut = 1.0e-7;
@@ -241,19 +241,17 @@ public final class Domain {
     public def symmZempty():Boolean = (symmZ == null);
 
     public val placeIndex:Long;
-    public val places:PlaceGroup;
     
-    public def this(nx:Long, nr:Int, balance:Int, cost:Int, placesPerSide:Int, places:PlaceGroup) {
+    public def this(nx:Long, nr:Int, balance:Int, cost:Int, placesPerSide:Int, placeIndex:Long) {
         this.nx = nx;
         this.numReg = nr;
         this.cost = cost;
         val edgeElems = nx;
         val edgeNodes = edgeElems+1;
-        this.placeIndex = places.indexOf(here);
+        this.placeIndex = placeIndex;
         val loc = DomainLoc.make(placeIndex, placesPerSide);
         this.loc = loc;
-        this.places = places;
-        
+
         // Initialize Sedov Mesh
 
         // construct a uniform box for this processor

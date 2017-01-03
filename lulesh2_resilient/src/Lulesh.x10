@@ -23,7 +23,6 @@ import x10.util.resilient.iterative.*;
 import x10.util.resilient.localstore.Cloneable;
 import x10.regionarray.Dist;
 import x10.util.resilient.PlaceManager.ChangeDescription;
-import x10.util.resilient.localstore.Cloneable;
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
@@ -39,7 +38,6 @@ import x10.util.resilient.localstore.Cloneable;
  *  -p              : Print out progress
  *  -v              : Output viz file (requires compiling with -DVIZ_MESH
  *  -e              : Number of extra spare places
- *  -y              : Ignore place (for testing purposes only)
  *  -h              : This message
  * </p>
  * @see <a href="https://codesign.llnl.gov/lulesh.php">Co-design at Lawrence
@@ -57,13 +55,9 @@ import x10.util.resilient.localstore.Cloneable;
 public final class Lulesh implements SPMDResilientIterativeApp {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
-    static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
-    static val DISABLE_ULFM_AGREEMENT = System.getenv("DISABLE_ULFM_AGREEMENT") != null && System.getenv("DISABLE_ULFM_AGREEMENT").equals("1");
-    
-    
+
     /** The simulation domain at each place. */
-    protected val distDomain:DistDomain;
-    //protected val domainPlh:PlaceLocalHandle[Domain];
+    protected val domainPlh:PlaceLocalHandle[Domain];
 
     /** Manager for nodal mass updates between all neighbors */
     protected var massGhostMgr:GhostManager;
@@ -131,76 +125,54 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         }
         
         val domainPlh = PlaceLocalHandle.make[Domain](places, 
-            () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places));
-        val distDomain = new DistDomain(domainPlh, places);
-            
-
-        val startWarmupTime = Timer.milliTime();
-        teamWarmup(team, places);
-        val warmupTime = Timer.milliTime() - startWarmupTime;        
-        val startTimeWithoutWarmup = startTime + warmupTime;
+            () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here)));
                 
-        new Lulesh(opts, executor, distDomain).run(opts, startTimeWithoutWarmup);
+        new Lulesh(opts, executor, domainPlh).run(opts, startTime);
     }
 
-    public def this(opts:CommandLineOptions, executor:SPMDResilientIterativeExecutor, distDomain:DistDomain) {
+    public def this(opts:CommandLineOptions, executor:SPMDResilientIterativeExecutor, domainPlh:PlaceLocalHandle[Domain]) {
     	this.opts = opts;
     	this.executor = executor;
     	this.places = executor.activePlaces();
         this.team = executor.team();    
-        this.distDomain = distDomain;        
+        this.domainPlh = domainPlh;
     }
     
     public def initGhostManagers(){
-        val domainPlh = distDomain.domainPlh;
         // initialize ghost update managers
-        finish {
-            async {
-                if (this.massGhostMgr != null)
-                    this.massGhostMgr.destroyLocalState();
-                this.massGhostMgr = new GhostManager(domainPlh,
-                        () => domainPlh().loc.createNeighborList(false, true, true),
-                        () => domainPlh().loc.createNeighborList(false, true, true),
-                        opts.nx+1,
-                        (dom:Domain) => [dom.nodalMass],
-                        places,
-                        team);
-            }
-            async {
-                if (this.posVelGhostMgr != null)
-                    this.posVelGhostMgr.destroyLocalState();
-                this.posVelGhostMgr = new GhostManager(domainPlh,
-                        () => domainPlh().loc.createNeighborList(false, false, true),
-                        () => domainPlh().loc.createNeighborList(false, true, false),
-                        opts.nx+1,
-                        (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-                        places,
-                        team);
-            }
-            async {
-                if (this.forceGhostMgr != null)
-                    this.forceGhostMgr.destroyLocalState();
-                this.forceGhostMgr = new GhostManager(domainPlh,
-                        () => domainPlh().loc.createNeighborList(false, true, true),
-                        () => domainPlh().loc.createNeighborList(false, true, true),
-                        opts.nx+1,
-                        (dom:Domain) => [dom.fx, dom.fy, dom.fz],
-                        places,
-                        team);
-            }
-            async {
-                if (this.gradientGhostMgr != null)
-                    this.gradientGhostMgr.destroyLocalState();
-            
-                this.gradientGhostMgr = new GhostManager(domainPlh, 
-                        () => domainPlh().loc.createNeighborList(true, true, true),
-                        () => domainPlh().loc.createNeighborList(true, true, true),
-                        opts.nx, 
-                        (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
-                        places,
-                        team);
-            }
-        }
+        if (this.massGhostMgr != null)
+            this.massGhostMgr.destroyLocalState();
+        this.massGhostMgr = new GhostManager(domainPlh,
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                opts.nx+1,
+                (dom:Domain) => [dom.nodalMass],
+                places, team);
+        if (this.posVelGhostMgr != null)
+            this.posVelGhostMgr.destroyLocalState();
+        this.posVelGhostMgr = new GhostManager(domainPlh,
+                () => domainPlh().loc.createNeighborList(false, false, true),
+                () => domainPlh().loc.createNeighborList(false, true, false),
+                opts.nx+1,
+                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
+                places, team);
+        if (this.forceGhostMgr != null)
+            this.forceGhostMgr.destroyLocalState();
+        this.forceGhostMgr = new GhostManager(domainPlh,
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                opts.nx+1,
+                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
+                places, team);
+        if (this.gradientGhostMgr != null)
+            this.gradientGhostMgr.destroyLocalState();
+    
+        this.gradientGhostMgr = new GhostManager(domainPlh, 
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                opts.nx, 
+                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
+                places, team);
     }
     
     public def run(opts:CommandLineOptions, appStartTime:Long) {
@@ -209,13 +181,13 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         executor.run(this, appStartTime);
 
         finish for (place in places) at(place) async {
-            val domain = distDomain.domainPlh();
+            val domain = domainPlh();
             val elapsedTimeMillis = Timer.milliTime() - domain.startTimeMillis;
             domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
         }
 
-        val elapsedTime = (distDomain.domainPlh().elapsedTimeMillis) / 1e3;
-        verifyAndWriteFinalOutput(elapsedTime, distDomain.domainPlh());
+        val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
+        verifyAndWriteFinalOutput(elapsedTime, domainPlh());
 
         var reportCommTime:Boolean = PRINT_COMM_TIME;
 @Ifdef("__RECORD_LOOP_TIMES__") {
@@ -248,7 +220,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 					     forceGhostMgr.localState().sendTime,
                                              gradientGhostMgr.localState().waitTime, gradientGhostMgr.localState().processTime, 
                                              gradientGhostMgr.localState().sendTime,
-                                             distDomain.domainPlh().allreduceTime];
+                                             domainPlh().allreduceTime];
             }
             Console.OUT.println("### Communication related times (in microseconds) ###");
             Console.OUT.print("PhaseLabel,");
@@ -271,12 +243,11 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     }
 
     public def isFinished_local():Boolean {
-        val domain = distDomain.domainPlh();
-        return !((domain.time < domain.stopTime) && (domain.cycle < opts.its));
+        return !((domainPlh().time < domainPlh().stopTime) && (domainPlh().cycle < opts.its));
     }
     
     public def step_local():void {
-        val domain = distDomain.domainPlh();
+        val domain = domainPlh();
         if (domain.cycle == 0n){
             if (PRINT_COMM_TIME) {
                 printLoadImbalance(domain);
@@ -311,20 +282,27 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 
     public def getCheckpointData_local():HashMap[String,Cloneable] {
     	val map = new HashMap[String,Cloneable]();
-    	map.put("D", new DomainSnapshot(distDomain.domainPlh()));    	
+    	map.put("D", new DomainSnapshot(domainPlh()));    	
     	return map;
     }
     
-    public def remake(changes:ChangeDescription, newTeam:Team) {    
-    	if (VERBOSE) Console.OUT.println("Application remake started ...");
+    public def remake(changes:ChangeDescription, newTeam:Team) {
         var remakeDomainTime:Long = 0;
         remakeDomainTime -= Timer.milliTime();
-        distDomain.remake(changes.newActivePlaces, opts);
+        val numPlaces = changes.newActivePlaces.size();
+        val placesPerSide = Math.cbrt((numPlaces as Double) + 0.5) as Int;
+        if  (placesPerSide <= 0 || placesPerSide*placesPerSide*placesPerSide != numPlaces as Int) {
+            throw new Exception("Num of restore processors must be a cube of an integer (1, 8, 27, ...)");
+        }
+        places = changes.newActivePlaces;
+        for (sparePlace in changes.addedPlaces){
+            PlaceLocalHandle.addPlace[Domain](
+                domainPlh, sparePlace, ()=>new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here))
+            );
+        }
         remakeDomainTime += Timer.milliTime();
         
-        this.places = changes.newActivePlaces;
         this.team = newTeam;
-        
         var initTime:Long = 0;
         initTime -= Timer.milliTime();
         initGhostManagers();
@@ -332,12 +310,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         Console.OUT.println("Application remake succeeded:remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
     }
     
-    
     public def restore_local(restoreDataMap:HashMap[String,Cloneable], lastCheckpointIter:Long) {
-    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
-        val storedDomain = restoreDataMap.get("D") as DomainSnapshot;
-        storedDomain.populateDomain(distDomain.domainPlh());
-    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
+        (restoreDataMap.get("D") as DomainSnapshot).populateDomain(domainPlh());
     }  
 
     /**
@@ -388,9 +362,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             }
 
             val start = Timer.milliTime();
-            if (VERBOSE) Console.OUT.println(here + "- pre allreduce ...");
             newDt = team.allreduce(gNewDt, Team.MIN);
-            if (VERBOSE) Console.OUT.println(here + "- pro allreduce ...");
             domain.allreduceTime += Timer.milliTime() - start;
 
             ratio = newDt / oldDt;
@@ -430,7 +402,6 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         lagrangeNodal(domain);
 
         lagrangeElements(domain);
-                
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
 
         posVelGhostMgr.updateBoundaryData();
@@ -450,19 +421,19 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     protected def lagrangeNodal(domain:Domain) {
         val delt = domain.deltatime;
         var u_cut:Double = domain.u_cut;
-        
+
         // time of boundary condition evaluation is beginning of step for force 
         // and acceleration boundary conditions. 
         calcForceForNodes(domain);
-        
+
         calcAccelerationForNodes(domain);
-        
+
         applyAccelerationBoundaryConditionsForNodes(domain);
-        
+
         calcVelocityForNodes(domain, delt, u_cut);
-        
+
         calcPositionForNodes(domain, delt);
-        
+
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
         if (SYNCH_GHOST_EXCHANGE) {
             posVelGhostMgr.exchangeBoundaryData();
@@ -506,12 +477,12 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         /*
          * note: no need to clear force arrays (loop 0) as elements are
          * overwritten in loop 3
-        */
+         */
 
         calcVolumeForceForElems(domain);
 
         if (SYNCH_GHOST_EXCHANGE) {
-            forceGhostMgr.exchangeAndCombineBoundaryData();            
+            forceGhostMgr.exchangeAndCombineBoundaryData();
         } else {
             forceGhostMgr.gatherBoundariesToCombine();
             forceGhostMgr.waitAndCombineBoundaries();
@@ -973,7 +944,7 @@ startLoop(6);
                             - volinv * (dvdx(i3+idx) * hourmodx
                                       + dvdy(i3+idx) * hourmody
                                       + dvdz(i3+idx) * hourmodz);
-                }
+                    }
                 }
 
                 /* compute forces */
@@ -1751,8 +1722,8 @@ endLoop(18); // fused loops 18-20
 
             /* compress data, minimal set */
 startLoop(21);
-            Foreach.block(0, numElemReg-1, (i:Long)=> {
-                val elem = regElemList(i);
+        Foreach.block(0, numElemReg-1, (i:Long)=> {
+            val elem = regElemList(i);
         //loop to add load imbalance based on region number 
             for(j in 0..(rep-1)) {
                 val e_old = domain.e(elem);
@@ -1787,7 +1758,7 @@ startLoop(21);
                              p_cut, e_cut, q_cut, emin,
                              qq_old, ql_old, rho0, eosvmax,
                              elem);
-        }
+            }
 
             domain.p(elem) = p_new(i);
             domain.e(elem) = e_new(i);
@@ -1980,8 +1951,8 @@ endLoop(35);
 
 startLoop(36);
         val newConstraint = Foreach.blockReduce(0, regElemList.size-1,
-        (i:Long)=> {
-            val indx = regElemList(i);
+            (i:Long)=> {
+                val indx = regElemList(i);
                 TimeConstraint(
                     calcCourantConstraintForElem(domain, indx, qqc2),
                     calcHydroConstraintForElem(domain, indx)
@@ -2004,20 +1975,20 @@ endLoop(36); // fused loops 36-37
      * (prescribed) divided by vdov in the element.
      */
     private @Inline def calcCourantConstraintForElem(domain:Domain, indx:Long, qqc2:Double) {
-            var dtf:Double;
-            if (domain.vdov(indx) == 0.0) {
-                // only calculate time constraint for element whose volume is changing
-                dtf = Double.MAX_VALUE;
-            } else {
-                dtf = domain.ss(indx) * domain.ss(indx);
-                if (domain.vdov(indx) < 0.0) {
-                    dtf = dtf
-                    + qqc2 * domain.arealg(indx) * domain.arealg(indx)
-                    * domain.vdov(indx) * domain.vdov(indx);
-                }
-                dtf = Math.sqrt(dtf);
-                dtf = domain.arealg(indx) / dtf;
+        var dtf:Double;
+        if (domain.vdov(indx) == 0.0) {
+            // only calculate time constraint for element whose volume is changing
+            dtf = Double.MAX_VALUE;
+        } else {
+            dtf = domain.ss(indx) * domain.ss(indx);
+            if (domain.vdov(indx) < 0.0) {
+                dtf = dtf
+                + qqc2 * domain.arealg(indx) * domain.arealg(indx)
+                * domain.vdov(indx) * domain.vdov(indx);
             }
+            dtf = Math.sqrt(dtf);
+            dtf = domain.arealg(indx) / dtf;
+        }
         return dtf;
     }
 
@@ -2029,13 +2000,13 @@ endLoop(36); // fused loops 36-37
      * (prescribed) divided by vdov in the element.
      */
     private @Inline def calcHydroConstraintForElem(domain:Domain, indx:Long) {
-            var dthydro_tmp:Double;
-            if (domain.vdov(indx) == 0.0) {
-                // only calculate hydro time constraint for element whose volume is changing
-                dthydro_tmp = Double.MAX_VALUE;
-            } else {
-                dthydro_tmp = domain.dvovmax / (Math.abs(domain.vdov(indx))+1.0e-20);
-            }
+        var dthydro_tmp:Double;
+        if (domain.vdov(indx) == 0.0) {
+            // only calculate hydro time constraint for element whose volume is changing
+            dthydro_tmp = Double.MAX_VALUE;
+        } else {
+            dthydro_tmp = domain.dvovmax / (Math.abs(domain.vdov(indx))+1.0e-20);
+        }
         return dthydro_tmp;
     }
 
@@ -2134,70 +2105,8 @@ endLoop(36); // fused loops 36-37
         elemZ(6) = domain.z(nd6i);
         elemZ(7) = domain.z(nd7i);
     }
-    
-    public static def teamWarmup(team:Team, places:PlaceGroup){
-    	val disableWarmup = System.getenv("DISABLE_TEAM_WARMUP");
-    	if (disableWarmup != null && disableWarmup.equals("1"))
-    	{
-    		Console.OUT.println("Team warm up disabled ...");
-    		return;
-    	}
-    		
-    	val startWarmupTime = Timer.milliTime();
-    	Console.OUT.println("Starting team warm up ...");
-    	// warm up comms layer
-    	val root = Place(0);
-    	
-    	
-    	finish for (place in places) at (place) async {
-    		team.reduce(root, 1.0, Team.ADD);
-    		if (here.id == 0) Console.OUT.println(here+" reduce done ...");
-    	
-    		team.allreduce(1.0, Team.ADD);
-    		if (here.id == 0) Console.OUT.println(here+" allreduce done ...");
-    	
-    		team.barrier(); 
-    		if (here.id == 0) Console.OUT.println(here+" barrier done ...");
-    	
-    		var scounts:Rail[Int] = new Rail[Int](Place.numPlaces(),1n);
-    		val warmupInScatter = new Rail[Double](Place.numPlaces());
-    		var warmupOutScatter:Rail[Double] = new Rail[Double](1);
-    		team.scatter(root,warmupInScatter, 0, warmupOutScatter, 0, 1);
-    		if (here.id == 0) Console.OUT.println(here+" scatter done ...");
-        
-    		//team.scatterv(root, warmupInScatter, 0, warmupOutScatter, 0, scounts);
-    		//if (here.id == 0) Console.OUT.println(here+" scatterv done ...");
-    	
-    		val warmupInGather = new Rail[Double](1);
-    		var warmupOutGather:Rail[Double] = new Rail[Double](Place.numPlaces());
-    		team.gather(root,warmupInGather, 0, warmupOutGather, 0, 1);
-    		if (here.id == 0) Console.OUT.println(here+" gather done ...");
-        
-    		team.gatherv(root, warmupInGather, 0, warmupOutGather, 0, scounts);
-    		if (here.id == 0) Console.OUT.println(here+" gatherv done ...");
-        
-    		val warmupBcast = new Rail[Double](1);
-    		team.bcast(root, warmupBcast, 0, warmupBcast, 0, 1); 
-    		if (here.id == 0) Console.OUT.println(here+" bcast done ...");
-    		
-    		val DISABLE_ULFM_AGREEMENT = System.getenv("DISABLE_ULFM_AGREEMENT") != null && System.getenv("DISABLE_ULFM_AGREEMENT").equals("1");
-    		if (!DISABLE_ULFM_AGREEMENT) {   
-	    		try{
-	    			team.agree(1n);
-	    			if (here.id == 0) Console.OUT.println(here+" agree done ...");
-	    		}catch(ex:Exception){
-	    			if (here.id == 0) {
-	    				Console.OUT.println("agree failed ...");
-	    				ex.printStackTrace();
-	    			}
-	    		}
-    		}
-    		
-    	}
-        Console.OUT.println("Team warm up succeeded , time elapsed ["+(Timer.milliTime()-startWarmupTime)+"] ...");
-    }
-
 }
+
 // TODO Precision specification
 
 // vim:tabstop=4:shiftwidth=4:expandtab
