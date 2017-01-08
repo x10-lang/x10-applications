@@ -57,7 +57,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
 
     /** The simulation domain at each place. */
-    protected val domainPlh:PlaceLocalHandle[Domain];
+    protected var domainPlh:PlaceLocalHandle[Domain];
 
     /** Manager for nodal mass updates between all neighbors */
     protected var massGhostMgr:GhostManager;
@@ -295,11 +295,9 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             throw new Exception("Num of restore processors must be a cube of an integer (1, 8, 27, ...)");
         }
         places = changes.newActivePlaces;
-        for (sparePlace in changes.addedPlaces){
-            PlaceLocalHandle.addPlace[Domain](
-                domainPlh, sparePlace, ()=>new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here))
-            );
-        }
+        PlaceLocalHandle.destroy(changes.oldActivePlaces, domainPlh, (Place)=>true);
+        domainPlh = PlaceLocalHandle.make[Domain](places,
+                () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here)));
         remakeDomainTime += Timer.milliTime();
         
         this.team = newTeam;
