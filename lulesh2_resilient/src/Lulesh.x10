@@ -296,9 +296,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         }
         places = changes.newActivePlaces;
         for (sparePlace in changes.addedPlaces){
-            PlaceLocalHandle.addPlace[Domain](
-                domainPlh, sparePlace, ()=>new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here))
-            );
+            PlaceLocalHandle.addPlace[Domain](domainPlh, sparePlace, ()=>new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here)));
         }
         remakeDomainTime += Timer.milliTime();
         

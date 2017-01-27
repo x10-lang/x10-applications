@@ -18,7 +18,7 @@ class DomainSnapshot implements Cloneable {
     public def this(domain:Domain) {
         val numNode = domain.x.size as Long;
         val numElem = domain.e.size as Long;        
-        data = new Rail[Double](6*numNode + 6*numElem + 7);
+        data = new Rail[Double](6*numNode + 6*numElem + 8);
         var srcOff:Long = 0;
         data(srcOff++) = numNode;
         data(srcOff++) = numElem;
@@ -27,6 +27,7 @@ class DomainSnapshot implements Cloneable {
         data(srcOff++) = domain.dthydro;
         data(srcOff++) = domain.cycle;
         data(srcOff++) = domain.time;
+        data(srcOff++) = domain.deltatime;
         
         data(srcOff++) = domain.startTimeMillis;
         
@@ -63,6 +64,7 @@ class DomainSnapshot implements Cloneable {
         domain.dthydro = data(srcOff++);
         domain.cycle = data(srcOff++) as Int;
         domain.time = data(srcOff++);
+        domain.deltatime = data(srcOff++);
         
         domain.startTimeMillis = data(srcOff++) as Long;
         
