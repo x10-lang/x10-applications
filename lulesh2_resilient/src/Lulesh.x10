@@ -95,6 +95,11 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
             return;
         }
+        if (!SYNCH_GHOST_EXCHANGE && x10.xrx.Runtime.RESILIENT_MODE > 0) {
+        	Console.ERR.println("Must set LULESH_SYNCH_GHOSTS=1 in resilient mode");
+        	System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
+            return;
+        }
         
         val startTime = Timer.milliTime();
         val executor = new SPMDResilientIterativeExecutor(opts.checkpointFreq, opts.spare, false, true);
