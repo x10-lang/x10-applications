@@ -337,38 +337,42 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
-        if (singlePlace) return;
-        val t1 = Timer.nanoTime();
-        val ls = localState();
-        val dom = ls.domainPlh();
-
-        // (a) pack my outgoing data into the send buffers
-        for (i in ls.neighborListSend.range) {
-            val data = ls.sendBuffers(i);
-            dom.gatherData(data, ls.sendRegions(i), ls.accessFields, ls.sideLength);
-        }
-
-        // (b) wait for everyone else to have packed their data
-        val t2 = Timer.nanoTime();
-        ls.processTime += (t2 - t1);
-        team.barrier();
-        val t3 = Timer.nanoTime();
-        ls.waitTime += (t3 - t2);
-
-        // (c) get the packed data from my neighbors
-        finish {
-            for (i in ls.neighborListRecv.range) {
-                Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+        try {
+            if (singlePlace) return;
+            val t1 = Timer.nanoTime();
+            val ls = localState();
+            val dom = ls.domainPlh();
+    
+            // (a) pack my outgoing data into the send buffers
+            for (i in ls.neighborListSend.range) {
+                val data = ls.sendBuffers(i);
+                dom.gatherData(data, ls.sendRegions(i), ls.accessFields, ls.sideLength);
             }
+    
+            // (b) wait for everyone else to have packed their data
+            val t2 = Timer.nanoTime();
+            ls.processTime += (t2 - t1);
+            team.barrier();
+            val t3 = Timer.nanoTime();
+            ls.waitTime += (t3 - t2);
+    
+            // (c) get the packed data from my neighbors
+            finish {
+                for (i in ls.neighborListRecv.range) {
+                    Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                }
+            }
+            val t4 = Timer.nanoTime();
+            ls.sendTime += (t4 - t3);
+    
+            // (d) combine
+            for (i in ls.recvBuffers.range) {
+                dom.accumulateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
+            }
+            ls.processTime += (Timer.nanoTime() - t4);
+        } catch (e:Exception) {
+            checkException(e);
         }
-        val t4 = Timer.nanoTime();
-        ls.sendTime += (t4 - t3);
-
-        // (d) combine
-        for (i in ls.recvBuffers.range) {
-            dom.accumulateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
-        }
-       ls.processTime += (Timer.nanoTime() - t4);
     }
 
 
@@ -418,37 +422,41 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeBoundaryData() {
-        if (singlePlace) return;
-        val t1 = Timer.nanoTime();
-        val ls = localState();
-        val dom = ls.domainPlh();
-
-        // (a) pack my outgoing data into the send buffers
-        for (i in ls.neighborListSend.range) {
-            dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
-        }
-
-        // (b) wait for everyone else to have packed their data
-        val t2 = Timer.nanoTime();
-        ls.processTime += (t2 - t1);
-        team.barrier();
-        val t3 = Timer.nanoTime();
-        ls.waitTime += (t3 - t2);
-
-        // (c) get the packed data from my neighbors
-        finish {
-            for (i in ls.neighborListRecv.range) {
-                Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+        try {
+            if (singlePlace) return;
+            val t1 = Timer.nanoTime();
+            val ls = localState();
+            val dom = ls.domainPlh();
+    
+            // (a) pack my outgoing data into the send buffers
+            for (i in ls.neighborListSend.range) {
+                dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
             }
+    
+            // (b) wait for everyone else to have packed their data
+            val t2 = Timer.nanoTime();
+            ls.processTime += (t2 - t1);
+            team.barrier();
+            val t3 = Timer.nanoTime();
+            ls.waitTime += (t3 - t2);
+    
+            // (c) get the packed data from my neighbors
+            finish {
+                for (i in ls.neighborListRecv.range) {
+                    Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                }
+            }
+            val t4 = Timer.nanoTime();
+            ls.sendTime += (t4 - t3);
+    
+            // (d) combine
+            for (i in ls.recvBuffers.range) {
+                dom.updateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
+            }
+            ls.processTime += (Timer.nanoTime() - t4);
+        } catch (e:Exception) {
+            checkException(e);
         }
-        val t4 = Timer.nanoTime();
-        ls.sendTime += (t4 - t3);
-
-        // (d) combine
-        for (i in ls.recvBuffers.range) {
-            dom.updateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
-        }
-        ls.processTime += (Timer.nanoTime() - t4);
     }
 
 
@@ -506,44 +514,64 @@ public final class GhostManager {
      * sendBuffers).
      */
     public final def exchangePlaneGhosts() {
-        if (singlePlace) return;
-        val t1 = Timer.nanoTime();
-        val ls = localState();
-        val dom = ls.domainPlh();
-
-        // (a) pack my outgoing data into the send buffers
-        for (i in ls.neighborListSend.range) {
-            dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
-        }
-
-        // (b) wait for everyone else to have packed their data
-        val t2 = Timer.nanoTime();
-        ls.processTime += (t2 - t1);
-        team.barrier();
-        val t3 = Timer.nanoTime();
-        ls.waitTime += (t3 - t2);
-
-        // (c) get the packed data from my neighbors
-        finish {
-            for (i in ls.neighborListRecv.range) {
-                Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+        try {
+            if (singlePlace) return;
+            val t1 = Timer.nanoTime();
+            val ls = localState();
+            val dom = ls.domainPlh();
+    
+            // (a) pack my outgoing data into the send buffers
+            for (i in ls.neighborListSend.range) {
+                dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
             }
+    
+            // (b) wait for everyone else to have packed their data
+            val t2 = Timer.nanoTime();
+            ls.processTime += (t2 - t1);
+            team.barrier();
+            val t3 = Timer.nanoTime();
+            ls.waitTime += (t3 - t2);
+    
+            // (c) get the packed data from my neighbors
+            finish {
+                for (i in ls.neighborListRecv.range) {
+                    Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                }
+            }
+            val t4 = Timer.nanoTime();
+            ls.sendTime += (t4 - t3);
+    
+            // (d) combine
+            val sideLength = ls.sideLength;
+            val localDataSize = sideLength*sideLength*sideLength;
+            val ghostRegionSize = sideLength*sideLength;
+            for (i in ls.recvBuffers.range) {
+                val ghostOffset = localDataSize + i * ghostRegionSize;
+                dom.updateGhosts(ls.recvBuffers(i), ls.accessFields, ghostRegionSize, ghostOffset);
+            }
+            ls.processTime += (Timer.nanoTime() - t4);
+        } catch (e:Exception) {
+            checkException(e);
         }
-        val t4 = Timer.nanoTime();
-        ls.sendTime += (t4 - t3);
-
-        // (d) combine
-        val sideLength = ls.sideLength;
-        val localDataSize = sideLength*sideLength*sideLength;
-        val ghostRegionSize = sideLength*sideLength;
-        for (i in ls.recvBuffers.range) {
-            val ghostOffset = localDataSize + i * ghostRegionSize;
-            dom.updateGhosts(ls.recvBuffers(i), ls.accessFields, ghostRegionSize, ghostOffset);
-        }
-        ls.processTime += (Timer.nanoTime() - t4);
     }
     
+    private def checkException(ex:Exception) {
+        if (x10.xrx.Runtime.RESILIENT_MODE == 0n)
+            throw ex;
+        
+        if (ex instanceof DeadPlaceException) {
+            //NOOP, let next collective catch it
+        }
+        else if (ex instanceof MultipleExceptions) {
+            val me = ex as MultipleExceptions;
+            val dper = me.getExceptionsOfType[DeadPlaceException]();
+            if (dper.size != me.exceptions.size) {
+                throw ex;
+            } //else NOOP, let next collective catch it
+        }
+    }
     public def destroyLocalState(){
         PlaceLocalHandle.destroy(places, localState, (Place)=>true);
     }
 }
+
