@@ -359,6 +359,8 @@ public final class GhostManager {
             // (c) get the packed data from my neighbors
             finish {
                 for (i in ls.neighborListRecv.range) {
+                	if (ls.remoteSendBuffers(i).home().isDead())
+                		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
                     Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
                 }
             }
@@ -374,7 +376,6 @@ public final class GhostManager {
             checkException(e);
         }
     }
-
 
    /**
      * Update boundary data at all neighboring places, overwriting with data
@@ -443,6 +444,8 @@ public final class GhostManager {
             // (c) get the packed data from my neighbors
             finish {
                 for (i in ls.neighborListRecv.range) {
+                	if (ls.remoteSendBuffers(i).home().isDead())
+                		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
                     Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
                 }
             }
@@ -535,6 +538,8 @@ public final class GhostManager {
             // (c) get the packed data from my neighbors
             finish {
                 for (i in ls.neighborListRecv.range) {
+                	if (ls.remoteSendBuffers(i).home().isDead())
+                		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
                     Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
                 }
             }
